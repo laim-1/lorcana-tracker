@@ -45,9 +45,9 @@ t("Triggers: when banished / start of turn / statics", () => {
   const g = E.normCard({ id: "g", name: "G", type: ["Character"], cost: 1, strength: 1, willpower: 3, lore: 1, text: "X At the start of your turn, gain 1 lore." }); assert.equal(g.onStart.length, 1);
 });
 t("Card parsing on real data: Elsa - Snow Queen is fully simulated", () => { const raw = window.LORCANA_GAME_CARDS.cards.find(c => c.name === "Elsa" && c.version === "Snow Queen"); const c = E.normCard(raw); assert.equal(c.status, "full"); assert.equal(c.acts.length, 1); });
-t("Prebuilt decks are legal 60-card 2-ink decks", () => { const pool = window.LORCANA_GAME_CARDS.cards.map(E.normCard).filter(c => /^\d+$/.test(c.set)); for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++) { const d = E.buildDeck(pool, [E.INKS[i], E.INKS[j]]); assert.ok(d, E.INKS[i] + E.INKS[j]); assert.equal(E.validateDeck(d), null); } });
+t("Prebuilt decks are legal 60-card 2-ink decks", () => { const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard).filter(c => /^\d+$/.test(c.set)); for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++) { const d = E.buildDeck(pool, [E.INKS[i], E.INKS[j]]); assert.ok(d, E.INKS[i] + E.INKS[j]); assert.equal(E.validateDeck(d), null); } });
 t("AI vs AI: 30 full games complete without errors (random decks, all sets)", () => {
-  const pool = window.LORCANA_GAME_CARDS.cards.map(E.normCard); let wins = [0, 0], lore = 0, turns = 0;
+  const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard); let wins = [0, 0], lore = 0, turns = 0;
   for (let g = 0; g < 30; g++) {
     const pick = () => { const i = g % 6, j = (g + 1 + (g >> 1) % 5) % 6; return [E.INKS[Math.min(i, j)], E.INKS[Math.max(i, j)]].filter((v, k, a) => a.indexOf(v) === k); };
     const inks = pick(); const d0 = E.buildDeck(pool, inks.length === 2 ? inks : ["Amber", "Steel"]), d1 = E.buildDeck(pool, ["Ruby", "Sapphire"]);
@@ -62,8 +62,8 @@ t("Sing Together exerts several characters", () => { const st = game(); const so
 t("Modal 'choose one' and dig effects parse", () => { const c = E.normCard({ id: "m", name: "M", type: ["Action"], cost: 1, text: "Choose one:\n• Draw 2 cards.\n• Gain 1 lore." }); assert.equal(c.status, "full"); const d = E.normCard({ id: "d", name: "D", type: ["Action"], cost: 1, text: "Look at the top 4 cards of your deck. You may reveal a character card and put it into your hand. Put the rest on the bottom of your deck in any order." }); assert.equal(d.onPlay[0].k, "dig"); });
 t("Conditional statics and cost reduction", () => { const st = game(); ink(st, 0, 1); put(st, 0, C({ name: "Gaston" })); const c = hand(st, 0, C({ cost: 2, text: "X If you have a character named Gaston in play, you pay 1 {I} less to play this character." })); assert.ok(has(st, { t: "play", uid: c.uid })); });
 t("Return-to-hand when banished (self recursion)", () => { const st = game(); const b = put(st, 0, C({ willpower: 1, text: "X When this character is banished in a challenge, return this card to your hand." }), { exerted: true }); E.act(st, { t: "end" }); const a = put(st, 1, C({})); E.act(st, { t: "challenge", uid: a.uid, target: b.uid }); assert.ok(st.players[0].hand.includes(b)); });
-t("Stress: 40 AI games with random decks drawn from ALL 3,263 cards", () => {
-  const pool = window.LORCANA_GAME_CARDS.cards.map(E.normCard); let seed = 99; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+t("Stress: 40 AI games with random decks drawn from all main-set cards", () => {
+  const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard); let seed = 99; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const rnd = (inks) => { const ok = pool.filter(c => c.inks.length && c.inks.every(i => inks.includes(i))); const d = []; while (d.length < 60) { const c = ok[Math.floor(r() * ok.length)]; if (d.filter(x => x.full === c.full).length < 4) d.push(c); } return d; };
   for (let g = 0; g < 40; g++) { const i = Math.floor(r() * 6), j = (i + 1 + Math.floor(r() * 5)) % 6; const st = E.newGame({ decks: [rnd([E.INKS[i], E.INKS[j]]), rnd([E.INKS[j], E.INKS[(j + 2) % 6]])], seed: g + 5, first: g % 2 });
     E.mulligan(st, 0, E.aiMulligan(st, 0)); E.mulligan(st, 1, E.aiMulligan(st, 1)); let n = 0; while (st.winner == null && n < 6000) { E.act(st, E.aiChoose(st)); n++; } assert.notEqual(st.winner, null, "game " + g + " did not finish"); }

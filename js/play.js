@@ -15,7 +15,8 @@ async function loadPool(){
   if(pool)return;if(!window.LORCANA_GAME_CARDS)await loadScript("./data/game-cards.js?v="+V);
   setPool(window.LORCANA_GAME_CARDS.cards);refreshLive();
 }
-function setPool(raw){pool=raw.map(E.normCard);byId=new Map(pool.map(c=>[c.id,c]))}
+function setPool(raw){pool=raw.filter(c=>/^\d+$/.test(String(c.set))).map(E.normCard); // main numbered sets only
+  byId=new Map(pool.map(c=>[c.id,c]))}
 async function refreshLive(){ // try to replace the snapshot with live Lorcast data (used for the next game)
   try{const sig=()=>AbortSignal.timeout(10000);const sets=(await (await fetch("https://api.lorcast.com/v0/sets",{signal:sig()})).json()).results;
     const today=new Date().toISOString().slice(0,10),out=[];
@@ -23,7 +24,7 @@ async function refreshLive(){ // try to replace the snapshot with live Lorcast d
       for(const c of cs)out.push({id:c.id,name:c.name,version:c.version,cost:c.cost,inkwell:c.inkwell,ink:c.ink,inks:c.inks,type:c.type,classifications:c.classifications,text:c.text,move_cost:c.move_cost,strength:c.strength,willpower:c.willpower,lore:c.lore,rarity:c.rarity,collector_number:c.collector_number,set:s.code,img:c.image_uris?.digital?.small})}));
     if(out.length>=pool.length*0.9){setPool(out);source="live"}}catch(e){}
 }
-const mainPool=()=>pool.filter(c=>/^\d+$/.test(c.set));
+const mainPool=()=>pool;
 const decks=()=>JSON.parse(localStorage.getItem(DKEY)||"[]");
 const saveDecks=d=>localStorage.setItem(DKEY,JSON.stringify(d));
 function ownedMap(){const col=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}"),m={};for(const[id,v]of Object.entries(col))m[id]=(v.n||0)+(v.f||0);return m}
@@ -48,7 +49,7 @@ function renderMenu(){
   <button class="wide" data-a="builder">Deck builder</button>
   <h4>Opponent</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${p.join("/")}</button>`).join("")}</div>
   <button class="wide primary" data-a="start">Start game</button>
-  <p class="meta small">${pool.length} cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
+  <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
 }
 function coverageLine(){const c=E.coverage(pool).byStatus;return`Ability simulation: ${c.full||0} full, ${c.keywords||0} keyword-only, ${c.plain||0} no-text, ${c.partial||0} partial, ${c.vanilla||0} vanilla fallback.`}
 /* deck builder */
@@ -65,7 +66,7 @@ function renderBuilder(){
   <div class="bstat ${n>=60&&inks.length<=2?"ok":""}"><b>${n}/60</b><span>${inks.join(" / ")||"No inks yet"} · ${warn}</span></div>
   <input class="pin" id="bname" value="${esc(b.name)}" placeholder="Deck name">
   <div class="row2"><button class="opt ${b.view==="all"?"on":""}" data-a="bview" data-v="all">All cards</button><button class="opt ${b.view==="deck"?"on":""}" data-a="bview" data-v="deck">This deck</button><button class="opt" data-a="bclear">Clear</button></div>
-  ${b.view==="all"?`<input class="pin" id="bq" type="search" value="${esc(b.q)}" placeholder="Search all ${pool.length} cards">
+  ${b.view==="all"?`<input class="pin" id="bq" type="search" value="${esc(b.q)}" placeholder="Search ${pool.length} main-set cards">
   <div class="opts">${["",...E.INKS].map(i=>`<button class="opt sm ${b.ink===i?"on":""}" data-a="bink" data-v="${i}">${i||"Any ink"}</button>`).join("")}</div>
   <div class="opts">${["","character","action","song","item","location"].map(i=>`<button class="opt sm ${b.type===i?"on":""}" data-a="btype" data-v="${i}">${i?i[0].toUpperCase()+i.slice(1):"Any type"}</button>`).join("")}</div>`:""}
   <div class="meta small">${total} cards${total>b.limit?`, showing ${b.limit}`:""}</div>

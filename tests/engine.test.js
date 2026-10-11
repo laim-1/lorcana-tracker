@@ -57,4 +57,15 @@ t("AI vs AI: 30 full games complete without errors (random decks, all sets)", ()
   }
   console.log("     results:", wins, "avg turns", (turns / 30).toFixed(1));
 });
+t("Boost puts the top card under the character once per turn", () => { const st = game(); ink(st, 0, 3); const b = put(st, 0, C({ text: "Boost 2 {I}" })); E.act(st, { t: "boost", uid: b.uid }); assert.equal(b.under.length, 1); assert.ok(!has(st, { t: "boost", uid: b.uid })); });
+t("Sing Together exerts several characters", () => { const st = game(); const song = hand(st, 0, C({ type: ["Action", "Song"], cost: 8, text: "Sing Together 6\nDraw 2 cards." })); put(st, 0, C({ cost: 3 })); put(st, 0, C({ cost: 3 })); const a = E.legalActions(st).find(x => x.singers); assert.ok(a); E.act(st, a); assert.ok(st.players[0].play.every(x => x.exerted)); });
+t("Modal 'choose one' and dig effects parse", () => { const c = E.normCard({ id: "m", name: "M", type: ["Action"], cost: 1, text: "Choose one:\n• Draw 2 cards.\n• Gain 1 lore." }); assert.equal(c.status, "full"); const d = E.normCard({ id: "d", name: "D", type: ["Action"], cost: 1, text: "Look at the top 4 cards of your deck. You may reveal a character card and put it into your hand. Put the rest on the bottom of your deck in any order." }); assert.equal(d.onPlay[0].k, "dig"); });
+t("Conditional statics and cost reduction", () => { const st = game(); ink(st, 0, 1); put(st, 0, C({ name: "Gaston" })); const c = hand(st, 0, C({ cost: 2, text: "X If you have a character named Gaston in play, you pay 1 {I} less to play this character." })); assert.ok(has(st, { t: "play", uid: c.uid })); });
+t("Return-to-hand when banished (self recursion)", () => { const st = game(); const b = put(st, 0, C({ willpower: 1, text: "X When this character is banished in a challenge, return this card to your hand." }), { exerted: true }); E.act(st, { t: "end" }); const a = put(st, 1, C({})); E.act(st, { t: "challenge", uid: a.uid, target: b.uid }); assert.ok(st.players[0].hand.includes(b)); });
+t("Stress: 40 AI games with random decks drawn from ALL 3,263 cards", () => {
+  const pool = window.LORCANA_GAME_CARDS.cards.map(E.normCard); let seed = 99; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rnd = (inks) => { const ok = pool.filter(c => c.inks.length && c.inks.every(i => inks.includes(i))); const d = []; while (d.length < 60) { const c = ok[Math.floor(r() * ok.length)]; if (d.filter(x => x.full === c.full).length < 4) d.push(c); } return d; };
+  for (let g = 0; g < 40; g++) { const i = Math.floor(r() * 6), j = (i + 1 + Math.floor(r() * 5)) % 6; const st = E.newGame({ decks: [rnd([E.INKS[i], E.INKS[j]]), rnd([E.INKS[j], E.INKS[(j + 2) % 6]])], seed: g + 5, first: g % 2 });
+    E.mulligan(st, 0, E.aiMulligan(st, 0)); E.mulligan(st, 1, E.aiMulligan(st, 1)); let n = 0; while (st.winner == null && n < 6000) { E.act(st, E.aiChoose(st)); n++; } assert.notEqual(st.winner, null, "game " + g + " did not finish"); }
+});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

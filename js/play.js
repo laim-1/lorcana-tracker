@@ -107,19 +107,19 @@ function renderBoard(){
    <button class="logline" data-a="log">${esc(st.log.slice(-2).join("  ·  "))}</button>
    <div class="zone me">${me.play.map(x=>tile(x,0)).join("")||`<span class="zempty">Your characters appear here</span>`}</div>
    <div class="mebar">${pstats(me,0)}<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${st.winner!=null?"Game over":my?(canEnd?"End turn":"Must challenge"):"AI turn..."}</button></div>
-   <div class="hand">${me.hand.map(h=>`<button class="hcard ${h.card.cost<=E.inkAvail(me)&&my?"ok":""}" data-a="card" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}">${badge(h.card)}</button>`).join("")}</div>
+   <div class="hand">${me.hand.map(h=>`<button class="hcard ${E.costOf(st,0,h.card)<=E.inkAvail(me)&&my?"ok":""}" data-a="card" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}">${badge(h.card)}</button>`).join("")}</div>
   </div>${st.winner!=null?`<div class="over"><div><h2>${st.winner===0?"You win!":"AI wins"}</h2><p>${esc(st.log[st.log.length-1])}</p><button class="wide primary" data-a="again">Play again</button><button class="wide" data-a="tomenu">Change decks</button></div></div>`:""}`;
 }
 function actLabel(a){const st=S.st,n=u=>E.find(st,u)?.inst.card;
   switch(a.t){case"ink":return"Put into inkwell";case"quest":return`Quest (+${E.loreOf(E.find(st,a.uid).inst)} lore)`;
-    case"play":{const c=n(a.uid);let s=a.shift!=null?`Shift onto ${n(a.shift).name} (${c.kw.shift} ink)`:a.singer!=null?`Sing with ${n(a.singer).name}`:`Play (${c.cost} ink)`;return s}
-    case"challenge":return"Challenge";case"move":return`Move to ${n(a.loc).name}`;case"act":return"Use ability"+(n(a.uid).acts[a.i].ink?` (${n(a.uid).acts[a.i].ink} ink)`:"")}}
+    case"play":{const c=n(a.uid);let s=a.shift!=null?`Shift onto ${n(a.shift).name} (${c.kw.shift} ink)`:a.singer!=null?`Sing with ${n(a.singer).name}`:a.singers?`Sing together (${a.singers.split(",").length} characters)`:`Play (${E.costOf(st,0,c)} ink)`;return s}
+    case"challenge":return"Challenge";case"boost":return`Boost (${n(a.uid).kw.boost} ink)`;case"move":return`Move to ${n(a.loc).name}`;case"act":return"Use ability"+(n(a.uid).acts[a.i].ink?` (${n(a.uid).acts[a.i].ink} ink)`:"")}}
 function cardActions(uid){
   const st=S.st,f=E.find(st,uid);const mine=st.active===0&&st.winner==null&&f.pi===0;
   const acts=mine?E.legalActions(st).filter(a=>a.uid===uid):[];
-  const groups=new Map();for(const a of acts){const k=a.t+"|"+(a.shift??"")+"|"+(a.singer??"")+"|"+(a.loc??"")+"|"+(a.i??"");if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a)}
+  const groups=new Map();for(const a of acts){const k=a.t+"|"+(a.shift??"")+"|"+(a.singer??"")+"|"+(a.singers??"")+"|"+(a.loc??"")+"|"+(a.i??"");if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a)}
   S.pending=[...groups.values()];
-  const btns=S.pending.map((g,i)=>`<button class="wide ${g[0].t==="play"||g[0].t==="quest"?"primary":""}" data-a="do" data-i="${i}">${esc(actLabel(g[0]))}${g.length>1||g[0].target!=null&&g[0].t!=="challenge"?" ...":""}${g[0].t==="challenge"?" ...":""}</button>`).join("");
+  const btns=S.pending.map((g,i)=>`<button class="wide ${g[0].t==="play"||g[0].t==="quest"?"primary":""}" data-a="do" data-i="${i}">${esc(actLabel(g[0]))}${g.length>1||g[0].target!=null?" ...":""}</button>`).join("");
   const info=f.zone==="play"?`<div class="meta">Damage ${f.inst.damage}${f.inst.exerted?" · exerted":""}${f.inst.at?" · at "+esc(E.find(st,f.inst.at)?.inst.card.name||""):""}</div>`:"";
   sheet(cardSheet(f.inst.card,info+(btns||(mine?`<p class="meta">No actions available for this card right now.</p>`:""))+`<button class="wide" data-a="close">Close</button>`));
 }

@@ -1,10 +1,11 @@
-const API="https://api.lorcast.com/v0",KEY="lorcanaCollection.v1",SKEY="lorcanaSort.v1";
+const V=window.APP_VERSION||"dev";
+const API="https://api.lorcast.com/v0",KEY="lorcanaCollection.v1",SKEY="lorcanaSort.v2";
 const LOGOS=new Set(["1","2","3","4","5","6","7","8","9","10","11","12"]);
 const RAR=["Common","Uncommon","Rare","Super_rare","Legendary","Epic","Enchanted","Iconic","Promo","Special"];
-const SET_SORTS={new:"Newest first",old:"Oldest first",name:"Name A-Z",pct:"Most collected",value:"Highest value"};
+const SET_SORTS={main:"Main sets first",new:"Newest first",old:"Oldest first",name:"Name A-Z",pct:"Most collected",value:"Highest value"};
 const CARD_SORTS={num:"Card number",name:"Name A-Z",phigh:"Price high-low",plow:"Price low-high",rarity:"Rarity (rarest first)",qty:"Owned quantity"};
 let col=JSON.parse(localStorage.getItem(KEY)||"{}"),sets=[],cache={},source="live",cur=null,F={own:"",rarity:"",ink:""};
-let sort=Object.assign({sets:"new",cards:"num"},JSON.parse(localStorage.getItem(SKEY)||"{}"));
+let sort=Object.assign({sets:"main",cards:"num"},JSON.parse(localStorage.getItem(SKEY)||"{}"));
 const S=window.LORCANA_SNAPSHOT,$=s=>document.querySelector(s),app=$("#app");
 const save=()=>localStorage.setItem(KEY,JSON.stringify(col));
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -32,11 +33,12 @@ function chrome(set){$("#back").hidden=!set;$("#tools").hidden=!set;$("#menu-btn
 function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length;return{got,t,p:t?got/t*100:0,v:value(cs)}}
 function home(){cur=null;chrome(null);
  const st=new Map(sets.map(s=>[s.id,setStats(s)])),tot=[...st.values()].reduce((a,x)=>a+x.v,0),owned=Object.keys(col).length;
- const list=[...sets].sort({new:(a,b)=>b.released_at.localeCompare(a.released_at),old:(a,b)=>a.released_at.localeCompare(b.released_at),
+ const isMain=s=>/^\d+$/.test(String(s.code));
+ const list=[...sets].sort({main:(a,b)=>isMain(b)-isMain(a)||b.released_at.localeCompare(a.released_at)||a.name.localeCompare(b.name),new:(a,b)=>b.released_at.localeCompare(a.released_at),old:(a,b)=>a.released_at.localeCompare(b.released_at),
   name:(a,b)=>a.name.localeCompare(b.name),pct:(a,b)=>st.get(b.id).p-st.get(a.id).p,value:(a,b)=>st.get(b.id).v-st.get(a.id).v}[sort.sets]);
  app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div></div><div class="hs">${owned} card${owned==1?"":"s"}<br>${sets.length} sets</div></div>
  <div class="sortnote">Sorted by ${SET_SORTS[sort.sets].toLowerCase()}</div>`+list.map(s=>{const {got,t,p,v}=st.get(s.id),logo=LOGOS.has(String(s.code));
-  return `<button class="set" data-id="${s.id}">${logo?`<img class="logo" src="./assets/sets/${esc(s.code)}.png" alt="${esc(s.name)}" loading="lazy">`:`<div class="logo txt"><span>${esc(s.name)}</span></div>`}
+  return `<button class="set" data-id="${s.id}">${logo?`<img class="logo" src="./assets/sets/${esc(s.code)}.png?v=${V}" alt="${esc(s.name)}" loading="lazy">`:`<div class="logo txt"><span>${esc(s.name)}</span></div>`}
   <div class="sbody"><div class="bar"><div style="width:${p}%"></div></div>
   <div class="prog"><span>${got}/${t}</span><span class="gold">${money(v)}</span></div></div></button>`}).join("");
  app.querySelectorAll(".set").forEach(e=>e.onclick=()=>location.hash="set/"+e.dataset.id);
@@ -83,3 +85,11 @@ $("#q").oninput=renderCards;
 $("#back").onclick=()=>{location.hash=""};
 function route(){const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
 window.onhashchange=route;loadSets().then(route);
+// Cache control: remove any service workers/caches, and reload when a newer deploy is live.
+if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+if(window.caches)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
+async function checkVersion(){if(V=="dev")return;try{
+ const r=await fetch("./version.json?t="+Date.now(),{cache:"no-store"});if(!r.ok)return;const {version}=await r.json();
+ if(!version||version==V)return;const g="lorcanaReloadedFor";if(sessionStorage.getItem(g)==version)return;
+ sessionStorage.setItem(g,version);const u=new URL(location.href);u.searchParams.set("v",version);location.replace(u.toString())}catch(e){}}
+checkVersion();document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="visible")checkVersion()});

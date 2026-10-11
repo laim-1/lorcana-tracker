@@ -10,3 +10,7 @@ A mobile-first Disney Lorcana card collection tracker. Browse every released set
 Card images and data are © Disney / Ravensburger, provided via Lorcast. This is an unofficial fan project.
 
 ![Sets](screenshots/screenshot-sets.png) ![Cards](screenshots/screenshot-cards.png)
+
+## Deploying
+
+Edit `index.html.tmpl` (not `index.html`), then run `tools/stamp.sh` before committing. It writes a new version into `index.html` (cache-busting `?v=` URLs) and `version.json`; open pages auto-reload once when a newer version is live.

@@ -29,7 +29,7 @@ async function loadCards(id){if(cache[id])return cache[id];
 const srcLabel=()=>source=="live"?"Live TCGplayer prices via Lorcast":"Snapshot prices from "+S.fetched.slice(0,10);
 const saveSort=()=>localStorage.setItem(SKEY,JSON.stringify(sort));
 function chrome(set){$("#back").hidden=!set;$("#tools").hidden=!set;$("#menu-btn").hidden=!!set;
- $("#title").textContent=set?set.name:"LIAM'S LORCANA";$("#title").classList.toggle("small",!!set)}
+ $("#play-btn").hidden=!!set;$("#title").textContent=set?set.name:"LIAM'S LORCANA";$("#title").classList.toggle("small",!!set)}
 function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length;return{got,t,p:t?got/t*100:0,v:value(cs)}}
 function home(){cur=null;chrome(null);
  const st=new Map(sets.map(s=>[s.id,setStats(s)])),tot=[...st.values()].reduce((a,x)=>a+x.v,0),owned=Object.keys(col).length;
@@ -83,7 +83,8 @@ $("#menu-btn").onclick=()=>openSheet(`<h4>Collection data</h4><p class="meta">${
 $("#import").onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());col=d.collection||d;save();closeSheet();route();alert("Collection imported")}catch(x){alert("Invalid JSON file")}e.target.value=""};
 $("#q").oninput=renderCards;
 $("#back").onclick=()=>{location.hash=""};
-function route(){const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
+function route(){if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
+$("#play-btn").onclick=()=>location.hash="play";
 window.onhashchange=route;loadSets().then(route);
 // Cache control: remove any service workers/caches, and reload when a newer deploy is live.
 if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});

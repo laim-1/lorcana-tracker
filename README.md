@@ -1,6 +1,6 @@
 # Lorcana Tracker
 
-A mobile-first Disney Lorcana card collection tracker. Browse every released set, see real card images, and track normal and foil copies with TCGplayer market prices and collection value.
+A mobile-first Disney Lorcana card collection tracker. Browse every released set, see real card images, and track normal and foil copies with TCGplayer market prices and collection value. Sort sets and cards; official set logos in `assets/sets/` (via the Lorcana Fandom wiki).
 
 - Live data from the [Lorcast API](https://lorcast.com/docs/api), with a bundled snapshot (`data/`) as an offline fallback
 - Search, plus filters for owned/missing, rarity and ink

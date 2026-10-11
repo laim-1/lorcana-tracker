@@ -68,4 +68,19 @@ t("Stress: 40 AI games with random decks drawn from all main-set cards", () => {
   for (let g = 0; g < 40; g++) { const i = Math.floor(r() * 6), j = (i + 1 + Math.floor(r() * 5)) % 6; const st = E.newGame({ decks: [rnd([E.INKS[i], E.INKS[j]]), rnd([E.INKS[j], E.INKS[(j + 2) % 6]])], seed: g + 5, first: g % 2 });
     E.mulligan(st, 0, E.aiMulligan(st, 0)); E.mulligan(st, 1, E.aiMulligan(st, 1)); let n = 0; while (st.winner == null && n < 6000) { E.act(st, E.aiChoose(st)); n++; } assert.notEqual(st.winner, null, "game " + g + " did not finish"); }
 });
+t("Player choices: choose-one mode, decline optional effect, Bodyguard exerted, discard choice", () => {
+  const st = game(); ink(st, 0, 5);
+  const m = hand(st, 0, C({ type: ["Action"], text: "Choose one:\n• Draw 2 cards.\n• Gain 3 lore." })); const modes = E.legalActions(st).filter(a => a.t === "play" && a.uid === m.uid && !a.decline).map(a => a.mode); assert.deepEqual(modes.sort(), [0, 1]);
+  E.act(st, { t: "play", uid: m.uid, mode: 1 }); assert.equal(st.players[0].lore, 3);
+  const y = hand(st, 0, C({ type: ["Action"], text: "You may draw a card." })); assert.ok(E.legalActions(st).some(a => a.uid === y.uid && a.decline)); const h = st.players[0].hand.length; E.act(st, { t: "play", uid: y.uid, decline: true }); assert.equal(st.players[0].hand.length, h - 1);
+  const bg = hand(st, 0, C({ text: "Bodyguard" })); E.act(st, { t: "play", uid: bg.uid, exerted: true }); assert.ok(bg.exerted);
+  const lt = hand(st, 0, C({ type: ["Action"], cost: 0, text: "Draw 2 cards, then choose and discard a card." })); E.act(st, { t: "play", uid: lt.uid }); assert.ok(st.pending);
+  assert.ok(E.legalActions(st).every(a => a.t === "discard")); const d = st.players[0].hand[0]; E.act(st, { t: "discard", uid: d.uid }); assert.ok(!st.pending); assert.ok(st.players[0].discard.includes(d));
+});
+t("AI difficulty levels all finish games (Easy, Normal, Hard)", () => {
+  const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard); const res = {};
+  for (const lv of ["easy", "normal", "hard"]) { res[lv] = 0; for (let g = 0; g < 30; g++) { const st = E.newGame({ decks: [E.buildDeck(pool, ["Amber", "Steel"]), E.buildDeck(pool, ["Ruby", "Sapphire"])], seed: 50 + g, first: g % 2, human: [false, false] });
+    E.mulligan(st, 0, []); E.mulligan(st, 1, []); let n = 0; while (st.winner == null && n < 6000) { E.act(st, E.aiChoose(st, st.active === 1 ? lv : "normal")); n++; } assert.notEqual(st.winner, null); if (st.winner === 1) res[lv]++; } }
+  console.log("     AI (player 2) wins out of 30 vs Normal:", res); assert.ok(res.hard >= res.easy);
+});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

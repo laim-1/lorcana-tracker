@@ -43,6 +43,22 @@ function parseOne0(s){let l=s.toLowerCase().replace(/^if you do, /,"").trim();le
   if((m=l.match(/^put (.+?) into your inkwell facedown and exerted$/))&&(t=parseTarget(m[1]))){t.own=true;return{k:"toInk",t}}
   if((m=l.match(/^move (?:up to )?(\d+) damage(?: counters?)? from (.+?) to chosen opposing character$/))&&(t=parseTarget(m[2])))return{k:"moveDmg",n:+m[1],t:{...t,helpful:true}};
   if((m=l.match(/^shuffle (.+?) into their player's deck$/))&&(t=parseTarget(m[1].replace(/ card$/,""))))return{k:"shuffleIn",t};
+  if((m=l.match(/^give (.+?) ([+-])(\d+) (str|lore) (this turn|until the start of your next turn)$/))&&parseTarget(m[1]))return parseOne0(m[1]+" gets "+m[2]+m[3]+" "+m[4]+" "+m[5]);
+  if((m=l.match(/^give (.+?) (rush|evasive|ward|bodyguard|alert|resist \+\d+|challenger \+\d+) (this turn|until the start of your next turn)$/))&&parseTarget(m[1]))return parseOne0(m[1]+" gains "+m[2]+" "+m[3]);
+  if((m=l.match(/^(.+?) gains (rush|evasive|ward|resist \+\d+|challenger \+\d+) and (rush|evasive|ward|resist \+\d+|challenger \+\d+) (this turn|until the start of your next turn)$/))&&(t=parseTarget(m[1]))){t.helpful=!t.opp;return{k:"grant",kw:m[2],kw2:m[3],long:m[4]!=="this turn",t}}
+  if((m=l.match(/^(.+?) gets -(\d+) str and gains reckless (this turn|until the start of your next turn)$/))&&(t=parseTarget(m[1])))return{k:"debuff",n:+m[2],long:m[3]!=="this turn",t,reckless:true};
+  if((m=l.match(/^your (other )?(?:([a-z]+) )?characters get \+(\d+) (lore|str) (this turn|until the start of your next turn)$/)))return{k:"teamBuff",other:!!m[1],cls:m[2]||null,stat:m[4],n:+m[3]};
+  if((m=l.match(/^your (other )?(?:([a-z]+) )?characters gain (rush|evasive|ward|alert|resist \+\d+|challenger \+\d+) (this turn|until the start of your next turn)$/)))return{k:"teamGrant",other:!!m[1],cls:m[2]||null,kw:m[3],long:m[4]!=="this turn"};
+  if((m=l.match(/^banish all opposing characters with (\d+) str or less$/)))return{k:"banishAllX",what:"opposing characters",maxStr:+m[1]};
+  if((m=l.match(/^return (?:an?|up to (\d+)) (character|item|action|song|location) cards? with cost (\d+) or less(?: each)? from your discard to your hand$/)))return{k:"recur",type:m[2],max:+m[3],n:m[1]?+m[1]:1};
+  if((m=l.match(/^if you have (?:a|an|another) ([a-z]+) character in play, (.+)$/))){const e=parseEffects(m[2]);if(e)return{k:"cond",hasCls:m[1],eff:e}}
+  if((m=l.match(/^if you have a location in play, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",hasLoc:true,eff:e}}
+  if((m=l.match(/^if you used shift to play (?:him|her|them), (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",shifted:true,eff:e}}
+  if((m=l.match(/^if you played another character this turn, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",playedOther:true,eff:e}}
+  if((m=l.match(/^if there(?:'s| is) a card under (?:him|her|it|this character), (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",under:true,eff:e}}
+  if((m=l.match(/^if an opponent has an exerted character in play, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",oppExerted:true,eff:e}}
+  if((m=l.match(/^ready one of your items$/)))return{k:"readyItem"};
+  if((m=l.match(/^put all cards from under (?:him|her|it|this character) into your hand$/)))return{k:"underToHand"};
   if(RIDE.test(l)){const r=l.match(RIDE);return{k:"noQuest",rider:true,also:r[2]}}
   if((m=l.match(/^__reveal (\w+) (hand|play|playex)$/)))return{k:"reveal",type:m[1],to:m[2]};
   if((m=l.match(/^__digm (\d+) (\d+) (\w+)$/)))return{k:"dig",n:+m[1],take:+m[2],type:m[3]};
@@ -387,13 +403,16 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
         if(st.human[pi]){st.pending={pi,kind:"free",opts:opts.map(h=>h.uid),why:`Choose a ${e.type} to play for free`,optional:true};break}
         playFree(st,pi,opts.sort((a,b)=>b.card.cost-a.card.cost)[0]);break}
       case"freeMove":{const l=me.play.find(isLoc),c=me.play.filter(y=>isChar(y)&&y.at==null).sort((a,b)=>b.card.cost-a.card.cost)[0];if(l&&c){c.at=l.uid;log(st,`${c.card.name} moves to ${l.card.name}.`)}break}
+      case"teamBuff":case"teamGrant":for(const y of me.play.filter(c=>isChar(c)&&(!e.other||c!==self)&&(!e.cls||c.card.cls.some(k=>k.toLowerCase()===e.cls)))){if(e.k==="teamGrant")y.grants.push({kw:e.kw,until:e.long?"srcStart":"turnEnd",src:pi});else if(e.stat==="lore")y.tLore+=e.n;else y.tStr+=e.n}break;
+      case"teamBuffV":break;case"readyItem":{const it=me.play.find(c=>isItem(c)&&c.exerted);if(it)it.exerted=false;break}
+      case"underToHand":if(self){me.hand.push(...self.under);self.under=[]}break;
       case"drain":gain(st,pi,e.g);o.lore=Math.max(0,o.lore-e.lo);break;
       case"massState":{const ps=e.who==="opposing"?[o]:e.who==="your"?[me]:[me,o];for(const P of ps){if(e.what.includes("inkwell"))P.ink.forEach(c=>c.exerted=e.to==="exert");else P.play.filter(c=>e.what==="items"?isItem(c):isChar(c)).filter(c=>!e.damaged||c.damage).forEach(c=>c.exerted=e.to==="exert")}break}
       case"massReady":me.play.filter(c=>isChar(c)&&(!e.other||c!==self)&&(!e.cls||c.card.cls.some(k=>k.toLowerCase()===e.cls))&&c.card.cost<=e.max).forEach(c=>c.exerted=false);break;
       case"discardHand":me.discard.push(...me.hand);me.hand=[];break;
       case"selfDiscard":if(st.human[pi]){if(me.hand.length)st.pending={pi,n:e.n,why:"Choose a card to discard"};break}for(let k=0;k<e.n&&me.hand.length;k++){me.hand.sort((a,b)=>discardPri(b)-discardPri(a));me.discard.push(me.hand.shift())}break;
       case"mill":for(let k=0;k<e.n&&me.deck.length;k++)me.discard.push(me.deck.pop());break;
-      case"banishAllX":{const ps=e.what.startsWith("opposing")?[o]:[me,o];for(const P of ps)[...P.play.filter(c=>e.what.endsWith("items")?isItem(c):isChar(c))].forEach(c=>banish(st,c));break}
+      case"banishAllX":{const ps=e.what.startsWith("opposing")?[o]:[me,o];for(const P of ps)[...P.play.filter(c=>(e.what.endsWith("items")?isItem(c):isChar(c))&&(e.maxStr==null||strOf(c)<=e.maxStr))].forEach(c=>banish(st,c));break}
       case"discardToInk":{const c=me.discard.filter(isChar).pop();if(c){me.discard.splice(me.discard.indexOf(c),1);reset(c);c.exerted=true;me.ink.push(c)}break}
       case"handToInk":{if(!me.hand.length)break;me.hand.sort((a,b)=>discardPri(b)-discardPri(a));const c=me.hand.shift();c.exerted=false;me.ink.push(c);break}
       case"drawAll":draw(st,pi,e.n);draw(st,opp(pi),e.n);break;
@@ -411,18 +430,18 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
       case"exert":x.exerted=true;break;
       case"ready":x.exerted=false;break;
       case"loot":{draw(st,pi,e.n);if(st.human[pi]){st.pending={pi,n:e.d,why:"Choose a card to discard"};break}const h=st.players[pi].hand;for(let k=0;k<e.d&&h.length;k++){h.sort((a,b)=>discardPri(b)-discardPri(a));st.players[pi].discard.push(h.shift())}break}
-      case"debuff":if(e.long){x.lStr-=e.n;x.lSrc=pi}else x.tStr-=e.n;break;
+      case"debuff":if(e.long){x.lStr-=e.n;x.lSrc=pi}else x.tStr-=e.n;if(e.reckless){x.grants=x.grants||[];x.grants.push({kw:"reckless",until:e.long?"ownerTurnEnd":"turnEnd",src:pi})}break;
       case"buffLore":x.tLore+=e.n;break;
       case"buffChal":x.tChal+=e.n;break;
       case"oppDiscard":{if(e.nonChar){const ok=o.hand.filter(h=>!isChar(h)).sort((a,b)=>b.card.cost-a.card.cost);if(ok.length){o.hand.splice(o.hand.indexOf(ok[0]),1);o.discard.push(ok[0])}break}if(st.human[opp(pi)]){st.pending={pi:opp(pi),n:e.n,why:"Your opponent makes you discard"};break}for(let k=0;k<e.n&&o.hand.length;k++){o.hand.sort((a,b)=>discardPri(b)-discardPri(a));o.discard.push(o.hand.shift())}break}
-      case"recur":{const d=st.players[pi].discard,cs=d.filter(c=>(c.card.type===(e.type||"character")||e.type==="action"&&c.card.type==="song")&&(!e.name||c.card.name.toLowerCase()===e.name)).sort((a,b)=>b.card.cost-a.card.cost);if(cs.length){d.splice(d.indexOf(cs[0]),1);reset(cs[0]);st.players[pi].hand.push(cs[0])}break}
+      case"recur":{const d=st.players[pi].discard,cs=d.filter(c=>(c.card.type===(e.type||"character")||e.type==="action"&&c.card.type==="song")&&(!e.name||c.card.name.toLowerCase()===e.name)&&(e.max==null||c.card.cost<=e.max)).sort((a,b)=>b.card.cost-a.card.cost);for(const c of cs.slice(0,e.n||1)){d.splice(d.indexOf(c),1);reset(c);st.players[pi].hand.push(c)}break}
       case"noReady":x.noReady=true;break;
       case"noQuest":x.noQuest=true;if(e.also&&e.also.includes("challenge"))x.noChalNow=true;break;
       case"self":if(self){if(e.stat==="str")self.tStr+=e.n;else if(e.stat==="lore")self.tLore+=e.n}break;
       case"self2":if(self){self.tStr+=e.s;self.tLore+=e.l}break;
       case"readySelf":if(self)self.exerted=false;break;
       case"healSelf":if(self)self.damage=Math.max(0,self.damage-e.n);break;
-      case"grant":x.grants=x.grants||[];x.grants.push({kw:e.kw,until:e.long?(e.t.opp?"ownerTurnEnd":"srcStart"):"turnEnd",src:pi});break;
+      case"grant":x.grants=x.grants||[];for(const kw of [e.kw,e.kw2].filter(Boolean))x.grants.push({kw,until:e.long?(e.t.opp?"ownerTurnEnd":"srcStart"):"turnEnd",src:pi});break;
       case"grantSelf":if(self){self.grants=self.grants||[];self.grants.push({kw:e.kw,until:"turnEnd",src:pi})}break;
       case"noNext":if(e.what==="quest")x.noQuestNext=true;else x.noChalNext=true;break;
       case"ramp":if(me.deck.length){const c=me.deck.pop();c.exerted=true;me.ink.push(c)}break;
@@ -447,6 +466,10 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
       case"cond":{if(e.oppMore){const ok=(e.oppMore==="hand"?o.hand.length>me.hand.length:o.ink.length>me.ink.length);if(ok)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}
         if(e.emptyHand){if(!me.hand.length)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}
         if(e.songThisTurn){if(me.songTurn===st.turnNo)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}
+        {const P2=me;let c2=null;if(e.hasCls)c2=P2.play.some(y=>y!==self&&y.card.type==="character"&&y.card.cls.some(k=>k.toLowerCase()===e.hasCls));
+         else if(e.hasLoc)c2=P2.play.some(isLoc);else if(e.shifted)c2=!!(self&&self.shiftedOn===st.turnNo);else if(e.playedOther)c2=(P2.playedChars||0)>(self&&self.playedOn===st.turnNo?1:0)&&P2.playedTurn===st.turnNo;
+         else if(e.under)c2=!!(self&&self.under.length);else if(e.oppExerted)c2=o.play.some(y=>isChar(y)&&y.exerted);
+         if(c2!==null){if(c2)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}}
         if(e.atLoc){if(self&&self.at!=null)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}
         const ok=e.name?me.play.some(c=>isChar(c)&&c.card.name.toLowerCase()===e.name.toLowerCase()):me.play.filter(c=>isChar(c)&&c!==self).length>=e.count;if(ok)resolve(st,pi,e.eff,autoTarget(st,pi,e.eff),src,fromAction);break}
       case"modal":{if(st._mode!=null){const o=e.opts[st._mode];resolve(st,pi,o,tgt,src,fromAction);break}let best=e.opts[0],bv=-1e9;for(const o of e.opts){const v=effVal(st,pi,o,autoTarget(st,pi,o));if(v>bv){bv=v;best=o}}resolve(st,pi,best,autoTarget(st,pi,best),src,fromAction);break}
@@ -521,8 +544,8 @@ function act(st,a){
       else if(a.singers){a.singers.split(",").forEach(u=>find(st,+u).inst.exerted=true);log(st,`Characters sing ${c.name} together.`)}
       else if(a.shift!=null){payInk(p,c.kw.shift)}else{payInk(p,costOf(st,pi,c));if(p.disc&&p.disc.length)p.disc=p.disc.filter(d=>!(d.type===c.type||d.type==="action"&&c.type==="song"))}
       if(c.type==="action"||c.type==="song"){if(a.singer==null&&!a.singers)log(st,`${p.name} plays ${c.full}.`);p.play.forEach(y=>y.card.onActionPlayed.forEach(e=>{if(e.k==="selfStr")y.tStr+=e.n}));resolve(st,pi,c.onPlay,a.target,x,true);p.discard.push(x);yp(st,pi,x);break}
-      x.playedOn=st.turnNo;reset(x);
-      if(a.shift!=null){const b=find(st,a.shift).inst;const idx=p.play.indexOf(b);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];b.at=null;p.play[idx]=x;log(st,`${p.name} shifts ${c.full} onto ${b.card.name}.`)}
+      x.playedOn=st.turnNo;reset(x);if(c.type==="character"){p.playedChars=p.playedTurn===st.turnNo?(p.playedChars||0)+1:1;p.playedTurn=st.turnNo}
+      if(a.shift!=null){const b=find(st,a.shift).inst;const idx=p.play.indexOf(b);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];x.shiftedOn=st.turnNo;b.at=null;p.play[idx]=x;log(st,`${p.name} shifts ${c.full} onto ${b.card.name}.`)}
       else{p.play.push(x);if(c.entersExerted||a.exerted&&c.kw.bodyguard)x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);break}
     case"quest":{x.exerted=true;const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);
@@ -573,7 +596,7 @@ function effVal(st,pi,effs,tgt){
       case"ramp":v+=4;break;case"toInk":if(x)v+=mine?-6:instVal(x)*0.9;break;case"moveDmg":v+=e.n*2;break;case"shuffleIn":if(x)v+=mine?-10:instVal(x);break;
       case"reveal":v+=2;break;case"free":v+=8;break;case"freeMove":v+=1;break;case"drain":v+=e.g*6+e.lo*5;break;case"massState":v+=e.to==="exert"&&e.who==="opposing"?6:e.to==="ready"?4:0;break;
       case"massReady":v+=4;break;case"discardHand":v-=st.players[pi].hand.length*3;break;case"selfDiscard":v-=3*e.n;break;case"mill":v-=0.5;break;case"pay":v+=effVal(st,pi,e.eff,null)-e.n*1.5;break;
-      case"banishAllX":v+=(e.what.startsWith("opposing")?8:0);break;case"discardToInk":case"handToInk":v+=3;break;case"banishChallenger":v+=5;break;case"returnSelf":case"inkSelf":v+=3;break;case"discount":v+=1;break;case"rampAll":v+=1;break;
+      case"banishAllX":v+=(e.what.startsWith("opposing")?8:0);break;case"discardToInk":case"handToInk":v+=3;break;case"banishChallenger":v+=5;break;case"teamBuff":v+=e.stat==="lore"?4:2;break;case"teamGrant":v+=2;break;case"readyItem":v+=1;break;case"underToHand":v+=3;break;case"returnSelf":case"inkSelf":v+=3;break;case"discount":v+=1;break;case"rampAll":v+=1;break;
       case"banishAll":v+=st.players[opp(pi)].play.filter(isChar).reduce((a,c)=>a+instVal(c),0)-st.players[pi].play.filter(isChar).reduce((a,c)=>a+instVal(c),0);break;case"team":v+=st.players[pi].play.length*e.n;break;case"oppExert":v+=3;break;case"oppBanish":v+=8;break;
       case"recur":v+=4;break;case"payDraw":v+=2;break;case"oppDiscard":v+=3*e.n;break;case"loot":v+=2*e.n;break;case"dig":v+=3;break;
       case"debuff":if(x)v+=mine?-3:2;break;case"buffLore":case"buffChal":if(x)v+=mine?3:-3;break;

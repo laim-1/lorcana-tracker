@@ -848,6 +848,66 @@ Object.assign(DEFS_EXTRA,{
  "Carl Fredricksen & Russell - Intrepid Explorers":c=>(c.auras=c.auras||[]).push({side:"all",test:(x,y)=>y.at!=null&&x.at===y.at&&x.owner===y.owner,stat:"lore",n:1},{side:"all",test:(x,y)=>y.at!=null&&x.at===y.at&&x.owner===y.owner,kw:"evasive"}),
  "Paradise Falls - Exotic Destination":c=>c.statics.push({stat:"lore",n:3,cond:(x,S)=>!!S&&hereChars(S,x).length>0}),
 });
+
+const DG=(n,test,o={})=>Object.assign({k:"dig",n,test,take:1},o);
+const cl=c=>y=>isChar(y)&&hasCls(y,c);
+const topIs=(st,pi)=>st.players[pi].deck[st.players[pi].deck.length-1];
+const scry1=(st,q,keepTest)=>{const P=st.players[q],y=P.deck[P.deck.length-1];if(!y)return;if(!keepTest(y)){P.deck.pop();P.deck.unshift(y)}};
+const inkTop=(st,pi)=>{const P=st.players[pi],y=P.deck.pop();if(y){reset(y);y.exerted=true;P.ink.push(y)}};
+const tutorF=(st,pi,test,toTop)=>{const P=st.players[pi],y=P.deck.filter(test).sort((a,b)=>b.card.cost-a.card.cost)[0];if(!y)return null;P.deck.splice(P.deck.indexOf(y),1);shuffle(P.deck,st.r);if(toTop)P.deck.push(y);else P.hand.push(y);log(st,`${P.name} reveals ${y.card.full}.`);return y};
+Object.assign(DEFS_EXTRA,{
+ "Jim Hawkins - Honorable Pirate":c=>c.onPlay.push(DG(4,cl("pirate"),{take:99})),
+ "Sisu - Uniting Dragon":c=>c.onQuest.push(FN((st,pi)=>{const P=st.players[pi];for(let k=0;k<60;k++){const y=topIs(st,pi);if(!y)break;if(isChar(y)&&hasCls(y,"dragon")){P.deck.pop();P.hand.push(y)}else{P.deck.pop();P.deck.unshift(y);break}}},3)),
+ "Mad Hatter - Eccentric Host":c=>c.onQuest.push(FN((st,pi)=>{const o=st.players[opp(pi)],y=o.deck[o.deck.length-1];if(y&&y.card.cost>=4){o.deck.pop();o.discard.push(y)}},1,null,{may:true})),
+ "The Islands I Pulled from the Sea":c=>{c.onPlay=[FN((st,pi)=>tutorF(st,pi,isLoc),4)]},
+ "The Islands I Pulled From the Sea":c=>{c.onPlay=[FN((st,pi)=>tutorF(st,pi,isLoc),4)]},
+ "Oswald - The Lucky Rabbit":c=>{c.onInk=[FN((st,pi)=>{const y=topIs(st,pi),P=st.players[pi];if(!y)return;if(isItem(y)){P.deck.pop();P.hand.push(y);playFree(st,pi,y)}else{P.deck.pop();P.deck.unshift(y)}},3,null,{may:true})]},
+ "Hiro Hamada - Robotics Prodigy":c=>{c.acts=[{ink:2,eff:[FN((st,pi)=>tutorF(st,pi,y=>isItem(y)||cl("robot")(y),true),3)]}]},
+ "King's Sensor Core":c=>{c.acts=[{ink:2,eff:[FN((st,pi)=>revealTopIf(st,pi,y=>isChar(y)&&(hasCls(y,"prince")||hasCls(y,"king")),(y,P)=>P.hand.push(y)),2)]}]},
+ "The Family Madrigal":c=>{c.onPlay=[DG(5,y=>cl("madrigal")(y)||y.card.type==="song",{take:2,rest:"top",pickOk:(y,ps)=>!ps.some(z=>(cl("madrigal")(z)&&cl("madrigal")(y))||(z.card.type==="song"&&y.card.type==="song"))})]},
+ "Merlin - Clever Clairvoyant":c=>c.onQuest.push({k:"nameReveal",dest:"ink"}),
+ "The Return of Hercules":c=>{c.onPlay=[FN((st,pi)=>{for(const q of [pi,opp(pi)]){const P=st.players[q],y=P.hand.filter(isChar).sort((a,b)=>b.card.cost-a.card.cost)[0];if(y)playFree(st,q,y)}},4)]},
+ "Lucky - Runt of the Litter":c=>c.onQuest.push(DG(2,cl("puppy"),{take:99})),
+ "Dawson - Puzzling Sleuth":c=>{c.onInk=[FN((st,pi,self)=>{if(!self||self.onceI===st.turnNo)return;self.onceI=st.turnNo;scry1(st,pi,y=>y.card.cost<=st.players[pi].ink.length+1)},1)]},
+ "Kida - Creative Thinker":c=>{c.acts=[{ink:0,eff:[FN((st,pi)=>{const P=st.players[pi];if(P.deck.length<1)return;const a=P.deck.pop(),b=P.deck.pop();const [toInk,keep]=!b?[a,null]:(a.card.cost>b.card.cost?[a,b]:[b,a]);reset(toInk);toInk.exerted=true;P.ink.push(toInk);if(keep)P.deck.push(keep)},4)]}]},
+ "Baymax - Upgraded Robot":c=>c.onPlay.push(DG(4,cl("floodborn"))),
+ "Water Has Memory":c=>{c.onPlay=[FN((st,pi)=>{const P=st.players[pi],top=P.deck.splice(Math.max(0,P.deck.length-4));top.sort((a,b)=>a.card.cost-b.card.cost);const keep=top.find(y=>y.card.cost<=P.ink.length+1)||top[0];if(!keep)return;top.splice(top.indexOf(keep),1);P.deck.unshift(...top);P.deck.push(keep)},2)]},
+ "Antonio Madrigal - Friend to All":c=>c.onAllySing=[FN((st,pi,self)=>{if(!self||self.onceS===st.turnNo)return;self.onceS=st.turnNo;tutorF(st,pi,y=>isChar(y)&&y.card.cost<=3)},4,null,{may:true})],
+ "Mirabel Madrigal - Curious Child":c=>c.onPlay.push(FN((st,pi)=>{if(st.players[pi].hand.some(y=>y.card.type==="song"))gain(st,pi,1)},4,null,{may:true})),
+ "Chief Bogo - Commanding Officer":c=>{c.onAllyBanished.push({eff:[FN((st,pi)=>{const b=st._banished;if(st.active===pi||!b||!K(b,"bodyguard"))return;revealTopIf(st,pi,y=>isChar(y)&&y.card.cost<=3,(y,P)=>{P.hand.push(y);playFree(st,pi,y)})},3,null,{may:true})]})},
+ "Yzma - On Edge":c=>c.onPlay.push(FN((st,pi)=>{if(st.players[pi].discard.some(y=>y.card.name==="Pull the Lever!"))tutorF(st,pi,y=>y.card.name==="Wrong Lever!")},3,null,{may:true})),
+ "Fred - Giant-Sized":c=>c.onQuest.push(FN((st,pi)=>{const P=st.players[pi],i=P.deck.map(cl("floodborn")).lastIndexOf(true);if(i<0)return;const y=P.deck.splice(i,1)[0];P.hand.push(y);shuffle(P.deck,st.r)},4)),
+ "Jasmine - Steady Strategist":c=>c.onQuest.push(DG(3,cl("ally"))),
+ "Down in New Orleans":c=>{c.onPlay=[DG(3,y=>!isAct(y)&&y.card.cost<=6,{play:true})]},
+ "Television Set":c=>{c.acts=[{ink:1,eff:[FN((st,pi)=>{const P=st.players[pi],y=topIs(st,pi);if(!y)return;P.deck.pop();if(cl("puppy")(y))P.hand.push(y);else P.deck.unshift(y)},2)]}]},
+ "Powerline - World's Greatest Rock Star":c=>c.onSing.push(FN((st,pi,self)=>{if(!self||self.onceS===st.turnNo)return;self.onceS=st.turnNo;resolve(st,pi,[DG(4,y=>y.card.type==="song"&&y.card.cost<=9,{play:true})],null,self)},5)),
+ "Mulan - Considerate Diplomat":c=>c.onQuest.push(DG(4,cl("princess"))),
+ "Judy Hopps - Uncovering Clues":c=>{const e=DG(3,cl("detective"));c.onPlay.push(e);c.onQuest.push(e)},
+ "Hen Wen's Visions":c=>{c.onPlay=[FN((st,pi)=>{const P=st.players[pi],top=P.deck.splice(Math.max(0,P.deck.length-4));const keep=top.slice().sort((a,b)=>b.card.cost-a.card.cost).find(y=>y.card.cost<=P.ink.length+1)||top[0];if(!keep)return;top.splice(top.indexOf(keep),1);P.deck.unshift(...top);P.deck.push(keep)},2)]},
+ "Might Solve a Mystery":c=>{c.onPlay=[DG(4,y=>isChar(y)||isItem(y),{take:2,pickOk:(y,ps)=>!ps.some(z=>(isChar(z)&&isChar(y))||(isItem(z)&&isItem(y)))})]},
+ "Fairy Godmother - Magical Benefactor":c=>{c.onBoostAny=[FN((st,pi,self)=>{if(st._ctx!==self)return;const y=OWNCH(st,opp(pi)).sort((a,b)=>instVal(b)-instVal(a))[0];if(!y)return;banish(st,y);revealTopIf(st,opp(pi),z=>isChar(z)&&z.card.cost<=y.card.cost,(z,P)=>{P.hand.push(z);playFree(st,opp(pi),z)})},5,null,{may:true})]},
+ "Bambi - Ethereal Fawn":c=>{c.onExertYT=[FN((st,pi,self)=>{if(!self)return;const P=st.players[pi],top=P.deck.splice(Math.max(0,P.deck.length-self.under.length));for(const y of top){if(isChar(y))P.hand.push(y);else P.deck.unshift(y)}},3)]},
+ "John Smith's Compass":c=>c.onEnd.push(FN((st,pi)=>{if(st.players[pi].chalT===st.turnNo)return;revealTopIf(st,pi,y=>isChar(y)&&(y.card.cost<=3||y.card.name==="Pocahontas"),(y,P)=>P.hand.push(y))},2)),
+ "The Cold Never Bothered Me":c=>{c.onPlay=[DG(4,isLoc,{rest:"discard",after:(st,pi)=>{st.players[pi].locDisc={n:3,t:st.turnNo}}})]},
+ "Kristoff's Lute":c=>{c.acts=[{ink:2,eff:[FN((st,pi)=>{const P=st.players[pi],y=P.deck.pop();if(!y)return;const cost=costOf(st,pi,y.card);if(inkAvail(P)>=cost&&!isLoc(y)||inkAvail(P)>=cost){payInk(P,cost);P.hand.push(y);playFree(st,pi,y)}else P.discard.push(y)},2)]}]},
+ "Pete - Ghost of Christmas Future":c=>c.onQuest.push(DG((st,pi,self)=>self?self.under.length:0,()=>true,{rest:"top"})),
+ "Chief Tui - Weaving a Tale":c=>{c.onInk=[FN((st,pi,self)=>{if(!self||self.onceI===st.turnNo)return;self.onceI=st.turnNo;scry1(st,pi,y=>y.card.cost<=st.players[pi].ink.length+1)},1)]},
+ "Dolores Madrigal - Hears Everything":c=>{},
+ "Woody - Leader of the Toys":c=>c.onPlay.push(DG(4,y=>cl("toy")(y)||y.card.name==="Andy's Room")),
+ "You've Got a Friend in Me":c=>{c.onPlay=[DG(4,cl("toy"),{take:2})]},
+ "Don't Be Nervous":c=>{c.onPlay=[FN((st,pi)=>{tutorF(st,pi,cl("princess"));if(OWNCH(st,pi).filter(cl("seven dwarfs")).length>=2)tutorF(st,pi,cl("seven dwarfs"))},4)]},
+ "Bruno Madrigal - Oasis Oracle":c=>{c.onHeal=[FN((st,pi,self)=>{if(!self||self.onceH===st.turnNo)return;self.onceH=st.turnNo;resolve(st,pi,[DG(2,()=>true,{rest:"bottom"})],null,self)},3,null,{may:true})]},
+ "Bruno Madrigal - Seeing the Future":c=>c.onPlay.push(FN((st,pi)=>{const o=st.players[opp(pi)],y=o.deck[o.deck.length-1];if(y&&y.card.cost<=o.ink.length+1){o.deck.pop();o.deck.unshift(y)}},1,null,{may:true})),
+ "What Else Can I Do?":c=>{c.onPlay=[FN((st,pi)=>{const P=st.players[pi];const a=P.deck.pop(),b=P.deck.pop();if(!a)return;if(!b){P.hand.push(a);return}const [h,i]=a.card.cost>=b.card.cost?[a,b]:[b,a];P.hand.push(h);reset(i);i.exerted=true;P.ink.push(i);if(st._sung)OWNCH(st,pi).forEach(z=>z.grants.push({kw:"ward",until:"srcStart",src:pi}))},6)]},
+ "Meilin Lee - Losing Control":c=>c.onPlay.push(DG(4,y=>cl("red panda")(y)||y.card.type==="song")),
+ "My Adventure Book":c=>{c.acts=[{ink:1,eff:[FN((st,pi)=>{const P=st.players[pi],y=P.deck.pop();if(!y)return;if(!isChar(y)||y.card.name==="Kevin")P.hand.push(y);else P.deck.unshift(y)},2)]}]},
+ "Dash Parr - Super Fast":c=>c.onQuest.push(FN((st,pi)=>{const P=st.players[pi],y=P.deck.pop();if(!y)return;const cost=costOf(st,pi,y.card);if(inkAvail(P)>=cost){payInk(P,cost);P.hand.push(y);playFree(st,pi,y)}else P.discard.push(y)},2,null,{may:true})),
+ "Prophetic Vision":c=>{c.onPlay=[FN((st,pi)=>{const P=st.players[pi];shuffle(P.deck,st.r);const y=P.deck.pop();if(!y)return;if(isAct(y)){P.hand.push(y);playFree(st,pi,y)}else{P.deck.unshift(y);drainOne(st,pi,1);gain(st,pi,1)}},4)]},
+ "Charles Muntz - Obsessive Explorer":c=>c.onQuest.push(FN((st,pi)=>{const P=st.players[pi],y=topIs(st,pi);if(y&&y.card.name==="Kevin"){P.deck.pop();P.hand.push(y);gain(st,pi,3)}},3)),
+ "Focused Search":c=>{c.onPlay=[DG(4,y=>y.card.name==="Kevin"||isItem(y))]},
+ "Closet Door Portal":c=>{c.acts=[{ink:2,eff:[DG(3,y=>!isAct(y)&&y.card.cost<=6,{play:true})]}]},
+ "Big Book of Hunny":c=>{c.acts=[{ink:2,eff:[FN((st,pi)=>{const P=st.players[pi],y=P.deck.pop();if(!y)return;if(hasCls(y,"hunny")||y.card.name.toLowerCase().includes("hunny"))P.hand.push(y);else P.deck.unshift(y)},2)]}]},
+});
 // @@DEFS_INSERT
 const DEFS={
  "Prince Phillip - Dragonslayer":c=>c.onBanish.push(FN((st,pi)=>{if(st._challenger!=null&&st._defender!=null){const f=find(st,st._defender);if(f&&f.zone==="play"&&st.players[f.pi]!==st.players[pi]&&(st._chalSrc===pi))banish(st,f.inst)}},3)),
@@ -1036,7 +1096,7 @@ const opp=i=>1-i;
 const ev=(st,o)=>{(st.events=st.events||[]).push(o)};
 function find(st,uid){for(let i=0;i<2;i++){const p=st.players[i];for(const z of["hand","play","deck","discard"]){const x=p[z].find(c=>c.uid===uid);if(x)return{inst:x,pi:i,zone:z}}const k=p.ink.find(c=>c.uid===uid);if(k)return{inst:k,pi:i,zone:"ink"}}return null}
 const inkAvail=p=>p.ink.filter(c=>!c.exerted).length;
-function costOf(st,pi,c){let n=c.cost;if((c.type==="action"||c.type==="song"||c.type==="item")&&st.players.some(P=>P.play.some(y=>y.card.taxAI)))n+=2;const P=st.players[pi];for(const d of (P.disc||[]))if(d.type===c.type||d.type==="action"&&c.type==="song")n-=d.n;
+function costOf(st,pi,c){let n=c.cost;{const P=st.players[pi];if(c.type==="location"&&P.locDisc&&P.locDisc.t===st.turnNo)n-=P.locDisc.n}if((c.type==="action"||c.type==="song"||c.type==="item")&&st.players.some(P=>P.play.some(y=>y.card.taxAI)))n+=2;const P=st.players[pi];for(const d of (P.disc||[]))if(d.type===c.type||d.type==="action"&&c.type==="song")n-=d.n;
   for(const y of P.play)for(const a of (y.card.auras||[]))if(a.costCls&&(!a.cond||condOk(y,a.cond))&&(a.costCls==="any"||c.cls.some(k=>k.toLowerCase()===a.costCls))&&(!a.costType||a.costType===c.type))n-=a.costN;
   if(c.costFn)n-=c.costFn(st,pi);
   if(c.costRed&&c.costRed.perChar)n-=c.costRed.perChar*P.play.filter(x=>x.card.type==="character").length;else if(c.costRed&&c.costRed.secondFirst){if(pi!==st.first&&st.turnNo===2)n-=c.costRed.n}else if(c.costRed&&st.players[pi].play.some(x=>x.card.type==="character"&&x.card.name.toLowerCase()===c.costRed.name.toLowerCase()))n-=c.costRed.n;return Math.max(0,n)}
@@ -1243,11 +1303,13 @@ function resolve0(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
       case"payDraw":if(inkAvail(me)>=e.n){payInk(me,e.n);draw(st,pi,1)}break;
       case"banishSelf":if(self)banish(st,self);break;
       case"dmgSelf":if(self)damage(st,self,e.n);break;
-      case"dig":{if(st.human[pi]){const top=me.deck.slice(Math.max(0,me.deck.length-e.n));const ok=top.filter(c=>e.type==="any"||c.card.type===e.type||e.type==="action"&&c.card.type==="song");
-          st.pending={pi,kind:"dig",top:top.map(c=>c.uid),opts:ok.map(c=>c.uid),n:e.take||1,why:`Look at the top ${top.length}: choose ${e.take>1?"up to "+e.take+" cards":"a card"} for your hand`,optional:true};break}
-        if(e.take>1){for(let k=0;k<e.take;k++)resolve(st,pi,[{k:"dig",n:e.n-k,type:e.type}],null,src);break}
-        const top=me.deck.splice(Math.max(0,me.deck.length-e.n),e.n);const ok=top.filter(c=>e.type==="any"||c.card.type===e.type||e.type==="action"&&c.card.type==="song").sort((a,b)=>b.card.cost-a.card.cost);
-        const pick=ok[0];if(pick){top.splice(top.indexOf(pick),1);me.hand.push(pick)}me.deck.unshift(...top);break}
+      case"dig":{const okF=c=>e.test?e.test(c,st,pi):(e.type==="any"||c.card.type===e.type||e.type==="action"&&c.card.type==="song");const N=typeof e.n==="function"?e.n(st,pi,self):e.n;if(N<=0)break;
+        if(st.human[pi]){const top=me.deck.slice(Math.max(0,me.deck.length-N));const ok=top.filter(okF);
+          st.pending={pi,kind:"dig",top:top.map(c=>c.uid),opts:ok.map(c=>c.uid),n:e.take||1,rest:e.rest,play:e.play,after:e.after,pickOk:e.pickOk,why:`Look at the top ${top.length}: choose ${e.take>1?"up to "+e.take+" cards":"a card"} for your hand`,optional:true};break}
+        const top=me.deck.splice(Math.max(0,me.deck.length-N),N);const picks=[];
+        for(let k=0;k<(e.take||1);k++){const ok=top.filter(c=>okF(c)&&(!e.pickOk||e.pickOk(c,picks))).sort((a,b)=>b.card.cost-a.card.cost);const pick=ok[0];if(!pick)break;top.splice(top.indexOf(pick),1);picks.push(pick)}
+        for(const pick of picks){me.hand.push(pick);if(e.play)playFree(st,pi,pick)}
+        if(e.rest==="discard")me.discard.push(...top);else if(e.rest==="top")me.deck.push(...top);else me.deck.unshift(...top);if(e.after)e.after(st,pi,picks);break}
       case"scry":break;
       case"banishChallenger":{if(st._challenger!=null){const f2=find(st,st._challenger);if(f2&&f2.zone==="play")banish(st,f2.inst)}break}
       case"returnSelf":{if(!src)break;const P=st.players[src.owner],i=P.discard.indexOf(src);if(i>=0){P.discard.splice(i,1);reset(src);P.hand.push(src)}break}
@@ -1334,8 +1396,8 @@ function act(st,a){
 function act0(st,a){
   if(a.t==="pick"||a.t==="pickDone"){const P=st.pending,me=st.players[P.pi];
     if(P.kind==="free"){st.pending=null;if(a.t==="pick")playFree(st,P.pi,me.hand.find(h=>h.uid===a.uid));return st}
-    if(a.t==="pick"){const c=me.deck.find(d=>d.uid===a.uid);me.deck.splice(me.deck.indexOf(c),1);me.hand.push(c);log(st,`${me.name} puts a card into their hand.`);P.opts=P.opts.filter(u=>u!==a.uid);P.top=P.top.filter(u=>u!==a.uid);P.n--}
-    if(a.t==="pickDone"||P.n<=0||!P.opts.length){const rest=me.deck.filter(d=>P.top.includes(d.uid));me.deck=me.deck.filter(d=>!P.top.includes(d.uid));me.deck.unshift(...rest);st.pending=null}
+    if(a.t==="pick"){const c=me.deck.find(d=>d.uid===a.uid);me.deck.splice(me.deck.indexOf(c),1);me.hand.push(c);(P.picked=P.picked||[]).push(c);if(P.play){st.pending=null;playFree(st,P.pi,c);if(st.pending)return st;st.pending=P}log(st,`${me.name} puts a card into their hand.`);P.opts=P.opts.filter(u=>u!==a.uid);P.top=P.top.filter(u=>u!==a.uid);P.n--;if(P.pickOk)P.opts=P.opts.filter(u=>{const d=me.deck.find(z=>z.uid===u);return d&&P.pickOk(d,P.picked)})}
+    if(a.t==="pickDone"||P.n<=0||!P.opts.length){const rest=me.deck.filter(d=>P.top.includes(d.uid));me.deck=me.deck.filter(d=>!P.top.includes(d.uid));if(P.rest==="discard")me.discard.push(...rest);else if(P.rest==="top")me.deck.push(...rest);else me.deck.unshift(...rest);st.pending=null;if(P.after)P.after(st,P.pi,P.picked||[])}
     return st}
   if(a.t==="discard"){const P=st.players[st.pending.pi],x=P.hand.find(h=>h.uid===a.uid);P.hand=P.hand.filter(h=>h!==x);P.discard.push(x);log(st,`${P.name} discards ${x.card.full}.`);if(st.pending.pi!==st.active)fire(st,opp(st.pending.pi),"onOppDiscard",1);fire(st,st.pending.pi,"onSelfDiscard",x);if(--st.pending.n<=0||!P.hand.length)st.pending=null;return st}
   st._mode=a.mode??null;st._decline=!!a.decline;const pi=st.active,p=st.players[pi],o=st.players[opp(pi)];
@@ -1346,7 +1408,7 @@ function act0(st,a){
     case"play":{
       const c=x.card;p.hand=p.hand.filter(h=>h!==x);if(p.discard.includes(x)){p.discard=p.discard.filter(h=>h!==x);if(isChar(x))a={...a,fromGy:1}}ev(st,{t:"play",pi,uid:x.uid,name:c.full});
       if(c.type==="song"){p.songTurn=st.turnNo;fire(st,opp(pi),"onOppSong",x)}if(c.type==="action"||c.type==="song")p.actionsN=(p.actionsN||0)+1;
-      st._singers=a.singers?a.singers.split(",").length:1;if(a.singer!=null||a.singers)fire(st,pi,"onAllySing",x);
+      st._singers=a.singers?a.singers.split(",").length:1;st._sung=a.singer!=null||!!a.singers;if(a.singer!=null||a.singers)fire(st,pi,"onAllySing",x);
       if(a.singer!=null){const s=find(st,a.singer).inst;s.exerted=true;log(st,`${s.card.name} sings ${c.name}.`);if(s.card.onSing.length)resolve(st,pi,s.card.onSing,autoTarget(st,pi,s.card.onSing),s)}
       else if(a.singers){a.singers.split(",").forEach(u=>find(st,+u).inst.exerted=true);log(st,`Characters sing ${c.name} together.`)}
       else if(a.shift!=null&&a.alt===2){}
@@ -1356,7 +1418,7 @@ function act0(st,a){
       else if(a.shift!=null){payInk(p,c.kw.shift)}else{payInk(p,costOf(st,pi,c));if(p.disc&&p.disc.length)p.disc=p.disc.filter(d=>!(d.type===c.type||d.type==="action"&&c.type==="song"))}
       if(c.type==="action"||c.type==="song"){if(a.singer==null&&!a.singers)log(st,`${p.name} plays ${c.full}.`);p.play.forEach(y=>y.card.onActionPlayed.forEach(e=>{if(e.k==="selfStr")y.tStr+=e.n}));resolve(st,pi,c.onPlay,a.target,x,true);p.discard.push(x);yp(st,pi,x);
         if(a.singer!=null&&c.type==="song"){const sg=find(st,a.singer);if(sg&&sg.inst.card.replaySong&&st.winner==null){resolve(st,pi,c.onPlay,autoTarget(st,pi,c.onPlay),x,true);p.discard.splice(p.discard.indexOf(x),1);p.deck.unshift(x);log(st,`${c.name} is sung again, then put on the bottom of the deck.`)}}break}
-      x.playedOn=st.turnNo;reset(x);p.cardsN=p.cardsT===st.turnNo?(p.cardsN||0)+1:1;p.cardsT=st.turnNo;if(c.type==="character"){p.playedChars=p.playedTurn===st.turnNo?(p.playedChars||0)+1:1;p.playedTurn=st.turnNo}
+      x.playedOn=st.turnNo;reset(x);if(c.type==="location"&&p.locDisc)p.locDisc=null;p.cardsN=p.cardsT===st.turnNo?(p.cardsN||0)+1:1;p.cardsT=st.turnNo;if(c.type==="character"){p.playedChars=p.playedTurn===st.turnNo?(p.playedChars||0)+1:1;p.playedTurn=st.turnNo}
       if(a.shift!=null){const b=find(st,a.shift).inst;const idx=p.play.indexOf(b);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];x.shiftedOn=st.turnNo;if(b.card.onShiftedOn)resolve(st,pi,b.card.onShiftedOn,null,x);b.at=null;p.play[idx]=x;log(st,`${p.name} shifts ${c.full} onto ${b.card.name}.`)}
       else{p.play.push(x);if(c.kw.rush&&st.players[opp(pi)].play.some(y=>y.card.rushExerted&&y.exerted)||c.entersExerted||a.exerted&&c.kw.bodyguard||a.fromGy&&p.play.some(y=>y.card.gyPlay))x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);if(c.type==="character")fire(st,opp(pi),"onOppPlayChar",x);break}

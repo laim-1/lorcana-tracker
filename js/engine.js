@@ -1037,6 +1037,36 @@ Object.assign(DEFS_EXTRA,{
  "Antonio Madrigal - Animal Doctor":c=>c.onPlay.push(FN((st,pi,self,x)=>{if(!x||!x.damage||noHeal(st))return;x.damage=Math.max(0,x.damage-3);st.players[pi].healT=st.turnNo;inkTop2(st,pi)},(st,pi,x)=>x&&x.damage?5:-1,T_({own:true,helpful:true}),{may:true})),
  "Laugh Canister":c=>{c.acts=[{ink:0,eff:[FN((st,pi)=>{inkTop2(st,pi);const o=st.players[opp(pi)];if(o.ink.length<o.hand.length+2&&o.ink.length<7)inkTop2(st,opp(pi))},2)]}]},
 });
+
+const myT=(st,pi)=>st.active===pi;
+Object.assign(DEFS_EXTRA,{
+ "Hundred Acre Island - Pooh's Home":c=>{c.onBanishedHere=[FN((st,pi)=>{if(!myT(st,pi))gain(st,pi,1)},4)]},
+ "Hades - Lord of the Dead":c=>c.onAllyBanished.push({eff:[FN((st,pi,self)=>{if(!myT(st,pi)&&st._banished!==self)gain(st,pi,2)},6)]}),
+ "Basil - Disguised Detective":c=>c.onInk.push(FN((st,pi)=>{const P=st.players[pi];if(myT(st,pi)&&inkAvail(P)>=1&&st.players[opp(pi)].hand.length){payInk(P,1);resolve(st,pi,[{k:"oppDiscard",n:1}],null)}},3,null,{may:true})),
+ "Tadashi Hamada - Gifted Roboticist":c=>c.onBanish.push(FN((st,pi,self,x,ctx)=>{if(myT(st,pi))return;const P=st.players[pi];putInk(st,pi,P.deck.pop(),false);const y=ctx.src;if(y&&P.discard.includes(y)){P.discard.splice(P.discard.indexOf(y),1);putInk(st,pi,y)}},5,null,{may:true})),
+ "Jim Hawkins - Stubborn Cabin Boy":c=>c.onInk.push(FN((st,pi,self)=>{if(myT(st,pi)&&self)self.tChal=(self.tChal||0)+2},2)),
+ "Te Kā - Elemental Terror":c=>{c.onOppExerted=[FN((st,pi)=>{const y=st._ctx;if(y&&find(st,y.uid)?.zone==="play")banish(st,y)},6)]},
+ "Kenai - Magical Bear":c=>c.onBanish.push(FN((st,pi,self,x,ctx)=>{const y=ctx.src,P=st.players[pi];if(!myT(st,pi)||!y||!y._wasChal||!P.discard.includes(y))return;toHandFrom(P,"discard",y);gain(st,pi,1)},5)),
+ "Maid Marian - Badminton Ace":c=>{c.onAllyDamaged=[FN((st,pi)=>{const y=st._ctx;if(!myT(st,pi)&&y&&hasCls(y,"ally"))dmgBest(st,pi,1)},2)]},
+ "Raya - Guidance Seeker":c=>c.onInk.push(FN((st,pi,self)=>{if(myT(st,pi)&&self)self.grants.push({kw:"resist 1",until:"srcStart",src:pi})},2)),
+ "Archimedes - Resourceful Owl":c=>{c.onAnyBanished=[FN((st,pi)=>{const y=st._ctx;if(myT(st,pi)&&y&&isItem(y)){draw(st,pi,1);discOne(st,pi)}},2,null,{may:true})]},
+ "Brutus - Fearsome Crocodile":c=>c.onBanish.push(FN((st,pi)=>{if(myT(st,pi)&&st.players[pi].dmgT===st.turnNo)gain(st,pi,2)},6)),
+ "Stitch - Alien Troublemaker":c=>c.onBanishOther.push(FN((st,pi)=>{if(myT(st,pi)){draw(st,pi,1);gain(st,pi,1)}},6,null,{may:true})),
+ "Duckworth - Ghost Butler":c=>c.onBanish.push(FN((st,pi)=>{if(myT(st,pi))underBoost(st,pi)},2,null,{may:true})),
+ "Grimorum Arcanorum":c=>{c.onOppExerted=[{k:"gainLore",n:1}]},
+ "The Headless Horseman - Terror of Sleepy Hollow":c=>{c.onAnyBanished=[FN((st,pi)=>{const y=st._ctx;if(myT(st,pi)&&y&&isChar(y)&&y.owner!==pi)OWNCH(st,pi).forEach(z=>z.tStr+=1)},2)]},
+ "Fairy Godmother's Wand":c=>c.onInk.push(FN((st,pi)=>{if(!myT(st,pi))return;const y=OWNCH(st,pi).filter(z=>hasCls(z,"princess")).sort((a,b)=>instVal(b)-instVal(a))[0];if(y)y.grants.push({kw:"ward",until:"srcStart",src:pi})},2)),
+ "Nick Wilde - Persistent Investigator":c=>{const e=FN((st,pi)=>{const a=find(st,st._challenger)?.inst;if(myT(st,pi)&&a&&hasCls(a,"detective"))draw(st,pi,1)},3);c.onAllyBanishOther=[e];c.onBanishOther.push(e)},
+ "The Sword of Hercules":c=>{c.onAllyBanishOther=[FN((st,pi)=>{if(myT(st,pi))gain(st,pi,1)},4)]},
+ "Wisdom of the Willow":c=>{c.onPlay=[FN((st,pi)=>{st.players[pi].willowT=st.turnNo},4)]},
+ "Darkwing Duck - Darkwarrior":c=>{c.onAnyBanished=[FN((st,pi,self)=>{const y=st._ctx;if(myT(st,pi)&&y&&isItem(y)&&self)self.grants.push({kw:"resist 1",until:"srcStart",src:pi})},2)]},
+ "Darkwing Duck - Cool Under Pressure":c=>{c.onAnyBanished=[FN((st,pi)=>{const y=st._ctx,P=st.players[pi];if(myT(st,pi)&&y&&isItem(y)&&inkAvail(P)>=1){payInk(P,1);dmgBest(st,pi,2)}},3,null,{may:true})]},
+ "Darkwing Tower - Icy Headquarters":c=>{c.onAnyBanished=[FN((st,pi,self)=>{const y=st._ctx;if(!myT(st,pi)||!y||!isChar(y)||y.owner===pi||!hasCls(y,"villain")||!self)return;const z=hereChars(st,self).find(q=>q.exerted);rdy(z)},2,null,{may:true})]},
+ "Alien - True Believer":c=>c.onBanish.push(FN((st,pi,self,x,ctx)=>{if(!myT(st,pi))return;const P=st.players[pi],y=P.discard.find(z=>z.card.name==="Alien"&&z!==ctx.src);if(y)toHandFrom(P,"discard",y)},3)),
+ "Sid Phillips - Toy Surgeon":c=>{c.onAnyBanished=[FN((st,pi)=>{const y=st._ctx;if(myT(st,pi)&&y&&isChar(y)&&hasCls(y,"toy"))gain(st,pi,2)},5)]},
+ "Mrs. Incredible - Determined Rescuer":c=>{c.onAnyBanished=[FN((st,pi)=>{const y=st._ctx;if(!myT(st,pi)||!y||!y._wasChal)return;const z=OWNCH(st,pi).filter(q=>q.exerted&&hasCls(q,"super")).sort((a,b)=>strOf(b)-strOf(a))[0];rdy(z)},2,null,{may:true})]},
+ "Scar - Created by the Vine":c=>{const e=FN((st,pi)=>{const a=find(st,st._challenger)?.inst;if(myT(st,pi)&&a&&hasCls(a,"floodborn"))gain(st,pi,1)},4);c.onAllyBanishOther=[e];c.onBanishOther.push(e)},
+});
 // @@DEFS_INSERT
 const DEFS={
  "Prince Phillip - Dragonslayer":c=>c.onBanish.push(FN((st,pi)=>{if(st._challenger!=null&&st._defender!=null){const f=find(st,st._defender);if(f&&f.zone==="play"&&st.players[f.pi]!==st.players[pi]&&(st._chalSrc===pi))banish(st,f.inst)}},3)),
@@ -1082,6 +1112,11 @@ function condFn(t){t=t.trim();let m;const P=(x,S)=>S.players[x.owner],OC=(x,S)=>
   if(t==="all cards in your inkwell are exerted")return (x,S)=>!!S&&P(x,S).ink.length>0&&P(x,S).ink.every(y=>y.exerted);
   if(t==="you have more cards in your inkwell than each opposing player")return (x,S)=>!!S&&P(x,S).ink.length>S.players[1-x.owner].ink.length;
   return null}
+function turnWrap(c,r,rest,mine){const t=normCard({...r,id:"tw",text:rest.charAt(0).toUpperCase()+rest.slice(1)});if(t.unsupported.length)return false;let any=false;
+  const gate=effs=>[{k:"fn",v:(st,pi)=>((st.active===pi)===mine?effVal(st,pi,effs,null):0),f:(st,pi,self,x)=>{if((st.active===pi)===mine)resolve(st,pi,effs,autoTarget(st,pi,effs),self)}}];
+  for(const k of Object.keys(t)){if(!/^on[A-Z]/.test(k)||!Array.isArray(t[k])||!t[k].length||k==="onPlay")continue;any=true;c[k]=c[k]||[];
+    for(const e of t[k])c[k].push(e&&e.eff&&!e.k?{...e,eff:gate(e.eff)}:gate([e])[0])}
+  return any}
 function condStatic(c,line){const m=line.match(/^(during your turn, )?(?:while|if) (.+?), (?:this character|he|she|they|this location) (gets|gains) (.+)$/i);if(!m)return false;let f=condFn(m[2].toLowerCase());if(!f)return false;
   if(m[1]){const g=f;f=(x,S)=>!!S&&S.active===x.owner&&g(x,S)}
   let rest=m[4].replace(/^gains /i,"");const out=[];const re=/\+(\d+) (STR|WIL|LORE)/gi;let q;while((q=re.exec(rest)))out.push({cond:f,stat:q[2].toLowerCase(),n:+q[1]});
@@ -1130,6 +1165,7 @@ function normCard(r){
       const cond={"this character is exerted":"exerted","this character is at a location":"atLoc","there's a card under this character":"under","this character has no damage":"undamaged","this character has damage":"damaged"}[m[1].toLowerCase()];
       c.statics.push(m[3]?{cond,stat:m[4].toLowerCase(),n:+m[3]}:{cond,kw:m[5].toLowerCase()})}
     else if(condStatic(c,line)){}
+    else if((m0=line.match(/^During (your|an opponent['’]s|the opponent['’]s) turn, ((?:when|whenever) .+)$/i))&&turnWrap(c,r,m0[2],/^your$/i.test(m0[1]))){}
     else if((m=line.match(/^During your turn, this character gets \+(\d+) (STR|LORE)$/i)))c.statics.push({cond:"yourTurn",stat:m[2].toLowerCase(),n:+m[1]});
     else if((m=line.match(/^If you have a character named (.+?) in play, you pay (\d+) INK less to play this character$/i)))c.costRed={name:m[1],n:+m[2]};
     else if((m=line.match(/^Sing Together (\d+)$/i)))c.singTogether=+m[1];
@@ -1310,7 +1346,7 @@ function banish(st,x){
 }
 function fire(st,pi,key,ctx){if(key==="onSelfDiscard"&&ctx&&ctx.card&&st.active===pi&&st.players[pi].discard.includes(ctx)&&(ctx.card.playOnDiscard||st.players[pi].play.some(y=>y.card.gyOnDiscardChar&&isChar(ctx)))&&inkAvail(st.players[pi])>=costOf(st,pi,ctx.card)&&st.winner==null){const P=st.players[pi];payInk(P,costOf(st,pi,ctx.card));toHandFrom(P,"discard",ctx);playFree(st,pi,ctx)}for(const y of [...st.players[pi].play]){const h=y.card[key];if(h&&h.length&&st.winner==null&&find(st,y.uid)?.zone==='play'){st._ctx=ctx;resolve(st,pi,h,autoTarget(st,pi,h),y)}}}
 function damage(st,x,n,pierce){if(n<=0)return;const inChal=st._challenger===x.uid||st._defender===x.uid;
-  if(x.card.dmgImmune&&x.card.dmgImmune(st,x,inChal))return;if(inChal&&x.chalImmT===st.turnNo)return;if(x.card.firstDmgShield&&st.active!==x.owner&&x.shieldT!==st.turnNo){x.shieldT=st.turnNo;return}if(x.supShieldT!=null&&x.supShieldT>=0&&!x._supUsed){x._supUsed=true;x.supShieldT=null;return}{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=pierce?n:Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0){st.players[x.owner].dmgT=st.turnNo;fire(st,opp(x.owner),'onOppDamaged',x)}if(d>0&&x.card.onDamagedSelf&&find(st,x.uid)?.zone==='play'){st._ctx=d;resolve(st,x.owner,x.card.onDamagedSelf,autoTarget(st,x.owner,x.card.onDamagedSelf),x)}if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
+  if(x.card.dmgImmune&&x.card.dmgImmune(st,x,inChal))return;if(inChal&&x.chalImmT===st.turnNo)return;if(x.card.firstDmgShield&&st.active!==x.owner&&x.shieldT!==st.turnNo){x.shieldT=st.turnNo;return}if(x.supShieldT!=null&&x.supShieldT>=0&&!x._supUsed){x._supUsed=true;x.supShieldT=null;return}{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=pierce?n:Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0){st.players[x.owner].dmgT=st.turnNo;st._ctx=x;fire(st,x.owner,"onAllyDamaged",x);fire(st,opp(x.owner),'onOppDamaged',x)}if(d>0&&x.card.onDamagedSelf&&find(st,x.uid)?.zone==='play'){st._ctx=d;resolve(st,x.owner,x.card.onDamagedSelf,autoTarget(st,x.owner,x.card.onDamagedSelf),x)}if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
 
 /* targets */
 function namesOf(x){return[x.card.name.toLowerCase(),...(x.card.alias||[])]}
@@ -1347,6 +1383,7 @@ function doMove(st,pi,x,l){x._fromLoc=x.at!=null;x.at=l.uid;ev(st,{t:"move",pi,u
 function loseLore(st,P,n){const q=st.players.indexOf(P);if(st.active!==q&&P.play.some(y=>y.card.noLoseOppTurn))return 0;const l=Math.min(P.lore,n);P.lore-=l;return l}
 function scanDisc(st){for(const P of st.players){const ids=new Set(P.discard.map(y=>y.uid));if(P._dset){for(const u of P._dset)if(!ids.has(u)){P.leftT=st.turnNo;st.leftT=st.turnNo;fire(st,st.players.indexOf(P),"onLeaveDiscard")}}
   for(const y of P.discard)if(!P._dset||!P._dset.has(y.uid))y._inD=st.turnNo;P._dset=ids}}
+function scanEx(st){const A=st.active;for(const P of st.players)for(const y of P.play){if(isChar(y)&&y.exerted&&!y._wasEx&&y.owner!==A&&st.winner==null){y._wasEx=true;st._ctx=y;fire(st,A,"onOppExerted",y)}y._wasEx=!!y.exerted}}
 function discThisTurn(st,P){scanDisc(st);return P.discard.filter(y=>y._inD===st.turnNo).length}
 function inkFire(st,pi){const p=st.players[pi];for(const y of [...p.play])if(y.card.onInk.length&&!(y.card.onInkOnce&&y.inkUsed===st.turnNo)){y.inkUsed=st.turnNo;resolve(st,pi,y.card.onInk,autoTarget(st,pi,y.card.onInk),y)}}
 function putInk(st,q,y,ex=true){if(!y)return;const P=st.players[q];reset(y);y.exerted=ex||st.players[1-q].play.some(z=>z.card.oppInkExerted&&z.exerted);y.owner=q;P.ink.push(y);P.inkT=st.turnNo;if(st.active===q)inkFire(st,q)}
@@ -1526,7 +1563,7 @@ function legalActions(st){
 function isLegal(st,a){return legalActions(st).some(b=>b.t===a.t&&b.uid===a.uid&&(b.target??null)===(a.target??null)&&(b.shift??null)===(a.shift??null)&&(b.singer??null)===(a.singer??null)&&(b.loc??null)===(a.loc??null)&&(b.i??null)===(a.i??null)&&(b.t!=="pick"||true)&&(b.singers??null)===(a.singers??null)&&(b.mode??null)===(a.mode??null)&&!!b.decline===!!a.decline&&!!b.exerted===!!a.exerted)}
 
 function act(st,a){
-  CUR=st;if(!isLegal(st,a))throw new Error("Illegal action "+JSON.stringify(a));try{return act0(st,a)}finally{if(!st._scanning){st._scanning=1;try{scanDisc(st)}finally{st._scanning=0}}}}
+  CUR=st;if(!isLegal(st,a))throw new Error("Illegal action "+JSON.stringify(a));try{return act0(st,a)}finally{if(!st._scanning){st._scanning=1;try{scanDisc(st);scanEx(st)}finally{st._scanning=0}}}}
 function act0(st,a){
   if(a.t==="pick"||a.t==="pickDone"){const P=st.pending,me=st.players[P.pi];
     if(P.kind==="free"){st.pending=null;if(a.t==="pick")playFree(st,P.pi,me.hand.find(h=>h.uid===a.uid));return st}
@@ -1556,7 +1593,7 @@ function act0(st,a){
       if(a.shift!=null){const b=find(st,a.shift).inst;const idx=p.play.indexOf(b);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];x.shiftedOn=st.turnNo;if(b.card.onShiftedOn)resolve(st,pi,b.card.onShiftedOn,null,x);b.at=null;p.play[idx]=x;log(st,`${p.name} shifts ${c.full} onto ${b.card.name}.`)}
       else{p.play.push(x);if(c.entersExeIf&&c.entersExeIf(st,pi)||c.type==="item"&&st.players[opp(pi)].play.some(y=>y.card.oppItemsExerted)||(isChar(x)&&p.nextBG===st.turnNo&&(p.nextBG=-1,x.grants.push({kw:"bodyguard",until:"srcStart",src:pi}),true))||c.kw.rush&&st.players[opp(pi)].play.some(y=>y.card.rushExerted&&y.exerted)||c.entersExerted||a.exerted&&c.kw.bodyguard||a.fromGy&&p.play.some(y=>y.card.gyPlay))x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);if(c.type==="character")fire(st,opp(pi),"onOppPlayChar",x);break}
-    case"quest":{x.exerted=true;if(x.card.onExertYT)resolve(st,pi,x.card.onExertYT,null,x);if(x.card.actTax)payInk(p,1);const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);fire(st,opp(pi),"onOppQuest",x);
+    case"quest":{x.exerted=true;if(x.card.onExertYT)resolve(st,pi,x.card.onExertYT,null,x);if(x.card.actTax)payInk(p,1);const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);if(p.willowT===st.turnNo)draw(st,pi,1);fire(st,opp(pi),"onOppQuest",x);
       if(x.card.kw.support){const others=p.play.filter(c=>isChar(c)&&c!==x);if(others.length){const t=(a.support!=null&&others.find(o=>o.uid===a.support))||others.sort((a,b)=>b.card.lore-a.card.lore)[0];t.tStr+=strOf(x);log(st,`Support: ${t.card.name} gets +${strOf(x)} strength.`);fire(st,pi,"onSupportChosen",t)}}
       gain(st,pi,lv);if(p.questedT!==st.turnNo){p.questedT=st.turnNo;p.questedBy=x.uid}else p.questedBy=-1;for(const h of (p.hooks||[]))if(h.on==='quest'&&st.winner==null)resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),x);if(st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyQuest){if(y===x&&!h.cls)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.test&&!h.test(x,y,st))continue;if(h.once){if(y.onceT===st.turnNo)continue;y.onceT=st.turnNo}resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),y)}
       if(x.at!=null&&st.winner==null){const L=p.play.find(y=>y.uid===x.at);if(L&&L.card.onQuestHere){st._ctx=x;resolve(st,pi,L.card.onQuestHere,autoTarget(st,pi,L.card.onQuestHere),L)}}

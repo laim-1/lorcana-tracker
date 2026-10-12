@@ -696,6 +696,77 @@ Object.assign(DEFS_EXTRA,{
  "Hana's Inkcaster":c=>{c.acts=[{ink:0,eff:[FN((st,pi,self,x)=>{if(!noHeal(st))x.damage=Math.max(0,x.damage-2);if(x.under.length)x.grants.push({kw:"resist 1",until:"srcStart",src:pi})},(st,pi,x,mine)=>mine&&x?Math.min(2,x.damage)*2+1:-1,T_({own:true,helpful:true}))]}]},
  "Hundred Acre Wood - Hunny Campsite":c=>c.statics.push({here:true,test:x=>hasCls(x,"hunny"),stat:"lore",n:1}),
 });
+
+const playGyBottom=(st,pi,test)=>{const P=st.players[pi],y=P.discard.filter(test).sort((a,b)=>b.card.cost-a.card.cost)[0];if(!y)return;toHandFrom(P,"discard",y);playFree(st,pi,y);if(P.discard.includes(y)){P.discard.splice(P.discard.indexOf(y),1);P.deck.unshift(y)}};
+const freeFromHand=(st,pi,test)=>{const P=st.players[pi],y=P.hand.filter(test).sort((a,b)=>b.card.cost-a.card.cost)[0];if(y)playFree(st,pi,y);return y};
+const gyBottom=(st,pi,test,n)=>{const P=st.players[pi],cs=P.discard.filter(test);if(cs.length<n)return false;const pick=cs.slice(0,n);P.discard=P.discard.filter(y=>!pick.includes(y));P.deck.unshift(...pick);return true};
+const gyTop=(st,pi,test)=>{const P=st.players[pi],y=P.discard.filter(test).sort((a,b)=>b.card.cost-a.card.cost)[0];if(y){P.discard.splice(P.discard.indexOf(y),1);P.deck.push(y)}};
+const firstLoc=(st,pi)=>st.players[pi].play.find(isLoc);
+function doShift(st,pi,x,b){const P=st.players[pi];const idx=P.play.indexOf(b);reset(x);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];x.shiftedOn=st.turnNo;b.at=null;P.play[idx]=x;log(st,`${P.name} shifts ${x.card.full} onto ${b.card.name}.`);resolve(st,pi,x.card.onPlay,autoTarget(st,pi,x.card.onPlay),x)}
+const isAct=y=>y.card.type==="action"||y.card.type==="song";
+Object.assign(DEFS_EXTRA,{
+ "Stitch - Alien Buccaneer":c=>c.onPlay.push({k:"cond",shifted:true,eff:[FN((st,pi)=>gyTop(st,pi,isAct),2,null,{may:true})]}),
+ "Moana - Kakamora Leader":c=>c.onPlay.push(FN((st,pi,self)=>{const l=firstLoc(st,pi);if(!l)return;const cs=OWNCH(st,pi).filter(y=>y.at!==l.uid);cs.forEach(y=>doMove(st,pi,y,l));gain(st,pi,cs.length)},(st,pi)=>firstLoc(st,pi)?OWNCH(st,pi).length*5:0,null,{may:true})),
+ "Yokai - Scientific Supervillain":c=>{c.onPlay.push(FN(()=>{},0));c.freeMicro=true},
+ "Cinderella - The Right One":c=>c.onPlay.push(FN((st,pi)=>{if(gyBottom(st,pi,y=>y.card.name==="The Glass Slipper",1))gain(st,pi,3)},15,null,{may:true})),
+ "Pongo - Dear Old Dad":c=>c.onStart.push(FN((st,pi)=>{const P=st.players[pi],y=P.ink.filter(z=>isChar(z)&&hasCls(z,"puppy")).sort((a,b)=>b.card.cost-a.card.cost)[0];if(y){P.ink.splice(P.ink.indexOf(y),1);P.hand.push(y);playFree(st,pi,y)}},5,null,{may:true})),
+ "Scrooge Mcduck - Resourceful Miser":c=>{c.freeAlt={req:(st,pi)=>st.players[pi].play.filter(y=>isItem(y)&&!y.exerted).length>=4,pay:(st,pi)=>st.players[pi].play.filter(y=>isItem(y)&&!y.exerted).slice(0,4).forEach(y=>y.exerted=true)}},
+ "Belle - Apprentice Inventor":c=>{c.freeAlt={req:(st,pi)=>st.players[pi].play.some(isItem),pay:(st,pi)=>{const y=cheapest(st.players[pi].play.filter(isItem));if(y)banish(st,y)}}},
+ "Aladdin - Research Assistant":c=>c.onQuest.push(FN((st,pi)=>freeFromHand(st,pi,y=>isChar(y)&&hasCls(y,"ally")&&y.card.cost<=3),5,null,{may:true})),
+ "Perdita - Determined Mother":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi],cs=P.discard.filter(y=>isChar(y)&&hasCls(y,"puppy"));P.discard=P.discard.filter(y=>!cs.includes(y));cs.forEach(y=>{reset(y);y.exerted=true;P.ink.push(y)})},(st,pi)=>st.players[pi].discard.filter(y=>isChar(y)&&hasCls(y,"puppy")).length*3,null,{may:true})),
+ "Jafar - High Sultan of Lorcana":c=>c.onQuest.push(FN((st,pi)=>{draw(st,pi,1);const P=st.players[pi];const il=P.hand.filter(y=>isChar(y)&&hasCls(y,"illusion")).sort((a,b)=>b.card.cost-a.card.cost)[0];let y;if(il){P.hand.splice(P.hand.indexOf(il),1);P.discard.push(il);y=il}else y=discOne(st,pi);if(y&&isChar(y)&&hasCls(y,"illusion")){toHandFrom(P,"discard",y);playFree(st,pi,y)}},4,null,{may:true})),
+ "Lilo - Causing an Uproar":c=>{c.freeIf=(st,pi)=>(st.players[pi].actionsN||0)>=3},
+ "Stitch - Experiment 626":c=>{c.gyStart=(st,pi)=>{const P=st.players[pi],y=P.hand.filter(z=>z.card.inkable).sort((a,b)=>discardPri(b)-discardPri(a))[0];if(!y)return false;P.hand.splice(P.hand.indexOf(y),1);P.discard.push(y);return true}},
+ "Circle of Life":c=>{c.onPlay=[FN((st,pi)=>playFromDiscard(st,pi,isChar),(st,pi)=>st.players[pi].discard.some(isChar)?10:-5)]},
+ "Ursula - Voice Stealer":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.exerted=true;const cost=x.card.cost;const P=st.players[pi],y=P.hand.filter(z=>z.card.type==="song"&&z.card.cost<=cost).sort((a,b)=>b.card.cost-a.card.cost)[0];if(y)playFree(st,pi,y)},4,T_({opp:true,state:"ready"}))),
+ "Goofy - Set for Adventure":c=>c.onMoveSelf=[FN((st,pi,self)=>{if(!self||self.onceM===st.turnNo)return;self.onceM=st.turnNo;const l=st._ctx,y=OWNCH(st,pi).find(z=>z!==self&&z.at!==l.uid);if(y){doMove(st,pi,y,l);draw(st,pi,1)}},3,null,{may:true})],
+ "Max Goof - Chart Topper":c=>c.onQuest.push(FN((st,pi)=>playGyBottom(st,pi,y=>y.card.type==="song"&&y.card.cost<=4),4,null,{may:true})),
+ "Gazelle - Ballad Singer":c=>c.onPlay.push(FN((st,pi)=>gyTop(st,pi,y=>y.card.type==="song"),2,null,{may:true})),
+ "Lady Tremaine - Sinister Socialite":c=>c.onQuest.push(FN((st,pi,self)=>{if(self&&self.underT===st.turnNo)playGyBottom(st,pi,y=>isAct(y)&&y.card.cost<=5)},4,null,{may:true})),
+ "Get to Safety!":c=>{c.onPlay=[FN((st,pi)=>{playFromDiscard(st,pi,y=>isLoc(y)&&y.card.cost<=3);if(st.players[pi].play.some(y=>y.card.name==="Sleepy Hollow"))draw(st,pi,1)},4)]},
+ "The Game's Afoot!":c=>{c.onPlay=[FN((st,pi)=>{const l=firstLoc(st,pi);if(!l)return;OWNCH(st,pi).filter(y=>y.at!==l.uid).sort((a,b)=>b.card.lore-a.card.lore).slice(0,2).forEach(y=>doMove(st,pi,y,l));l.grants=l.grants||[];l.grants.push({kw:"resist 2",until:"srcStart",src:pi})},(st,pi)=>firstLoc(st,pi)?4:-4)]},
+ "Pudge - Controls the Weather":c=>{c.freeIf=(st,pi)=>OWNCH(st,pi).some(y=>y.card.name==="Lilo")},
+ "Lilo - Rock Star":c=>c.onQuest.push(FN((st,pi)=>playFromDiscard(st,pi,y=>isChar(y)&&y.card.cost<=2),4,null,{may:true})),
+ "Widow Tweed - Kindly Soul":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi],y=P.discard.filter(isChar).sort((a,b)=>(b.card.name==="Tod")-(a.card.name==="Tod")||b.card.cost-a.card.cost)[0];if(!y)return;toHandFrom(P,"discard",y);if(y.card.name==="Tod")playFree(st,pi,y)},4)),
+ "Mystical Inkcaster":c=>c.acts.push({ink:3,req:(st,pi)=>st.players[pi].hand.some(y=>isChar(y)&&y.card.cost<=5),eff:[FN((st,pi)=>{const y=freeFromHand(st,pi,z=>isChar(z)&&z.card.cost<=5);if(y){y.grants.push({kw:"rush",until:"turnEnd",src:pi});y.banishEOT=st.turnNo}},4)]}),
+ "Chernabog - Unnatural Force":c=>c.onPlay.push(FN((st,pi,self,x)=>{const q=x.owner,P=st.players[q];P.play=P.play.filter(y=>y!==x);reset(x);P.deck.push(x,...x.under);x.under=[];shuffle(P.deck,st.r);playFromDiscard(st,q,isChar)},(st,pi,x)=>x?instVal(x)-4:0,T_({opp:true}),{may:true})),
+ "Stegmutt - Clumsy Dinosaur":c=>c.onPlay.push(FN((st,pi)=>{if(gyBottom(st,pi,isItem,3))dmgBest(st,pi,3)},5,null,{may:true})),
+ "Retro Evolution Device":c=>c.acts.push({ink:1,req:(st,pi)=>OWNCH(st,pi).some(b=>st.players[pi].hand.some(h=>isChar(h)&&h.card.cost<=b.card.cost+2&&h.card.cost>b.card.cost)),eff:[FN((st,pi)=>{const P=st.players[pi];const b=OWNCH(st,pi).filter(z=>P.hand.some(h=>isChar(h)&&h.card.cost<=z.card.cost+2&&h.card.cost>z.card.cost)).sort((a,b)=>instVal(a)-instVal(b))[0];if(!b)return;const lim=b.card.cost+2;banish(st,b);freeFromHand(st,pi,h=>isChar(h)&&h.card.cost<=lim)},4)]}),
+ "Darkwing Duck - Dashing Gadgeteer":c=>c.onQuest.push(FN((st,pi)=>{if(gyBottom(st,pi,isItem,1))playFromDiscard(st,pi,y=>isItem(y)&&y.card.cost<=5)},3,null,{may:true})),
+ "Let's Get Dangerous":c=>{c.onPlay=[FN((st,pi)=>{for(const q of [pi,opp(pi)]){const P=st.players[q];shuffle(P.deck,st.r);const y=P.deck.pop();if(!y)continue;if(isChar(y)){P.hand.push(y);playFree(st,q,y)}else P.deck.unshift(y)}},2)]},
+ "Chip - Retrieval Expert":c=>c.onPlay.push(FN((st,pi)=>fromDiscardToHand(st,pi,y=>isChar(y)&&y.card.wil>=4),3,null,{may:true})),
+ "Metamorphosis":c=>{c.onPlay=[FN((st,pi)=>{const P=st.players[pi];for(const y of P.discard.filter(z=>isChar(z)&&z.card.kw.shift!=null).sort((a,b)=>b.card.cost-a.card.cost)){const b=OWNCH(st,pi).find(z=>namesOf(z).includes(y.card.name.toLowerCase()));if(b){P.discard.splice(P.discard.indexOf(y),1);doShift(st,pi,y,b);return}}},(st,pi)=>{const P=st.players[pi];return P.discard.some(y=>isChar(y)&&y.card.kw.shift!=null&&OWNCH(st,pi).some(z=>namesOf(z).includes(y.card.name.toLowerCase())))?10:-5})]},
+ "When You Need Help, Just Call":c=>{c.onPlay=[FN((st,pi)=>{if(OWNCH(st,opp(pi)).length>OWNCH(st,pi).length)freeFromHand(st,pi,y=>isChar(y)&&y.card.cost<=4)},5)]},
+ "Safety Rope":c=>c.onPlay.push(FN((st,pi)=>gyTop(st,pi,isChar),2,null,{may:true})),
+ "Right Behind You":c=>{c.onPlay=[{k:"draw",n:1},FN((st,pi)=>{const P=OWNCH(st,pi);if(P.some(y=>hasCls(y,"seven dwarfs"))&&P.some(y=>hasCls(y,"princess")))freeFromHand(st,pi,y=>isChar(y)&&hasCls(y,"seven dwarfs"))},3)]},
+ "Ring of Stones - Place of Legends":c=>{c.moveFree=x=>x.exerted},
+ "Buzz's Arm":c=>{c.freeIf=(st,pi)=>st.buzzBanT===st.turnNo},
+ "Pizza Planet - Spaceport":c=>{c.moveFree=x=>hasCls(x,"toy")},
+ "Roller Bob - Sid's Toy":c=>c.onPlay.push(FN((st,pi,self)=>{if(self&&gyBottom(st,pi,isChar,2))self.grants.push({kw:"rush",until:"turnEnd",src:pi})},2,null,{may:true})),
+ "Hand-in-the-Box - Sid's Toy":c=>{c.freeAlt={req:(st,pi)=>st.players[pi].discard.some(y=>isChar(y)&&hasCls(y,"toy")),pay:(st,pi)=>gyBottom(st,pi,y=>isChar(y)&&hasCls(y,"toy"),1)}},
+ "Bouncing Ducky - Sid's Toy":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi];gyBottom(st,pi,y=>isChar(y)&&hasCls(y,"toy"),P.discard.filter(y=>isChar(y)&&hasCls(y,"toy")).length)},0)),
+ "Hercules - Young Rescuer":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi];P.discard.push(...P.hand);P.hand=[];const y=P.discard.slice().sort((a,b)=>b.card.cost-a.card.cost)[0];if(y)toHandFrom(P,"discard",y)},(st,pi)=>st.players[pi].hand.length<=1?3:-5,null,{may:true})),
+ "Syndrome - Out for Revenge":c=>c.onQuest.push(FN((st,pi)=>{fromDiscardToHand(st,pi,y=>isChar(y)&&hasCls(y,"robot"));const P=st.players[pi];const y=P.hand.filter(z=>isChar(z)&&hasCls(z,"robot")&&z.card.cost<=8).sort((a,b)=>b.card.cost-a.card.cost)[0];if(!y)return;const b=OWNCH(st,pi).find(z=>z.card.name===y.card.name);if(b&&y.card.kw.shift!=null){P.hand.splice(P.hand.indexOf(y),1);doShift(st,pi,y,b)}else playFree(st,pi,y)},6)),
+ "Fergus - Outpost Builder":c=>{c.onExertYT=[FN((st,pi)=>{const P=st.players[pi],y=P.hand.concat(P.discard).filter(z=>isLoc(z)&&z.card.cost<=4).sort((a,b)=>b.card.cost-a.card.cost)[0];if(!y)return;if(P.discard.includes(y))toHandFrom(P,"discard",y);playFree(st,pi,y)},4,null,{may:true})]},
+ "Touch the Sky":c=>{c.onPlay=[FN((st,pi)=>{const l=firstLoc(st,pi),y=OWNCH(st,pi).find(z=>l&&z.at!==l.uid);if(!l)return;if(y)doMove(st,pi,y,l);draw(st,pi,loreOf(l))},(st,pi)=>firstLoc(st,pi)?4*loreOf(firstLoc(st,pi))+1:-4)]},
+ "Club Door":c=>{c.freeIf=(st,pi)=>OWNCH(st,pi).some(y=>y.card.name==="Fat Cat")},
+ "Woody - Helping a Friend":c=>c.onPlay.push(FN((st,pi,self)=>{const both=OWNCH(st,pi).some(y=>y!==self&&hasCls(y,"toy"));const P=st.players[pi];const a=()=>fromDiscardToHand(st,pi,y=>isChar(y)&&y.card.cost<=2),b=()=>freeFromHand(st,pi,y=>isChar(y)&&y.card.cost<=2);if(both){b();a()}else if(P.hand.some(y=>isChar(y)&&y.card.cost<=2))b();else a()},4)),
+ "Buzz Lightyear - Providing Cover":c=>c.onPlay.push(FN((st,pi,self)=>{const both=OWNCH(st,pi).some(y=>y!==self&&hasCls(y,"toy"));const P=st.players[pi];const a=()=>fromDiscardToHand(st,pi,y=>isAct(y)&&y.card.cost<=2),b=()=>freeFromHand(st,pi,y=>isAct(y)&&y.card.cost<=2);if(both){b();a()}else if(P.hand.some(y=>isAct(y)&&y.card.cost<=2))b();else a()},4)),
+ "Pocahontas - Guiding the Tribe":c=>c.onPlay.push(FN((st,pi)=>freeFromHand(st,pi,y=>isChar(y)&&y.card.cost===1),3,null,{may:true})),
+ "The Horned King - Merciless Master":c=>{c.gyPlay=true},
+ "Pocahontas & Meeko - Adventurous Friends":c=>c.onQuest.push(FN((st,pi,self,x)=>{retHand(st,x);freeFromHand(st,pi,y=>isChar(y)&&y.card.cost===1&&y!==x)||playFree(st,pi,x)},(st,pi,x)=>x&&x.exerted?3:0,T_({own:true,helpful:true,maxCost:1}),{may:true})),
+ "Woody & Buzz Lightyear - Best Buddies":c=>c.onQuest.push(FN((st,pi)=>freeFromHand(st,pi,y=>y.card.cost<=2&&!isLoc(y)||y.card.cost<=2),4,null,{may:true})),
+ "Sulley & Boo - Scare Buddies":c=>c.onBanish.push(FN((st,pi,self,x,ctx)=>{const P=st.players[pi];for(const y of (ctx.src&&ctx.src._underCards)||[])if(isChar(y)&&P.discard.includes(y)){toHandFrom(P,"discard",y);playFree(st,pi,y)}},5,null,{may:true})),
+ "Maleficent & Diablo - Evil Incarnate":c=>{c.shiftAlt={n:0,test:()=>false};c.shiftGy=5},
+ "Russell - Junior Wilderness Explorer":c=>c.onQuest.push(FN((st,pi,self)=>{const l=firstLoc(st,pi);if(!l||!self)return;if(self.at!==l.uid)doMove(st,pi,self,l);const y=OWNCH(st,pi).find(z=>z!==self&&z.at!==l.uid);if(y)doMove(st,pi,y,l)},2,null,{may:true})),
+ "Mother Gothel - Evil as Ever":c=>{c.playOnDiscard=true},
+ "Rapunzel & Flynn Rider - Unlikely Pair":c=>{c.gyOnDiscardChar=true},
+ "Vine Pod":c=>c.acts.push({ink:1,req:(st,pi)=>OWNCH(st,pi).some(b=>st.players[pi].hand.some(h=>isChar(h)&&h.card.name===b.card.name)),eff:[FN((st,pi)=>{const P=st.players[pi],b=OWNCH(st,pi).filter(z=>P.hand.some(h=>isChar(h)&&h.card.name===z.card.name)).sort((a,b)=>instVal(a)-instVal(b))[0];if(!b)return;const nm=b.card.name;banish(st,b);freeFromHand(st,pi,h=>isChar(h)&&h.card.name===nm)},3)]}),
+ "Carl Fredricksen - On the Move":c=>c.onYouPlay.push({type:"location",eff:[FN((st,pi,self)=>{const P=st.players[pi],l=P.play[P.play.length-1];if(!self||!isLoc(l))return;doMove(st,pi,self,l);const y=OWNCH(st,pi).find(z=>z!==self&&z.at!==l.uid);if(y)doMove(st,pi,y,l)},2,null,{may:true})]}),
+ "Colonel Hathi - On the March":c=>c.onQuest.push(FN((st,pi,self)=>{const l=firstLoc(st,pi);if(l&&self&&self.at!==l.uid)doMove(st,pi,self,l)},2,null,{may:true})),
+ "Carl's House - Flying High":c=>c.acts.push({ink:0,noExert:true,once:true,req:(st,pi,x)=>hereChars(st,x).length>0&&st.players[pi].play.filter(isLoc).length>1,eff:[FN((st,pi,self)=>{const y=hereChars(st,self)[0],l=st.players[pi].play.find(z=>isLoc(z)&&z!==self);if(y&&l){doMove(st,pi,y,l);gain(st,pi,1)}},6)]}),
+ "Look What You've Done":c=>{c.onPlay=[parseOne0("deal 2 damage to chosen character")];c.playOnDiscard=true},
+});
 // @@DEFS_INSERT
 const DEFS={
  "Prince Phillip - Dragonslayer":c=>c.onBanish.push(FN((st,pi)=>{if(st._challenger!=null&&st._defender!=null){const f=find(st,st._defender);if(f&&f.zone==="play"&&st.players[f.pi]!==st.players[pi]&&(st._chalSrc===pi))banish(st,f.inst)}},3)),
@@ -907,7 +978,7 @@ function startTurn(st){
   log(st,`-- Turn ${st.turnNo}: ${p.name} --`);ev(st,{t:"turn",pi});
   for(const l of p.play.filter(isLoc)){const lv=loreOf(l);if(lv){gain(st,pi,lv);log(st,`${l.card.name} gives ${p.name} ${lv} lore.`)}} // set
   if(st.winner!=null)return;
-  for(const y of [...p.discard])if(y.card.gyStart&&st.winner==null&&p.play.length<12){toHandFrom(p,"discard",y);playFree(st,pi,y,true)}
+  for(const y of [...p.discard])if(y.card.gyStart&&st.winner==null&&p.play.length<12&&(y.card.gyStart===true||y.card.gyStart(st,pi,y))){toHandFrom(p,"discard",y);playFree(st,pi,y,true)}
   for(const x of [...p.play])if(x.card.onStart.length){resolve(st,pi,x.card.onStart,autoTarget(st,pi,x.card.onStart),x);if(st.winner!=null)return}
   if(!(st.turnNo===1&&pi===st.first))draw(st,pi,1);                              // draw
 }
@@ -918,7 +989,7 @@ function endTurn(st){
   st.players.forEach(p=>p.hooks=[]);st.active=opp(st.active);st.turnNo++;startTurn(st);
 }
 function banish(st,x){
-  const f=find(st,x.uid);if(!f||f.zone!=="play")return;const p=st.players[f.pi];x._underN=x.under.length;if(isLoc(x))x._hadEx=p.play.some(y=>y.at===x.uid&&y.exerted);const atL=x.at!=null?p.play.find(y=>y.uid===x.at):null;
+  const f=find(st,x.uid);if(!f||f.zone!=="play")return;const p=st.players[f.pi];x._underN=x.under.length;x._underCards=[...x.under];if(x.card.name==="Buzz Lightyear")st.buzzBanT=st.turnNo;if(isLoc(x))x._hadEx=p.play.some(y=>y.at===x.uid&&y.exerted);const atL=x.at!=null?p.play.find(y=>y.uid===x.at):null;
   p.play=p.play.filter(c=>c!==x);reset(x);
   if(isLoc(x))p.play.forEach(c=>{if(c.at===x.uid)c.at=null});
   p.discard.push(...x.under,x);x.under=[];log(st,`${x.card.full} is banished.`);
@@ -932,7 +1003,7 @@ function banish(st,x){
   if(st.winner==null)for(const y of [...st.players[opp(f.pi)].play])for(const h of (y.card.onOppBanished||[])){if(h.inChal&&st._challenger==null)continue;if(h.yourTurn&&st.active===f.pi)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.kinds&&!h.kinds.includes(x.card.type))continue;resolve(st,opp(f.pi),h.eff,autoTarget(st,opp(f.pi),h.eff),y)}
   if(st.winner==null&&x.card.onLeave)resolve(st,f.pi,x.card.onLeave,autoTarget(st,f.pi,x.card.onLeave),x);
 }
-function fire(st,pi,key,ctx){for(const y of [...st.players[pi].play]){const h=y.card[key];if(h&&h.length&&st.winner==null&&find(st,y.uid)?.zone==='play'){st._ctx=ctx;resolve(st,pi,h,autoTarget(st,pi,h),y)}}}
+function fire(st,pi,key,ctx){if(key==="onSelfDiscard"&&ctx&&ctx.card&&st.active===pi&&st.players[pi].discard.includes(ctx)&&(ctx.card.playOnDiscard||st.players[pi].play.some(y=>y.card.gyOnDiscardChar&&isChar(ctx)))&&inkAvail(st.players[pi])>=costOf(st,pi,ctx.card)&&st.winner==null){const P=st.players[pi];payInk(P,costOf(st,pi,ctx.card));toHandFrom(P,"discard",ctx);playFree(st,pi,ctx)}for(const y of [...st.players[pi].play]){const h=y.card[key];if(h&&h.length&&st.winner==null&&find(st,y.uid)?.zone==='play'){st._ctx=ctx;resolve(st,pi,h,autoTarget(st,pi,h),y)}}}
 function damage(st,x,n,pierce){if(n<=0)return;const inChal=st._challenger===x.uid||st._defender===x.uid;
   if(x.card.dmgImmune&&x.card.dmgImmune(st,x,inChal))return;if(x.card.firstDmgShield&&st.active!==x.owner&&x.shieldT!==st.turnNo){x.shieldT=st.turnNo;return}if(x.supShieldT!=null&&x.supShieldT>=0&&!x._supUsed){x._supUsed=true;x.supShieldT=null;return}{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=pierce?n:Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0){st.players[x.owner].dmgT=st.turnNo;fire(st,opp(x.owner),'onOppDamaged',x)}if(d>0&&x.card.onDamagedSelf&&find(st,x.uid)?.zone==='play'){st._ctx=d;resolve(st,x.owner,x.card.onDamagedSelf,autoTarget(st,x.owner,x.card.onDamagedSelf),x)}if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
 
@@ -1119,8 +1190,11 @@ function legalActions(st){
     if(costOf(st,pi,c)<=ink){A.push(...withTargets(st,pi,{t:"play",uid:h.uid},c.onPlay));if(c.kw.bodyguard&&c.type==="character")A.push(...withTargets(st,pi,{t:"play",uid:h.uid,exerted:true},c.onPlay))}
     if(c.singTogether){const sg=p.play.filter(x=>isChar(x)&&!x.exerted&&dry(st,x)&&!blocked(x,"sing")).sort((a,b)=>a.card.cost-b.card.cost);let tot=0,set=[];for(const x of sg){if(tot>=c.singTogether)break;set.push(x.uid);tot+=x.card.cost}
       if(tot>=c.singTogether&&set.length>1)A.push(...withTargets(st,pi,{t:"play",uid:h.uid,singers:set.join(",")},c.onPlay))}
-    if(c.shiftAlt&&p.hand.filter(y=>y!==h&&c.shiftAlt.test(y)).length>=c.shiftAlt.n)for(const b of p.play.filter(x=>isChar(x)&&namesOf(x).includes(c.name.toLowerCase())))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,shift:b.uid,alt:1},c.onPlay));
-    if(c.freeIf&&c.freeIf(st,pi))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,free:1},c.onPlay));
+    if(c.shiftGy&&p.discard.filter(isChar).length>=c.shiftGy)for(const b of p.play.filter(x=>isChar(x)&&(namesOf(x).includes("maleficent")||namesOf(x).includes("diablo"))))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,shift:b.uid,alt:3},c.onPlay));
+    if(c.shiftAlt&&c.shiftAlt.n>0&&p.hand.filter(y=>y!==h&&c.shiftAlt.test(y)).length>=c.shiftAlt.n)for(const b of p.play.filter(x=>isChar(x)&&namesOf(x).includes(c.name.toLowerCase())))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,shift:b.uid,alt:1},c.onPlay));
+    if(c.freeAlt&&c.freeAlt.req(st,pi,h)&&!(c.freeIf&&c.freeIf(st,pi)))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,free:2},c.onPlay));
+    if(c.name==="Microbots"&&p.play.some(y=>y.card.freeMicro))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,free:1},c.onPlay));
+    else if(c.freeIf&&c.freeIf(st,pi))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,free:1},c.onPlay));
     if(c.kw.shift!=null&&c.kw.shift<=ink)for(const b of p.play.filter(x=>isChar(x)&&(c.kw.shiftAny||x.card.morph||(c.kw.shiftCls?x.card.cls.some(k=>k.toLowerCase()===c.kw.shiftCls):namesOf(x).includes(c.name.toLowerCase())||(c.alias||[]).some(a=>namesOf(x).includes(a))))))A.push(...withTargets(st,pi,{t:"play",uid:h.uid,shift:b.uid},c.onPlay));
     if(c.type==="song")for(const s of p.play.filter(x=>isChar(x)&&!x.exerted&&dry(st,x)&&!blocked(x,"sing")&&singVal(x)>=c.cost))
       A.push(...withTargets(st,pi,{t:"play",uid:h.uid,singer:s.uid},c.onPlay));
@@ -1132,6 +1206,7 @@ function legalActions(st){
     if(x.card.kw.boost!=null&&isChar(x)&&!(p.boosted&&p.boosted.has(x.uid))&&x.card.kw.boost<=ink&&p.deck.length)A.push({t:"boost",uid:x.uid});
     actsOf(x).forEach((ab,i)=>{if((ab.noExert||!x.exerted)&&(!isChar(x)||dry(st,x))&&ab.ink<=ink&&(!ab.req||ab.req(st,pi,x))&&!(ab.once&&x.onceA===st.turnNo))A.push(...withTargets(st,pi,{t:"act",uid:x.uid,i},ab.eff))});
   }
+  if(p.play.some(y=>y.card.gyPlay&&y.exerted))for(const y of p.discard)if(isChar(y)&&costOf(st,pi,y.card)<=ink)A.push(...withTargets(st,pi,{t:"play",uid:y.uid,fromGy:1},y.card.onPlay));
   if(!p.inked&&p.play.some(y=>y.card.inkFromDiscard))for(const y of p.discard)if(y.card.inkable)A.push({t:"ink",uid:y.uid});
   const mustChallenge=p.play.some(x=>K(x,'reckless')&&canChallenge(st,pi,x)&&challengeTargets(st,pi,x).length);
   if(!mustChallenge)A.push({t:"end"});
@@ -1154,21 +1229,22 @@ function act0(st,a){
     case"ink":p.hand=p.hand.filter(c=>c!==x);p.discard=p.discard.filter(c=>c!==x);x.exerted=false;p.ink.push(x);p.inkN=(p.inkN||0)+1;p.inked=p.inkN>=1+p.play.filter(y=>y.card.extraInk&&(!y.card.extraInkCond||condOk(y,y.card.extraInkCond))).length;ev(st,{t:"ink",pi,uid:x.uid});log(st,`${p.name} inks ${x.card.full}.`);
       for(const y of [...p.play])if(y.card.onInk.length&&!(y.card.onInkOnce&&y.inkUsed===st.turnNo)){y.inkUsed=st.turnNo;resolve(st,pi,y.card.onInk,autoTarget(st,pi,y.card.onInk),y)}break;
     case"play":{
-      const c=x.card;p.hand=p.hand.filter(h=>h!==x);ev(st,{t:"play",pi,uid:x.uid,name:c.full});
+      const c=x.card;p.hand=p.hand.filter(h=>h!==x);if(p.discard.includes(x)){p.discard=p.discard.filter(h=>h!==x);if(isChar(x))a={...a,fromGy:1}}ev(st,{t:"play",pi,uid:x.uid,name:c.full});
       if(c.type==="song"){p.songTurn=st.turnNo;fire(st,opp(pi),"onOppSong",x)}if(c.type==="action"||c.type==="song")p.actionsN=(p.actionsN||0)+1;
       if(a.singer!=null){const s=find(st,a.singer).inst;s.exerted=true;log(st,`${s.card.name} sings ${c.name}.`);if(s.card.onSing.length)resolve(st,pi,s.card.onSing,autoTarget(st,pi,s.card.onSing),s)}
       else if(a.singers){a.singers.split(",").forEach(u=>find(st,+u).inst.exerted=true);log(st,`Characters sing ${c.name} together.`)}
       else if(a.shift!=null&&a.alt===2){}
+      else if(a.shift!=null&&a.alt===3){gyBottom(st,pi,isChar,c.shiftGy)}
       else if(a.shift!=null&&a.alt){for(let k=0;k<c.shiftAlt.n;k++){const y=p.hand.filter(z=>c.shiftAlt.test(z)).sort((u,v)=>discardPri(v)-discardPri(u))[0];if(y){p.hand.splice(p.hand.indexOf(y),1);p.discard.push(y);fire(st,pi,"onSelfDiscard",y)}}}
-      else if(a.free){}
+      else if(a.free){if(a.free===2&&c.freeAlt)c.freeAlt.pay(st,pi,x)}
       else if(a.shift!=null){payInk(p,c.kw.shift)}else{payInk(p,costOf(st,pi,c));if(p.disc&&p.disc.length)p.disc=p.disc.filter(d=>!(d.type===c.type||d.type==="action"&&c.type==="song"))}
       if(c.type==="action"||c.type==="song"){if(a.singer==null&&!a.singers)log(st,`${p.name} plays ${c.full}.`);p.play.forEach(y=>y.card.onActionPlayed.forEach(e=>{if(e.k==="selfStr")y.tStr+=e.n}));resolve(st,pi,c.onPlay,a.target,x,true);p.discard.push(x);yp(st,pi,x);
         if(a.singer!=null&&c.type==="song"){const sg=find(st,a.singer);if(sg&&sg.inst.card.replaySong&&st.winner==null){resolve(st,pi,c.onPlay,autoTarget(st,pi,c.onPlay),x,true);p.discard.splice(p.discard.indexOf(x),1);p.deck.unshift(x);log(st,`${c.name} is sung again, then put on the bottom of the deck.`)}}break}
       x.playedOn=st.turnNo;reset(x);if(c.type==="character"){p.playedChars=p.playedTurn===st.turnNo?(p.playedChars||0)+1:1;p.playedTurn=st.turnNo}
       if(a.shift!=null){const b=find(st,a.shift).inst;const idx=p.play.indexOf(b);x.damage=b.damage;x.exerted=b.exerted;x.playedOn=b.playedOn;x.at=b.at;x.under=[...b.under,b];b.under=[];x.shiftedOn=st.turnNo;b.at=null;p.play[idx]=x;log(st,`${p.name} shifts ${c.full} onto ${b.card.name}.`)}
-      else{p.play.push(x);if(c.entersExerted||a.exerted&&c.kw.bodyguard)x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
+      else{p.play.push(x);if(c.entersExerted||a.exerted&&c.kw.bodyguard||a.fromGy&&p.play.some(y=>y.card.gyPlay))x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);if(c.type==="character")fire(st,opp(pi),"onOppPlayChar",x);break}
-    case"quest":{x.exerted=true;if(x.card.actTax)payInk(p,1);const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);
+    case"quest":{x.exerted=true;if(x.card.onExertYT)resolve(st,pi,x.card.onExertYT,null,x);if(x.card.actTax)payInk(p,1);const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);
       if(x.card.kw.support){const others=p.play.filter(c=>isChar(c)&&c!==x);if(others.length){const t=(a.support!=null&&others.find(o=>o.uid===a.support))||others.sort((a,b)=>b.card.lore-a.card.lore)[0];t.tStr+=strOf(x);log(st,`Support: ${t.card.name} gets +${strOf(x)} strength.`);fire(st,pi,"onSupportChosen",t)}}
       gain(st,pi,lv);if(p.questedT!==st.turnNo){p.questedT=st.turnNo;p.questedBy=x.uid}else p.questedBy=-1;for(const h of (p.hooks||[]))if(h.on==='quest'&&st.winner==null)resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),x);if(st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyQuest){if(y===x&&!h.cls)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.test&&!h.test(x,y,st))continue;if(h.once){if(y.onceT===st.turnNo)continue;y.onceT=st.turnNo}resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),y)}
       if(x.at!=null&&st.winner==null){const L=p.play.find(y=>y.uid===x.at);if(L&&L.card.onQuestHere){st._ctx=x;resolve(st,pi,L.card.onQuestHere,autoTarget(st,pi,L.card.onQuestHere),L)}}

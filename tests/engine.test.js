@@ -75,7 +75,7 @@ t("Player choices: choose-one mode, decline optional effect, Bodyguard exerted, 
   const y = hand(st, 0, C({ type: ["Action"], text: "You may draw a card." })); assert.ok(E.legalActions(st).some(a => a.uid === y.uid && a.decline)); const h = st.players[0].hand.length; E.act(st, { t: "play", uid: y.uid, decline: true }); assert.equal(st.players[0].hand.length, h - 1);
   const bg = hand(st, 0, C({ text: "Bodyguard" })); E.act(st, { t: "play", uid: bg.uid, exerted: true }); assert.ok(bg.exerted);
   const lt = hand(st, 0, C({ type: ["Action"], cost: 0, text: "Draw 2 cards, then choose and discard a card." })); E.act(st, { t: "play", uid: lt.uid }); assert.ok(st.pending);
-  assert.ok(E.legalActions(st).every(a => a.t === "discard")); const d = st.players[0].hand[0]; E.act(st, { t: "discard", uid: d.uid }); assert.ok(!st.pending); assert.ok(st.players[0].discard.includes(d));
+  assert.equal(st.pending.kind, "ask"); assert.ok(E.legalActions(st).every(a => a.t === "ask")); const d = st.pending.items[0]; E.act(st, { t: "ask", i: 0 }); assert.ok(!st.pending); assert.ok(st.players[0].discard.includes(d));
 });
 t("AI difficulty levels all finish games (Easy, Normal, Hard)", () => {
   const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard); const res = {};
@@ -132,7 +132,7 @@ t("Set 4 spot: discard-Shift, Atlantica sing bonus, Vision Slab blocks healing, 
 });
 // ---- categorized pass spot tests
 const RN = n => E.normCard(window.LORCANA_GAME_CARDS.cards.find(c => (c.version ? c.name + " - " + c.version : c.name) === n));
-t("Category: discard-cost activated ability (Elsa - Fierce Protector) and random discard", () => { const st = game(); ink(st, 0, 1); const el = put(st, 0, RN("Elsa - Fierce Protector")); const d = put(st, 1, C({})); hand(st, 0, C({})); const a = E.legalActions(st).find(x => x.t === "act" && x.uid === el.uid); assert.ok(a); E.act(st, a); assert.ok(d.exerted); assert.equal(st.players[0].hand.length, 7); });
+t("Category: discard-cost activated ability (Elsa - Fierce Protector) and random discard", () => { const st = game(); ink(st, 0, 1); const el = put(st, 0, RN("Elsa - Fierce Protector")); const d = put(st, 1, C({})); hand(st, 0, C({})); const a = E.legalActions(st).find(x => x.t === "act" && x.uid === el.uid); assert.ok(a); E.act(st, a); if (st.pending) E.act(st, { t: "ask", i: 0 }); assert.ok(d.exerted); assert.equal(st.players[0].hand.length, 7); });
 t("Category: Donald Duck - Flustered Sorcerer makes opponents need 25 lore", () => { const st = game(); put(st, 1, RN("Donald Duck - Flustered Sorcerer")); const c = put(st, 0, C({ lore: 5 })); st.players[0].lore = 18; E.act(st, { t: "quest", uid: c.uid }); assert.equal(st.winner, null); });
 t("Category: John Smith forces targeting; Piercing Attack ignores Resist", () => { const st = game(); ink(st, 0, 3); const js = put(st, 1, RN("John Smith - Undaunted Protector")); const o = put(st, 1, C({ willpower: 9, text: "Resist +2" })); const tg = E.targets(st, 0, { opp: true, kind: "char" }); assert.deepEqual(tg, [js.uid]); st.players[1].play = st.players[1].play.filter(x => x !== js); const pa = hand(st, 0, RN("Piercing Attack")); E.act(st, { t: "play", uid: pa.uid, target: o.uid }); assert.equal(o.damage, 2); });
 t("Category: Gantu taxes actions/items; Thievery drains lore", () => { const st = game(); put(st, 1, RN("Gantu - Experienced Enforcer")); const th = RN("Thievery"); assert.equal(E.costOf(st, 0, th), th.cost + 2); st.players[1].lore = 3; ink(st, 0, th.cost + 2); const h = hand(st, 0, th); E.act(st, E.legalActions(st).find(a => a.uid === h.uid && a.t === "play")); assert.equal(st.players[1].lore, 2); assert.equal(st.players[0].lore, 1); });
@@ -141,7 +141,45 @@ t("Category: free alternate cost (Scrooge exerts 4 items) and 2+ discards this t
 t("Category: conditional static compiler (Li Shang +2 STR while damaged; Wendy needs another Pirate)", () => { const st = game(); const li = put(st, 0, RN("Li Shang - Newly Promoted")); const base = E.strOf(li); li.damage = 1; assert.equal(E.strOf(li), base + 2); const w = put(st, 0, RN("Wendy Darling - Courageous Captain")); const s0 = E.strOf(w); put(st, 0, C({ classifications: ["Pirate"] })); assert.equal(E.strOf(w), s0 + 1); });
 t("Category: Temporary Shift returns to hand at end of turn, base stays", () => { const st = game(); const base = put(st, 0, C({ name: "Grandma Wu", willpower: 5 })); const gw = hand(st, 0, RN("Grandma Wu - Fierce Red Panda")); ink(st, 0, 4); const a = E.legalActions(st).find(x => x.uid === gw.uid && x.shift === base.uid); assert.ok(a); E.act(st, a); assert.ok(st.players[0].play.some(x => x.uid === gw.uid)); E.act(st, { t: "end" }); assert.ok(st.players[0].hand.some(x => x.uid === gw.uid)); assert.ok(st.players[0].play.some(x => x.uid === base.uid)); });
 t("Category: can't be challenged until your next turn (Safe and Sound)", () => { const st = game(); const me = put(st, 0, C({}), { exerted: true }); const ss = hand(st, 0, RN("Safe and Sound")); ink(st, 0, ss.card.cost); E.act(st, { t: "play", uid: ss.uid, target: me.uid }); E.act(st, { t: "end" }); const att = put(st, 1, C({})); assert.ok(!E.legalActions(st).some(a => a.t === "challenge" && a.target === me.uid)); });
-t("Category: play triggers check the played card (Tinker Bell - Insistent Fairy)", () => { const st = game(); put(st, 0, RN("Tinker Bell - Insistent Fairy")); ink(st, 0, 2); const small = hand(st, 0, C({ strength: 1, cost: 1 })); E.act(st, { t: "play", uid: small.uid }); assert.equal(st.players[0].lore, 0); const big = hand(st, 0, C({ strength: 5, cost: 1 })); E.act(st, { t: "play", uid: big.uid }); assert.equal(st.players[0].lore, 2); });
+t("Category: play triggers check the played card (Tinker Bell - Insistent Fairy)", () => { const st = game(); put(st, 0, RN("Tinker Bell - Insistent Fairy")); ink(st, 0, 2); const small = hand(st, 0, C({ strength: 1, cost: 1 })); E.act(st, { t: "play", uid: small.uid }); assert.equal(st.players[0].lore, 0); const big = hand(st, 0, C({ strength: 5, cost: 1 })); E.act(st, { t: "play", uid: big.uid }); assert.equal(st.pending && st.pending.kind, "ask"); E.act(st, { t: "ask", i: 0 }); assert.equal(st.players[0].lore, 2); });
 t("Category: damage counters (Malicious, Mean, and Scary ignores Resist)", () => { const st = game(); const o = put(st, 1, C({ willpower: 5, text: "Resist +1" })); const m = hand(st, 0, RN("Malicious, Mean, and Scary")); ink(st, 0, m.card.cost); E.act(st, { t: "play", uid: m.uid }); assert.equal(o.damage, 1); });
+
+// ---- human choice pickers
+t("Pickers: source scan finds no unconverted auto-choices in the rules engine", () => {
+  const src = require("fs").readFileSync(require("path").join(__dirname, "../js/engine.js"), "utf8"), rules = src.slice(0, src.indexOf("/* ---------- AI ----------"));
+  const bad = [];
+  // 1) every sort used to pick a card must be an AI ordering (annotated /*nc:...*/) — human choices go through CH()
+  for (const m of rules.matchAll(/\.sort\(/g)) { const tail = rules.slice(m.index, m.index + 400); if (!/^\.sort\([^/]*\)\/\*nc:/.test(tail)) bad.push("sort@" + rules.slice(0, m.index).split("\n").length + ": " + rules.slice(Math.max(0, m.index - 60), m.index + 40)); }
+  // 2) no direct "first match" picks of a card to act on from a zone (except annotated / identity lookups)
+  for (const m of rules.matchAll(/(?:hand|discard|deck)\.find\((?!\w+=>\w+\.uid===)/g)) { const ctx = rules.slice(m.index, m.index + 160); if (!/\/\*nc:/.test(ctx) && !/find\((?:c|d|h|z|y)=>(?:c|d|h|z|y)\.uid===/.test(ctx)) bad.push("find@" + rules.slice(0, m.index).split("\n").length + ": " + rules.slice(Math.max(0, m.index - 80), m.index + 60)); }
+  for (const m of rules.matchAll(/(?:play|OWNCH\(st,[^)]*\)|hereChars\(st,[^)]*\))\.find\(/g)) { const ctx = rules.slice(m.index, m.index + 200); if (/^play\.find\((\w+)=>\1\.uid===/.test(ctx) || /\/\*nc:/.test(ctx)) continue; bad.push("pfind@" + rules.slice(0, m.index).split("\n").length + ": " + ctx.slice(0, 80)); }
+  // 3) old auto-discard loops are gone
+  for (const m of rules.matchAll(/hand\.sort\(|hand\.shift\(\)/g)) bad.push("handloop@" + rules.slice(0, m.index).split("\n").length);
+  // 4) remaining st.human checks are only the sanctioned ones (humanAsk, legal-action variants, dig picker)
+  const hum = [...rules.matchAll(/st\.human\[/g)].length; if (hum > 5) bad.push("st.human checks: " + hum);
+  assert.deepEqual(bad, []);
+});
+t("Pickers: AI never gets a pending choice; human seats always do (random full games)", () => {
+  const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard).filter(c => c.custom || c.status === "full");
+  let rng = 3; const r = () => (rng = (rng * 16807) % 2147483647) / 2147483647; const deck = () => Array.from({ length: 60 }, () => pool[Math.floor(r() * pool.length)]);
+  let asked = 0;
+  for (let g = 0; g < 25; g++) { const st = E.newGame({ decks: [deck(), deck()], seed: 300 + g, first: g % 2, human: [false, false] }); E.mulligan(st, 0, []); E.mulligan(st, 1, []);
+    let n = 0; while (st.winner == null && n < 5000) { assert.equal(st.pending, null, "AI got a pending choice"); E.act(st, E.aiChoose(st)); n++; } }
+  for (let g = 0; g < 25; g++) { const st = E.newGame({ decks: [deck(), deck()], seed: 600 + g, first: g % 2, human: [true, true] }); E.mulligan(st, 0, []); E.mulligan(st, 1, []);
+    let n = 0; while (st.winner == null && n < 6000) { if (st.pending) { assert.ok(st.pending.kind === "ask" || st.pending.kind === "dig", "pending kind " + st.pending.kind); asked++; const A = E.legalActions(st); assert.ok(A.length); E.act(st, A[Math.floor(r() * A.length)]); } else E.act(st, E.aiChoose(st)); n++; } assert.notEqual(st.winner, null); }
+  assert.ok(asked > 20, "pickers shown: " + asked);
+});
+t("Pickers: discard choice, up-to-N targets and 'opponent makes you choose' go to the human", () => {
+  let st = game(); ink(st, 0, 9); const hd = hand(st, 0, RN("Hypnotic Deduction")); for (let i = 0; i < 3; i++) hand(st, 0, C({})); E.act(st, { t: "play", uid: hd.uid });
+  assert.equal(st.pending.kind, "ask"); assert.equal(st.pending.n, 2); assert.equal(st.pending.src, "Hypnotic Deduction"); const top = st.pending.items[1]; E.act(st, { t: "ask", i: 0 }); E.act(st, { t: "ask", i: 1 }); assert.equal(st.pending, null); assert.equal(st.players[0].deck[st.players[0].deck.length - 1], top);
+  st = game(); ink(st, 0, 9); const o = [1, 2, 3].map(() => put(st, 1, C({ strength: 1 }))); const gb = hand(st, 0, RN("Grab Your Bow")); E.act(st, { t: "play", uid: gb.uid });
+  assert.equal(st.pending.min, 0); E.act(st, { t: "ask", i: 2 }); E.act(st, { t: "askDone" }); assert.equal(st.players[1].play.length, 2); assert.ok(!st.players[1].play.includes(o[2]));
+  st = game(); st.players[0].hand = []; hand(st, 0, C({})); hand(st, 0, C({})); ink(st, 1, 9); st.active = 1; const sc = hand(st, 1, RN("Sudden Chill")); E.act(st, { t: "play", uid: sc.uid }); assert.equal(st.pending.pi, 0); assert.equal(st.pending.kind, "ask");
+});
+t("Pickers: reveal-hand shows the opponent's cards; 'of your choice' discards let you pick", () => {
+  const st = game(); st.players[1].hand = []; const a = hand(st, 1, C({ type: ["Action"] })); hand(st, 1, C({})); ink(st, 0, 9); const ti = hand(st, 0, RN("Timon - Snowball Swiper")); E.act(st, { t: "play", uid: ti.uid });
+  assert.equal(st.pending.kind, "ask"); assert.equal(st.pending.opts.length, 2); assert.equal(st.pending.opts.filter(o => o.dis).length, 1); E.act(st, { t: "ask", i: 0 }); assert.ok(st.players[1].discard.includes(a));
+  const d = hand(st, 0, RN("Dolores Madrigal - Hears Everything")); E.act(st, { t: "play", uid: d.uid }); assert.ok(st.pending.reveal); assert.deepEqual(E.legalActions(st), [{ t: "askDone" }]); E.act(st, { t: "askDone" }); assert.equal(st.pending, null);
+});
 
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

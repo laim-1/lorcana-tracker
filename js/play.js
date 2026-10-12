@@ -164,17 +164,36 @@ function renderBoard(){
    <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const pl=myTurn()&&!S.tm&&legalFor(h.uid).some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,0,h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    <div id="toast" class="toast"></div></div>
-   ${st.pending&&st.pending.pi===0?discardPrompt():""}${st.winner!=null?endScreen():""}`;
+   ${st.pending&&st.pending.pi===0&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
   animate(rects);
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
-function discardPrompt(){const P=S.st.pending,p=S.st.players[0];
-  if(P.kind==="dig"||P.kind==="free"){const cards=(P.kind==="dig"?P.top.map(u=>p.deck.find(d=>d.uid===u)):P.opts.map(u=>p.hand.find(h=>h.uid===u))).filter(Boolean);
-    return`<div class="modal"><div class="mbox"><h3>${esc(P.why)}</h3><p class="meta">${P.kind==="dig"?"Glowing cards can go to your hand. The rest go to the bottom of your deck.":"Tap a card to play it for free."}</p>
-    <div class="bgrid">${cards.map(c=>{const ok=P.opts.includes(c.uid);return`<button class="bcard ${ok?"in":"out"}" ${ok?`data-a="ppick" data-uid="${c.uid}"`:"disabled"}><img src="${esc(c.card.img)}" alt="${esc(c.card.full)}"></button>`}).join("")}</div>
-    <button class="wide" data-a="pdone">${P.kind==="dig"?"Done":"Skip"}</button></div></div>`}
-  return`<div class="modal"><div class="mbox"><h3>${esc(S.st.pending.why)}</h3><p class="meta">Tap a card to discard it (${S.st.pending.n} left).</p>
-  <div class="bgrid">${p.hand.map(h=>`<button class="bcard" data-a="pdisc" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"></button>`).join("")}</div></div></div>`}
+function discardPrompt(){return pickerSheet()}
+// One bottom-sheet picker for every choice the engine asks the player to make (st.pending with pi 0).
+function pickerSheet(){const st=S.st,P=st.pending,p=st.players[0];if(!P)return"";
+  const key=st.log.length+":"+(P.why||"")+":"+(P.src||"");if(S.pkKey!==key){S.pkKey=key;S.pkSel=[];S.pkMin=false}
+  let head=P.src||"",prompt=P.why||"Make a choice",items=[],multi=false,btn="",sub="";
+  const cardBtn=(c,attrs,cls,extra)=>`<button class="pkc ${cls||""}" ${attrs}><img src="${esc(c.card?c.card.img:c.img)}" alt="${esc(c.card?c.card.full:c.full)}">${extra||""}</button>`;
+  if(P.kind==="ask"){const n=P.n,min=P.min;multi=n>1;
+    if(P.reveal){sub=`${P.opts.length} card${P.opts.length===1?"":"s"}`;btn=`<button class="wide primary" data-a="pkok">OK</button>`}
+    else{sub=multi?`Choose ${min<n?"up to ":""}${n} (${S.pkSel.length} selected)`:(min===0?"Choose one, or skip":"Choose one");
+      if(multi)btn=`<button class="wide primary" data-a="pkgo" ${S.pkSel.length>=min&&S.pkSel.length>0||min===0?"":"disabled"}>${S.pkSel.length?"Confirm":"Choose none"}</button>`;
+      else if(min===0)btn=`<button class="wide" data-a="pkskip">Skip</button>`}
+    items=P.opts.map((o,i)=>{const sel=S.pkSel.includes(i),dis=o.dis||P.reveal;
+      if(o.card){const own=o.owner!=null&&o.owner!==0?`<span class="pkown">Opponent</span>`:"";
+        return cardBtn(o,dis?"disabled":`data-a="pkpick" data-i="${i}"`,(sel?"sel ":"")+(o.dis?"out":""),`${own}${o.label?`<span class="pklab">${esc(o.label)}</span>`:""}`)}
+      return`<button class="pkopt ${sel?"sel":""}" ${dis?"disabled":`data-a="pkpick" data-i="${i}"`}>${esc(o.label)}</button>`})}
+  else if(P.kind==="dig"||P.kind==="free"){const cards=(P.kind==="dig"?P.top.map(u=>p.deck.find(d=>d.uid===u)):P.opts.map(u=>p.hand.find(h=>h.uid===u))).filter(Boolean);
+    sub=P.kind==="dig"?"Glowing cards can go to your hand; the rest go "+(P.rest==="discard"?"to your discard":P.rest==="top"?"back on top":"to the bottom of your deck"):"Tap a card to play it for free";
+    items=cards.map(c=>{const ok=P.opts.includes(c.uid);return cardBtn(c,ok?`data-a="ppick" data-uid="${c.uid}"`:"disabled",ok?"in":"out")});btn=`<button class="wide" data-a="pdone">${P.kind==="dig"?"Done":"Skip"}</button>`}
+  else{sub=`Tap a card to discard it (${P.n} left)`;items=p.hand.map(h=>cardBtn(h,`data-a="pdisc" data-uid="${h.uid}"`))}
+  {const nm=head.split(" - ")[0];for(const k of [head,nm])if(k&&prompt.startsWith(k+": ")){prompt=prompt.slice(k.length+2);break}}
+  const thumb=P.srcCard&&P.kind==="ask"&&(P.reveal||P.opts.every(o=>!o.card))?`<img class="pkthumb" src="${esc(P.srcCard.img)}" alt="${esc(P.srcCard.full)}" data-a="pkzoom">`:"";
+  const lab=items.length&&P.opts&&P.opts.every&&P.kind==="ask"&&P.opts.every(o=>!o.card);
+  return`<div class="pkscrim ${S.pkMin?"min":""}"></div><div class="pk ${S.pkMin?"min":""}" role="dialog" aria-label="${esc(prompt)}">
+    <button class="pkbar" data-a="pkmin">${S.pkMin?"Show choice":"Hide to see the board"}</button>
+    ${thumb}${head?`<div class="pksrc">${esc(head)}</div>`:""}<div class="pkq">${esc(prompt.charAt(0).toUpperCase()+prompt.slice(1))}</div>${sub?`<div class="pksub">${esc(sub)}</div>`:""}
+    <div class="${lab?"pkopts":"pkgrid"}">${items.join("")}</div>${btn}</div>`}
 function endScreen(){const st=S.st,w=st.winner===0,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
   return`<div class="modal end"><div class="mbox"><h2 class="${w?"win":"lose"}">${w?"Victory":"Defeat"}</h2><p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
@@ -248,8 +267,9 @@ function tapTile(uid){
   if(S.sel===uid){S.sel=null;renderBoard();return}
   S.sel=uid;renderBoard();if(!legalFor(uid).length)toast(f.zone==="hand"?"You can't play this card right now":"This card can't act right now");
 }
+function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();if(S.st.active===1&&!S.st.pending&&S.st.winner==null)aiLoop()}
 function aiLoop(){if(S.busy)return;S.busy=true;
-  const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st)renderBoard();return}
+  const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
     if(st.pending&&st.pending.pi===0){S.busy=false;renderBoard();return} // wait for the player's discard
     if(st.active!==1){S.busy=false;renderBoard();return}
     const a=E.aiChoose(st,SET.level);if(!a){S.busy=false;return}
@@ -287,6 +307,11 @@ function onClick(e){const b=e.target.closest("[data-a]");if(!b)return;const a=b.
     case"grp":runGroup(b.dataset.k);break;case"cancel":S.tm=null;renderBoard();break;
     case"zoom":zoom(+b.dataset.uid);break;
     case"chs":{const o=S.chs[+b.dataset.i];closeSheet();o.fn();break}
+    case"pkpick":{const P=S.st.pending,i=+b.dataset.i;if(!P)break;if(P.n>1){const k=S.pkSel.indexOf(i);if(k>=0)S.pkSel.splice(k,1);else if(S.pkSel.length<P.n)S.pkSel.push(i);renderBoard();break}E.act(S.st,{t:"ask",i});afterPick();break}
+    case"pkgo":{const P=S.st.pending;if(!P)break;for(const i of S.pkSel)if(S.st.pending===P)E.act(S.st,{t:"ask",i});if(S.st.pending===P)E.act(S.st,{t:"askDone"});S.pkSel=[];afterPick();break}
+    case"pkskip":case"pkok":E.act(S.st,{t:"askDone"});afterPick();break;
+    case"pkzoom":{const c=S.st.pending&&S.st.pending.srcCard;if(c)sheet(`<img src="${esc(c.img)}" alt="${esc(c.full)}" style="width:100%;border-radius:14px"><button class="wide" data-a="close">Close</button>`);break}
+    case"pkmin":S.pkMin=!S.pkMin;renderBoard();break;
     case"ppick":E.act(S.st,{t:"pick",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
     case"pdone":E.act(S.st,{t:"pickDone"});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
     case"pdisc":E.act(S.st,{t:"discard",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;

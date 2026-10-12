@@ -122,4 +122,12 @@ t("Set 3 spot: Tiana's Palace protects, Hydra retaliates, Map of Treasure Planet
   const st3 = game(); ink(st3, 0, 2); const l = put(st3, 0, E.normCard({ id: "L9", name: "Spot", type: ["Location"], cost: 1, willpower: 5, lore: 1, move_cost: 2, text: "" })); put(st3, 0, real("Map of Treasure Planet")); const m = put(st3, 0, C({})); ink(st3, 0, 0); st3.players[0].ink.forEach((k, i) => k.exerted = i > 0); assert.ok(has(st3, { t: "move", uid: m.uid, loc: l.uid }));
   const st4 = game(); ink(st4, 0, 9); const mine = put(st4, 0, C({ strength: 4 })), theirs = put(st4, 1, C({ strength: 4 })); const k = hand(st4, 0, real("Kida - Protector of Atlantis")); E.act(st4, { t: "play", uid: k.uid }); assert.equal(E.strOf(theirs), 1); E.act(st4, { t: "end" }); assert.equal(E.strOf(theirs), 1); E.act(st4, { t: "end" }); assert.equal(E.strOf(theirs), 4);
 });
+t("Set 4 spot: discard-Shift, Atlantica sing bonus, Vision Slab blocks healing, Hidden Inkcaster", () => {
+  const st = game(); const base = put(st, 0, R({ name: "Flotsam & Jetsam" })); const fj = hand(st, 0, real("Flotsam & Jetsam - Entangling Eels")); hand(st, 0, C({})); hand(st, 0, C({}));
+  const a = E.legalActions(st).find(x => x.uid === fj.uid && x.alt); assert.ok(a); E.act(st, a); assert.ok(st.players[0].play.includes(fj));
+  const st2 = game(); ink(st2, 0, 3); const at = put(st2, 0, real("Atlantica - Concert Hall")); const sg = put(st2, 0, C({ cost: 2 })); E.act(st2, { t: "move", uid: sg.uid, loc: at.uid }); st2.players[0].ink.forEach(k => k.exerted = true); sg.playedOn = -5;
+  const song = hand(st2, 0, R({ type: ["Action", "Song"], cost: 4, text: "Draw a card." })); assert.ok(E.legalActions(st2).some(x => x.uid === song.uid && x.singer === sg.uid));
+  const st3 = game(); put(st3, 1, real("Vision Slab")); const h = put(st3, 0, C({}), { damage: 2 }); ink(st3, 0, 3); const r = hand(st3, 0, R({ type: ["Action"], text: "Remove up to 3 damage from chosen character." })); E.act(st3, { t: "play", uid: r.uid, target: h.uid }); assert.equal(h.damage, 2);
+  const st4 = game(); put(st4, 0, real("Hidden Inkcaster")); const ni = hand(st4, 0, C({ inkwell: false })); assert.ok(has(st4, { t: "ink", uid: ni.uid }));
+});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

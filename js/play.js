@@ -304,5 +304,5 @@ function onClick(e){const b=e.target.closest("[data-a]");if(!b)return;const a=b.
   }
 }
 window.LorcanaPlay={async open(){ensureRoot();root.hidden=false;document.body.classList.add("playing");render();await loadPool();if(S.screen==="menu"||!S.st&&S.screen!=="builder")S.screen=S.screen==="builder"?"builder":"menu";render()},
-  close(){if(root){root.hidden=true;document.body.classList.remove("playing");closeSheet()}},state:()=>S};
+  close(){if(root){root.hidden=true;document.body.classList.remove("playing");closeSheet()}},state:()=>S,render:()=>render()};
 })();

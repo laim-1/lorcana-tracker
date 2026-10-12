@@ -38,7 +38,7 @@ function deckFromSel(sel){
 }
 /* ---------- rendering ---------- */
 function bar(title,right=""){return`<div class="pbar"><button class="pbtn ghost" data-a="quit">${S.screen==="menu"?"Close":"Back"}</button><div class="ptitle">${esc(title)}</div>${right}</div>`}
-function render(){
+function render(){if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
   if(!pool){root.innerHTML=bar("Play")+`<p class="empty">Loading all cards...</p>`;return}
   ({menu:renderMenu,builder:renderBuilder,mull:renderMull,board:renderBoard,coin:renderCoin}[S.screen])();
 }
@@ -165,7 +165,7 @@ function renderBoard(){
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,0,h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    <div id="toast" class="toast"></div></div>
    ${st.pending&&st.pending.pi===0&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  animate(rects);
+  animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
 function discardPrompt(){return pickerSheet()}
@@ -205,18 +205,20 @@ function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEa
 function ghost(r,html,cls){const g=document.createElement("div");g.className="ghost "+(cls||"");g.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;g.innerHTML=html;document.body.appendChild(g);return g}
 function floatText(r,text,cls){const g=document.createElement("div");g.className="ftext "+cls;g.textContent=text;g.style.left=(r.left+r.width/2)+"px";g.style.top=(r.top+r.height/3)+"px";document.body.appendChild(g);setTimeout(()=>g.remove(),1300);return g}
 const elOf=u=>root.querySelector(`[data-uid="${u}"]`),rectOf=(m,u)=>m.get(u)?.r||elOf(u)?.getBoundingClientRect();
+const fxp=(el,o)=>{if(window.FX&&el)FX.at(el,o)};
+function tickLore(){S.lastLore=S.lastLore||[null,null];for(const pi of[0,1]){const el=document.querySelector(`#lore-${pi} b`);if(!el)continue;const v=S.st.players[pi].lore,o=S.lastLore[pi];S.lastLore[pi]=v;if(o==null||o===v||(window.FX&&FX.low)){continue}const t0=performance.now(),d=700;el.textContent=o;const step=t=>{const k=Math.min(1,(t-t0-450)/d);if(k>=0)el.textContent=Math.round(o+(v-o)*k);if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}}
 function animate(old){const evs=(S.st.events||[]).splice(0);if(!evs.length)return;const slow=SET.speed==="slow"?1.4:SET.speed==="fast"?.7:1;
   for(const e of evs){
-    if(e.t==="play"){const el=elOf(e.uid);if(el){el.classList.add("enter")}sfx("play")}
-    if(e.t==="ink"){const o=old.get(e.uid),to=document.getElementById("ink-"+e.pi)?.getBoundingClientRect();if(o&&to){const g=ghost(o.r,o.html,"");g.animate([{transform:"none",opacity:1},{transform:`translate(${to.left-o.r.left}px,${to.top-o.r.top}px) scale(.3)`,opacity:.2}],{duration:600*slow,easing:"ease-in"}).onfinish=()=>g.remove()}sfx("ink")}
-    if(e.t==="quest"){const r=rectOf(old,e.uid),to=document.getElementById("lore-"+e.pi)?.getBoundingClientRect();if(r&&to){const g=floatText(r,"+"+e.n,"lore");g.animate([{transform:"translate(-50%,0) scale(1)"},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top-r.height/3}px) scale(.6)`,opacity:.3}],{duration:900*slow,easing:"cubic-bezier(.5,0,.6,1)",fill:"forwards"})}sfx("quest")}
+    if(e.t==="play"){const el=elOf(e.uid);if(el){el.classList.add("enter");setTimeout(()=>fxp(el,{n:22,colors:[FX.COL.gold,FX.COL.ink],speed:2.4}),120)}sfx("play")}
+    if(e.t==="ink"){setTimeout(()=>fxp(document.getElementById("ink-"+e.pi),{n:16,color:"blue",speed:1.6,gravity:-.02}),450*slow);const o=old.get(e.uid),to=document.getElementById("ink-"+e.pi)?.getBoundingClientRect();if(o&&to){const g=ghost(o.r,o.html,"");g.animate([{transform:"none",opacity:1},{transform:`translate(${to.left-o.r.left}px,${to.top-o.r.top}px) scale(.3)`,opacity:.2}],{duration:600*slow,easing:"ease-in"}).onfinish=()=>g.remove()}sfx("ink")}
+    if(e.t==="quest"){const r=rectOf(old,e.uid),to=document.getElementById("lore-"+e.pi)?.getBoundingClientRect();if(r&&to&&window.FX)FX.flyTo(r.left+r.width/2,r.top+r.height/2,to.left+to.width/2,to.top+to.height/2,{n:10+4*e.n});if(r&&to){const g=floatText(r,"+"+e.n,"lore");g.animate([{transform:"translate(-50%,0) scale(1)"},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top-r.height/3}px) scale(.6)`,opacity:.3}],{duration:900*slow,easing:"cubic-bezier(.5,0,.6,1)",fill:"forwards"})}sfx("quest")}
     if(e.t==="lore"){const l=document.getElementById("lore-"+e.pi);l&&l.animate([{transform:"scale(1)"},{transform:"scale(1.25)"},{transform:"scale(1)"}],{duration:500,delay:500*slow})}
     if(e.t==="challenge"){const a=rectOf(old,e.a),d=rectOf(old,e.d),el=elOf(e.a);if(a&&d){const dx=(d.left-a.left)*.7,dy=(d.top-a.top)*.7;
       (el||ghost(a,old.get(e.a)?.html||"","")).animate([{transform:"none"},{transform:`translate(${dx}px,${dy}px) scale(1.08)`,offset:.45},{transform:"none"}],{duration:650*slow,easing:"ease-in-out"})}sfx("hit")}
-    if(e.t==="damage"){const r=rectOf(old,e.uid);if(r)setTimeout(()=>floatText(r,"-"+e.n,"dmg"),300*slow)}
-    if(e.t==="banish"){const o=old.get(e.uid);if(o&&!elOf(e.uid)){const g=ghost(o.r,o.html,"ban");setTimeout(()=>g.animate([{opacity:1,transform:"none",filter:"none"},{opacity:0,transform:"scale(.6) rotate(-12deg)",filter:"grayscale(1) brightness(2)"}],{duration:700*slow,fill:"forwards"}).onfinish=()=>g.remove(),350*slow)}sfx("ban")}
+    if(e.t==="damage"){const r=rectOf(old,e.uid);if(r)setTimeout(()=>{floatText(r,"-"+e.n,"dmg");if(window.FX)FX.burst(r.left+r.width/2,r.top+r.height/2,{n:14+4*e.n,colors:[FX.COL.red,FX.COL.white],speed:3})},300*slow)}
+    if(e.t==="banish"){const o=old.get(e.uid);if(o&&window.FX)setTimeout(()=>FX.burst(o.r.left+o.r.width/2,o.r.top+o.r.height/2,{n:36,colors:[FX.COL.ink,"60,40,140"],speed:1.4,gravity:-.03,size:3,smoke:true}),350*slow);if(o&&!elOf(e.uid)){const g=ghost(o.r,o.html,"ban");setTimeout(()=>g.animate([{opacity:1,transform:"none",filter:"none"},{opacity:0,transform:"scale(.6) rotate(-12deg)",filter:"grayscale(1) brightness(2)"}],{duration:700*slow,fill:"forwards"}).onfinish=()=>g.remove(),350*slow)}sfx("ban")}
     if(e.t==="draw"&&e.pi===0){const el=elOf(e.uid);if(el)el.classList.add("drawn")}
-    if(e.t==="turn"){const b=root.querySelector(".banner");b&&b.animate([{transform:"scaleX(.6)",opacity:.2},{transform:"none",opacity:1}],{duration:400});sfx("turn")}
+    if(e.t==="turn"){const b=root.querySelector(".banner");if(b){b.classList.remove("sweep");void b.offsetWidth;b.classList.add("sweep")}b&&b.animate([{transform:"scaleX(.6)",opacity:.2},{transform:"none",opacity:1}],{duration:400});sfx("turn")}
   }}
 let AC=null;function sfx(k){if(!SET.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();
   const f={play:440,ink:330,quest:660,hit:160,ban:110,turn:520,flip:600}[k]||400;o.frequency.value=f;o.type=k==="hit"||k==="ban"?"square":"sine";g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.25);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+.26)}catch(e){}}
@@ -282,6 +284,7 @@ function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}
 function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on":""}" data-a="set" data-k="${k}" data-v="${v}">${l}</button>`;
   return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}</div>
   <h4>AI speed</h4><div class="opts">${pill("speed","slow","Slow")}${pill("speed","normal","Normal")}${pill("speed","fast","Fast")}</div>
+  <h4>Effects</h4><div class="opts"><button class="opt ${window.FX&&!FX.low?"on":""}" data-a="fxlow" data-v="0">Full</button><button class="opt ${window.FX&&FX.low?"on":""}" data-a="fxlow" data-v="1">Low power</button></div>
   <h4>Sound</h4><div class="opts">${pill("sound",false,"Off")}${pill("sound",true,"On")}</div>
   <h4>Tips</h4><div class="opts"><button class="opt" data-a="tipsagain">Show tips again</button></div>`}
 function pauseMenu(){S.paused=true;sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
@@ -311,6 +314,7 @@ function onClick(e){const b=e.target.closest("[data-a]");if(!b)return;const a=b.
     case"pkgo":{const P=S.st.pending;if(!P)break;for(const i of S.pkSel)if(S.st.pending===P)E.act(S.st,{t:"ask",i});if(S.st.pending===P)E.act(S.st,{t:"askDone"});S.pkSel=[];afterPick();break}
     case"pkskip":case"pkok":E.act(S.st,{t:"askDone"});afterPick();break;
     case"pkzoom":{const c=S.st.pending&&S.st.pending.srcCard;if(c)sheet(`<img src="${esc(c.img)}" alt="${esc(c.full)}" style="width:100%;border-radius:14px"><button class="wide" data-a="close">Close</button>`);break}
+    case"fxlow":if(window.FX)FX.setLow(v==="1");if(S.paused)pauseMenu();else renderMenu();break;
     case"pkmin":S.pkMin=!S.pkMin;renderBoard();break;
     case"ppick":E.act(S.st,{t:"pick",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
     case"pdone":E.act(S.st,{t:"pickDone"});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;

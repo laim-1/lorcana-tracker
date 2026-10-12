@@ -53,7 +53,7 @@ function renderCards(){if(!cur)return;const {cards}=cur,q=$("#q").value.toLowerC
  $("#fcount").textContent=n||"";
  const list=sortCards(cards.filter(c=>(!q||(c.name+" "+(c.version||"")).toLowerCase().includes(q))&&(!F.rarity||c.rarity==F.rarity)&&(!F.ink||c.ink==F.ink)&&(!F.own||(F.own=="owned")==!!own(c.id))));
  app.innerHTML=`<div class="sumline" id="sumline"></div><div class="sortnote">${list.length} cards · ${CARD_SORTS[sort.cards].toLowerCase()}${source=="live"?"":" · "+srcLabel()}</div>`+(list.length?`<div class="grid">${list.map(c=>{const v=col[c.id]||{n:0,f:0};
-  return `<div class="card ${own(c.id)?"owned":""}"><img loading="lazy" src="${esc(c.img)}" alt="${esc(c.name)} ${esc(c.version)}">
+  return `<div class="card ${own(c.id)?"owned":""}"><div class="art ${/Enchanted|Iconic|Epic|Legendary/.test(c.rarity||"")||(col[c.id]&&col[c.id].f)?"shiny":""} ${/Enchanted|Iconic/.test(c.rarity||"")?"ench":""}"><img loading="lazy" src="${esc(c.img)}" alt="${esc(c.name)} ${esc(c.version)}"></div>
   <div class="cn">#${esc(c.collector_number)} ${esc(c.name)}</div><div class="cv">${esc(c.version)}</div>
   <div class="tags"><span class="tag r-${slug(c.rarity)}">${esc(pretty(c.rarity))}</span>${c.ink?`<span class="tag">${esc(c.ink)}</span>`:""}</div>
   ${["n","f"].map(k=>`<div class="qty"><div class="ql"><span>${k=="n"?"Normal":"Foil"}</span><span class="pr">${money(k=="n"?c.usd:c.usd_foil)}</span></div><div class="stepper">
@@ -61,11 +61,12 @@ function renderCards(){if(!cur)return;const {cards}=cur,q=$("#q").value.toLowerC
    <button class="big plus" data-id="${c.id}" data-k="${k}" data-d="1" aria-label="Add ${k=="n"?"normal":"foil"}">+</button></div></div>`).join("")}
   ${c.tcg?`<a class="tcg" href="https://www.tcgplayer.com/product/${encodeURIComponent(c.tcg)}" target="_blank" rel="noopener">View on TCGplayer</a>`:""}</div>`}).join("")}</div>`:`<p class="empty">No cards match.</p>`);summary()}
 app.addEventListener("click",e=>{const b=e.target.closest(".big");if(!b)return;const id=b.dataset.id,k=b.dataset.k,c=col[id]||{n:0,f:0};
- c[k]=Math.max(0,c[k]+ +b.dataset.d);if(c.n+c.f)col[id]=c;else delete col[id];save();
+ const was=c.n+c.f;c[k]=Math.max(0,c[k]+ +b.dataset.d);if(c.n+c.f)col[id]=c;else delete col[id];save();if(+b.dataset.d>0&&window.FX){const card=b.closest(".card"),im=card&&card.querySelector("img");FX.at(b,{n:26,colors:k=="f"?[FX.COL.gold,FX.COL.blue,FX.COL.ink,FX.COL.white]:[FX.COL.gold,FX.COL.white],speed:2.8,size:2.8});if(im)FX.at(im,{n:was?14:34,colors:[FX.COL.gold,FX.COL.white,FX.COL.blue],speed:was?2:3.2,size:2.6});if(!was&&im){card.classList.remove("got");void card.offsetWidth;card.classList.add("got")}}
  b.parentNode.querySelector("b").textContent=c[k];b.closest(".card").classList.toggle("owned",c.n+c.f>0);summary()});
 function openSheet(html,bind){$("#sheet-body").innerHTML=html;bind&&bind();$("#scrim").hidden=false;$("#sheet").classList.add("open");$("#sheet").setAttribute("aria-hidden","false")}
 function closeSheet(){$("#sheet").classList.remove("open");$("#scrim").hidden=true;$("#sheet").setAttribute("aria-hidden","true")}
 $("#scrim").onclick=closeSheet;
+$("#sheet-body").addEventListener("click",e=>{const b=e.target.closest("[data-fx]");if(!b||!window.FX)return;FX.setLow(b.dataset.fx==="1");b.parentNode.querySelectorAll("[data-fx]").forEach(x=>x.classList.toggle("on",x===b))});
 function filterSheet(){const u=k=>[...new Set(cur.cards.map(c=>c[k]).filter(Boolean))].sort((a,b)=>k=="rarity"?RAR.indexOf(a)-RAR.indexOf(b):a.localeCompare(b));
  const grp=(t,k,vals)=>`<h4>${t}</h4><div class="opts">${[["","All"],...vals].map(([v,l])=>`<button class="opt ${F[k]==v?"on":""}" data-k="${k}" data-v="${esc(v)}">${esc(l)}</button>`).join("")}</div>`;
  openSheet(grp("Collection","own",[["owned","Owned"],["missing","Missing"]])+grp("Rarity","rarity",u("rarity").map(r=>[r,pretty(r)]))+grp("Ink","ink",u("ink").map(r=>[r,r]))
@@ -76,14 +77,14 @@ $("#filter-btn").onclick=filterSheet;
 $("#sort-btn").onclick=()=>{const k=cur?"cards":"sets",opts=cur?CARD_SORTS:SET_SORTS;
  openSheet(`<h4>Sort ${k}</h4><div class="list">${Object.entries(opts).map(([v,l])=>`<button class="li ${sort[k]==v?"on":""}" data-v="${v}">${l}</button>`).join("")}</div>`,
   ()=>$("#sheet-body").querySelectorAll(".li").forEach(b=>b.onclick=()=>{sort[k]=b.dataset.v;saveSort();closeSheet();cur?renderCards():home()}))};
-$("#menu-btn").onclick=()=>openSheet(`<h4>Collection data</h4><p class="meta">${srcLabel()}</p>
+$("#menu-btn").onclick=()=>openSheet(`<h4>Effects</h4><div class="opts"><button class="opt ${window.FX&&!FX.low?"on":""}" data-fx="0">Full</button><button class="opt ${window.FX&&FX.low?"on":""}" data-fx="1">Low power</button></div><h4>Collection data</h4><p class="meta">${srcLabel()}</p>
  <button class="wide primary" id="exp">Export JSON</button><button class="wide" id="imp">Import JSON</button><button class="wide" id="cls">Close</button>`,
  ()=>{$("#exp").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),collection:col},null,1)],{type:"application/json"}));a.download="lorcana-collection.json";a.click()};
   $("#imp").onclick=()=>$("#import").click();$("#cls").onclick=closeSheet});
 $("#import").onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());col=d.collection||d;save();closeSheet();route();alert("Collection imported")}catch(x){alert("Invalid JSON file")}e.target.value=""};
 $("#q").oninput=renderCards;
 $("#back").onclick=()=>{location.hash=""};
-function route(){if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
+function route(){if(window.FX&&location.hash!=="#play")FX.mode("tracker");document.body.classList.remove("enter-anim");void document.body.offsetWidth;document.body.classList.add("enter-anim");if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
 $("#play-btn").onclick=()=>location.hash="play";
 window.onhashchange=route;loadSets().then(route);
 // Cache control: remove any service workers/caches, and reload when a newer deploy is live.

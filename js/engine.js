@@ -1161,6 +1161,35 @@ Object.assign(DEFS_EXTRA,{
  "Cower Before Me!":c=>{c.onPlay=[FN((st,pi)=>OWNCH(st,opp(pi)).filter(y=>!K(y,"ward")).sort((a,b)=>strOf(b)-strOf(a)).slice(0,2).forEach(y=>noChal(st,y)),4)]},
  "Attack of the Vine!":c=>{c.onPlay=[FN((st,pi)=>OWNCH(st,pi).filter(y=>hasCls(y,"floodborn")).forEach(y=>{y.grants.push({kw:"resist 2",until:"turnEnd",src:pi});y.chReady=st.turnNo}),3)]},
 });
+
+const putDmg=(st,x,n)=>{if(!x||n<=0||find(st,x.uid)?.zone!=="play")return;x.damage+=n;if(x.damage>=wilOf(x))banish(st,x)};
+const moveDmg=(st,from,to,n)=>{if(!from||!to)return 0;const k=Math.min(n,from.damage);if(!k)return 0;from.damage-=k;putDmg(st,to,k);return k};
+const healAmt=st=>typeof st._ctx==="number"?st._ctx:1;
+Object.assign(DEFS_EXTRA,{
+ "Go Go Tomago - Darting Dynamo":c=>c.onPlay.push(FN((st,pi,self,x)=>{const P=st.players[pi];if(inkAvail(P)>=2&&x&&x.damage){payInk(P,2);gain(st,pi,x.damage)}},(st,pi,x)=>x&&x.damage>=2?x.damage*3:-2,T_({opp:true,state:"damaged"}),{may:true})),
+ "Baymax - Armored Companion":c=>{const e=FN((st,pi,self)=>{if(noHeal(st))return;const y=OWNCH(st,pi).filter(z=>z!==self&&z.damage).sort((a,b)=>b.damage-a.damage)[0];if(!y)return;const r0=Math.min(2,y.damage);y.damage-=r0;st.players[pi].healT=st.turnNo;fire(st,pi,"onHeal",r0);gain(st,pi,r0)},4,null,{may:true});c.onPlay.push(e);c.onQuest.push(e)},
+ "Mr. Smee - Captain of the Jolly Roger":c=>c.onPlay.push(FN((st,pi,self,x)=>damage(st,x,OWNCH(st,pi).filter(y=>y!==self&&hasCls(y,"pirate")).length),(st,pi,x)=>x?2:0,T_({opp:true}),{may:true})),
+ "Treasure Mountain - Azurite Sea Island":c=>c.onStart.push(FN((st,pi,self)=>{const n=self?hereChars(st,self).length:0;if(n)dmgBest(st,pi,n)},3)),
+ "Mother Gothel - Vain Sorceress":c=>{const e=FN((st,pi)=>{const f=OWNCH(st,pi).filter(y=>y.damage).sort((a,b)=>b.damage-a.damage)[0],t=OWNCH(st,opp(pi)).filter(y=>!K(y,"ward")).sort((a,b)=>(wilOf(a)-a.damage)-(wilOf(b)-b.damage))[0];moveDmg(st,f,t,1)},2,null,{may:true});c.onAllyChallenge.push(e);c.onChallenge.push(e)},
+ "Queen of Hearts - Unpredictable Bully":c=>{const e=FN((st,pi)=>{const y=st._ctx;if(y&&isChar(y))putDmg(st,y,1)},1);c.onYouPlay.push({type:"character",eff:[FN((st,pi)=>{const P=st.players[pi];putDmg(st,P.play[P.play.length-1],1)},-1)]});c.onOppPlayChar=[e]},
+ "Minnie Mouse - Daring Defender":c=>c.statics.push({stat:"str",cond:"always",count:x=>x.damage}),
+ "Nero - Fearsome Crocodile":c=>{c.acts=[{ink:0,req:(st,pi,x)=>x.damage>0,eff:[FN((st,pi,self,x)=>moveDmg(st,self,x,1),3,T_({opp:true}))]}]},
+ "Everybody's Got a Weakness":c=>{c.onPlay=[FN((st,pi,self,x)=>{let n=0;for(const y of OWNCH(st,pi).filter(z=>z.damage))n+=moveDmg(st,y,x,1);draw(st,pi,n)},(st,pi,x)=>OWNCH(st,pi).filter(y=>y.damage).length*4,T_({opp:true}))]},
+ "Alice - Clumsy as Can Be":c=>c.onQuest.push(FN((st,pi,self)=>{for(const q of [0,1])OWNCH(st,q).filter(y=>y!==self).forEach(y=>putDmg(st,y,1))},(st,pi)=>OWNCH(st,opp(pi)).length*2-OWNCH(st,pi).length*2)),
+ "Maui - Stubborn Trickster":c=>c.onBanish.push({k:"modal",opts:[[FN((st,pi)=>OWNCH(st,opp(pi)).forEach(y=>putDmg(st,y,2)),(st,pi)=>OWNCH(st,opp(pi)).length*4)],[FN((st,pi)=>st.players[opp(pi)].play.filter(isItem).forEach(y=>banish(st,y)),(st,pi)=>st.players[opp(pi)].play.filter(isItem).length*5)],[FN((st,pi)=>st.players[opp(pi)].play.filter(isLoc).forEach(y=>banish(st,y)),(st,pi)=>st.players[opp(pi)].play.filter(isLoc).length*6)]],optText:["2 damage counters on all opposing characters","Banish all opposing items","Banish all opposing locations"]}),
+ "The Dodo - Outlandish Storyteller":c=>c.statics.push({stat:"str",cond:"always",count:x=>x.damage}),
+ "Most Everyone's Mad Here":c=>{c.onPlay=[FN((st,pi,self,x)=>{gain(st,pi,x.damage);banish(st,x)},(st,pi,x)=>x?x.damage*4+(x.owner!==pi?instVal(x):-instVal(x)):0,T_({kind:"char"}))]},
+ "Can't Hold It Back Anymore":c=>{c.onPlay=[FN((st,pi,self,x)=>{x.exerted=true;for(const q of [0,1])for(const y of OWNCH(st,q))if(y!==x)moveDmg(st,y,x,y.damage)},(st,pi,x)=>x?st.players.flatMap(P=>P.play.filter(isChar)).reduce((v,y)=>v+(y!==x?y.damage:0),0)*2:0,T_({opp:true}))]},
+ "Can't Hold it Back Anymore":c=>DEFS_EXTRA["Can't Hold It Back Anymore"](c),
+ "Bellwether - Master Manipulator":c=>c.onBanish.push(FN((st,pi,self,x,ctx)=>{const y=ctx.src;if(y&&y._wasChal&&st._defender===y.uid)OWNCH(st,opp(pi)).forEach(z=>putDmg(st,z,1))},4)),
+ "Shere Khan - Fearsome Tiger":c=>c.onQuest.push(FN((st,pi,self,x)=>{banish(st,x);const y=OWNCH(st,opp(pi)).filter(z=>z!==x&&!K(z,"ward"))[0];if(y)putDmg(st,y,1)},(st,pi,x)=>x?instVal(x):0,T_({opp:true,state:"damaged"}))),
+ "Malicious, Mean, and Scary":c=>{c.onPlay=[FN((st,pi)=>OWNCH(st,opp(pi)).forEach(y=>putDmg(st,y,1)),(st,pi)=>OWNCH(st,opp(pi)).length*2)]},
+ "Ohana Means Family":c=>{c.onPlay=[FN((st,pi,self,x)=>{if(noHeal(st))return;const n=x.damage;x.damage=0;if(n){st.players[pi].healT=st.turnNo;fire(st,pi,"onHeal",n)}draw(st,pi,n)},(st,pi,x)=>x?x.damage*3:0,T_({own:true,helpful:true}))]},
+ "Nani's Payback":c=>{c.onPlay=[FN((st,pi,self,x)=>{loseLore(st,st.players[opp(pi)],Math.min(4,x?x.damage:0));draw(st,pi,1)},(st,pi,x)=>x?Math.min(4,x.damage)*4+2:2,T_({own:true}))]},
+ "Isabela Madrigal - Caring Cultivator":c=>{c.onHeal=[FN((st,pi)=>gain(st,pi,healAmt(st)),4)]},
+ "Merida - Formidable Archer":c=>{c.onPlay.push(FN(()=>{},0))},
+ "I'm Never Not by Your Side":c=>{c.onPlay=[FN((st,pi)=>{if(noHeal(st))return;let left=4,tot=0;for(const y of OWNCH(st,pi).sort((a,b)=>b.damage-a.damage)){const k=Math.min(left,y.damage);y.damage-=k;left-=k;tot+=k}if(tot){st.players[pi].healT=st.turnNo;fire(st,pi,"onHeal",tot)}gain(st,pi,tot)},(st,pi)=>Math.min(4,OWNCH(st,pi).reduce((v,y)=>v+y.damage,0))*4)]},
+});
 // @@DEFS_INSERT
 const DEFS={
  "Prince Phillip - Dragonslayer":c=>c.onBanish.push(FN((st,pi)=>{if(st._challenger!=null&&st._defender!=null){const f=find(st,st._defender);if(f&&f.zone==="play"&&st.players[f.pi]!==st.players[pi]&&(st._chalSrc===pi))banish(st,f.inst)}},3)),
@@ -1442,7 +1471,8 @@ function banish(st,x){
 }
 function fire(st,pi,key,ctx){if(key==="onSelfDiscard"&&ctx&&ctx.card&&st.active===pi&&st.players[pi].discard.includes(ctx)&&(ctx.card.playOnDiscard||st.players[pi].play.some(y=>y.card.gyOnDiscardChar&&isChar(ctx)))&&inkAvail(st.players[pi])>=costOf(st,pi,ctx.card)&&st.winner==null){const P=st.players[pi];payInk(P,costOf(st,pi,ctx.card));toHandFrom(P,"discard",ctx);playFree(st,pi,ctx)}for(const y of [...st.players[pi].play]){const h=y.card[key];if(h&&h.length&&st.winner==null&&find(st,y.uid)?.zone==='play'){st._ctx=ctx;resolve(st,pi,h,autoTarget(st,pi,h),y)}}}
 function damage(st,x,n,pierce){if(n<=0)return;const inChal=st._challenger===x.uid||st._defender===x.uid;
-  if(x.card.dmgImmune&&x.card.dmgImmune(st,x,inChal))return;if(inChal&&x.chalImmT===st.turnNo)return;if(x.card.firstDmgShield&&st.active!==x.owner&&x.shieldT!==st.turnNo){x.shieldT=st.turnNo;return}if(x.supShieldT!=null&&x.supShieldT>=0&&!x._supUsed){x._supUsed=true;x.supShieldT=null;return}{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=pierce?n:Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0){st.players[x.owner].dmgT=st.turnNo;st._ctx=x;fire(st,x.owner,"onAllyDamaged",x);fire(st,opp(x.owner),'onOppDamaged',x)}if(d>0&&x.card.onDamagedSelf&&find(st,x.uid)?.zone==='play'){st._ctx=d;resolve(st,x.owner,x.card.onDamagedSelf,autoTarget(st,x.owner,x.card.onDamagedSelf),x)}if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
+  if(x.card.dmgImmune&&x.card.dmgImmune(st,x,inChal))return;if(inChal&&x.chalImmT===st.turnNo)return;if(x.card.firstDmgShield&&st.active!==x.owner&&x.shieldT!==st.turnNo){x.shieldT=st.turnNo;return}if(x.supShieldT!=null&&x.supShieldT>=0&&!x._supUsed){x._supUsed=true;x.supShieldT=null;return}{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=pierce?n:Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0&&st._fromAct&&x.owner!==st.active&&isChar(x)&&!st._meridaNow&&st.players[st.active].play.some(y=>y.card.name==="Merida"&&y.card.version==="Formidable Archer")){st._meridaNow=1;try{damage(st,x,2)}finally{st._meridaNow=0}}
+  if(d>0){st.players[x.owner].dmgT=st.turnNo;st._ctx=x;fire(st,x.owner,"onAllyDamaged",x);fire(st,opp(x.owner),'onOppDamaged',x)}if(d>0&&x.card.onDamagedSelf&&find(st,x.uid)?.zone==='play'){st._ctx=d;resolve(st,x.owner,x.card.onDamagedSelf,autoTarget(st,x.owner,x.card.onDamagedSelf),x)}if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
 
 /* targets */
 function namesOf(x){return[x.card.name.toLowerCase(),...(x.card.alias||[])]}
@@ -1486,7 +1516,7 @@ function putInk(st,q,y,ex=true){if(!y)return;const P=st.players[q];reset(y);y.ex
 function noHeal(st){return st.players.some(P=>P.play.some(y=>y.card.noHeal))}
 function singVal(x){const ks=K(x,"singer");let v=typeof ks==="number"&&ks>x.card.cost?ks:x.card.kw.singer!=null?x.card.kw.singer:x.card.cost;if(CUR&&x.tSingT===CUR.turnNo)v+=x.tSing||0;for(const a of auras(x))if(a.singBonus)v+=a.singBonus;for(const s of hereStatics(x))if(s.singBonus)v+=s.singBonus;return v}
 function discardPri(x){return x.card.cost+(x.card.inkable?0:1)}
-function resolve(st,pi,effs,tgt,src,fromAction){if((st._depth||0)>30)return;st._depth=(st._depth||0)+1;try{resolve0(st,pi,effs,tgt,src,fromAction)}finally{st._depth--}}
+function resolve(st,pi,effs,tgt,src,fromAction){if((st._depth||0)>30)return;st._depth=(st._depth||0)+1;const pf=st._fromAct;if(fromAction)st._fromAct=true;try{resolve0(st,pi,effs,tgt,src,fromAction)}finally{st._depth--;st._fromAct=pf}}
 function resolve0(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
   let last=null;
   for(const e of effs){

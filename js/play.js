@@ -124,17 +124,33 @@ function cardTile(x,pi,size){const c=x.card,st=S.st,tm=S.tm;
    ${x.at?`<span class="atl">AT ${esc((E.find(st,x.at)?.inst.card.name||"").slice(0,10).toUpperCase())}</span>`:""}${x.under&&x.under.length?`<span class="und">+${x.under.length}</span>`:""}</button>`}
 const K0=(x,k)=>E.K?E.K(x,k):x.card.kw[k];
 function lorePips(n){let h="";for(let i=1;i<=20;i++)h+=`<i class="${i<=n?"on":""}"></i>`;return h}
-function hud(pi){const p=S.st.players[pi],ink=E.inkAvail(p),top=p.discard[p.discard.length-1];
-  return`<div class="hud h${pi}">${pi===1?`<button class="mbtn" data-a="pause">Menu</button>`:""}
-   <div class="loretrk" id="lore-${pi}"><b>${p.lore}</b><span>${pi===1?"AI · "+LEVELS[SET.level].toUpperCase():"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div>
-   <div class="pile ink" id="ink-${pi}" title="Inkwell"><span class="stack s${Math.min(3,p.ink.length)}"></span><b>${ink}<small>/${p.ink.length}</small></b><span class="pl">INK</span></div>
-   <div class="pile deck" id="deck-${pi}"><span class="back"></span><b>${p.deck.length}</b><span class="pl">DECK</span></div>
-   <button class="pile disc" data-a="disc" data-pi="${pi}" id="disc-${pi}">${top?`<img src="${esc(top.card.img)}" alt="">`:`<span class="empty"></span>`}<b>${p.discard.length}</b><span class="pl">DISCARD</span></button>
-   ${pi===1?`<div class="pile hand1"><span class="fan">${"<i></i>".repeat(Math.min(7,p.hand.length))}</span><b>${p.hand.length}</b><span class="pl">HAND</span></div>`:""}
+const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>',
+ ink:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3.5 4.6 6 8 6 11a6 6 0 0 1-12 0c0-3 2.5-6.4 6-11z" fill="currentColor"/></svg>',
+ deck:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 22h9a2 2 0 0 0 2-2V7" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+ disc:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
+ hand:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="9" height="13" rx="2" transform="rotate(-12 7 12)" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="11" y="5" width="9" height="13" rx="2" transform="rotate(10 15 11)" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>'};
+function hud(pi){const p=S.st.players[pi],ink=E.inkAvail(p);
+  return`<div class="hud h${pi}">${pi===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
+   <div class="loretrk" id="lore-${pi}"><b>${p.lore}</b><div><span>${pi===1?"AI":"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
+   <div class="chips"><div class="chip ink pile" id="ink-${pi}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
+   <div class="chip pile" id="deck-${pi}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
+   <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pi}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
+   ${pi===1?`<div class="chip pile" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:""}</div>
   </div>`}
-function row(pi,kind){const p=S.st.players[pi];const xs=p.play.filter(x=>kind==="chars"?x.card.type==="character":x.card.type!=="character");
-  const size=kind==="chars"?(pi===0?"lg":"md"):"sm";
-  return`<div class="row ${kind} r${pi}">${xs.map(x=>cardTile(x,pi,size)).join("")||`<span class="rowlbl">${kind==="chars"?(pi===0?"Your characters":"Opponent characters"):"Items and locations"}</span>`}</div>`}
+function zone(pi){const p=S.st.players[pi],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
+  return`<div class="zone z${pi}">${pi===0&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}
+   <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||`<span class="rowlbl">${pi===0?"Your characters":"Opponent characters"}</span>`}</div>
+   ${pi===1&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}</div>`}
+function fitBoard(){const gb=root.querySelector(".gb");if(!gb)return;
+  for(const r of gb.querySelectorAll(".row.chars")){const tiles=[...r.children].filter(x=>x.classList.contains("ct"));if(!tiles.length)continue;
+    const H=r.clientHeight-16,W=r.parentNode.clientWidth-20,g=8,n=tiles.length,exr=tiles.filter(t=>t.classList.contains("ex")).length/n,u=.716+(1-.716)*exr;
+    let best=0,rows=1;for(let k=1;k<=3;k++){const per=Math.ceil(n/k),h=Math.min((H-g*(k-1))/k,(W-g*(per-1))/(per*u+.15),165);if(h>best+6){best=h;rows=k}}
+    best=Math.max(best,70);r.style.setProperty("--ch",Math.floor(best)+"px");r.classList.toggle("wrap",rows>1);r.classList.toggle("scroll",false)}
+  for(const s of gb.querySelectorAll(".strip"))s.style.setProperty("--ch","56px");
+  const hd=gb.querySelector(".hand2");if(hd){hd.classList.toggle("big",hd.children.length>=8);const cs=[...hd.children],n=cs.length,W=hd.clientWidth-40,w=cs[0]?cs[0].offsetWidth:78;
+    let ov=n>1?Math.max(0,(n*w-W)/(n-1)):0;ov=Math.min(ov,w-(n>=8?36:44));hd.style.setProperty("--ov",(-ov)+"px");hd.classList.toggle("scroll",n*w-(n-1)*ov>W+1);
+    cs.forEach((c,i)=>{const k=n>1?i/(n-1)-.5:0;c.style.setProperty("--rot",(k*(n>3?5:3)).toFixed(2)+"deg");c.style.setProperty("--dy",(Math.abs(k)*k*0+k*k*10).toFixed(1)+"px");c.style.zIndex=c.classList.contains("sel")?50:i+1})}}
+addEventListener("resize",()=>{if(S.screen==="board")fitBoard()});
 function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner over2">GAME OVER</div>`;
   if(S.tm)return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`;
   const my=st.active===0;const canEnd=my&&!st.pending&&E.legalActions(st).some(a=>a.t==="end");
@@ -158,14 +174,14 @@ function renderBoard(){
   const st=S.st,me=st.players[0];
   const rects=snapRects();
   root.innerHTML=`<div class="gb">
-   ${hud(1)}${row(1,"items")}${row(1,"chars")}
+   ${hud(1)}${zone(1)}
    ${banner()}
-   ${row(0,"chars")}${row(0,"items")}${hud(0)}
+   ${zone(0)}${hud(0)}
    <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const pl=myTurn()&&!S.tm&&legalFor(h.uid).some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,0,h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    <div id="toast" class="toast"></div></div>
    ${st.pending&&st.pending.pi===0&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
+  fitBoard();if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
 function discardPrompt(){return pickerSheet()}

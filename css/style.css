@@ -275,3 +275,49 @@ svg{width:20px;height:20px;flex:none}
 h1{font-size:17px;letter-spacing:.2px;min-width:0}.crest{width:16px;height:16px}
 .icon-btn.play{padding:0 12px}
 h1{font-size:15px}
+
+/* ================= Board layout v3 ================= */
+.gb{gap:0;padding-left:0;padding-right:0}
+.hud{flex:0 0 auto;display:flex;align-items:center;gap:8px;min-height:52px;margin:4px 8px;padding:4px 8px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));border:1px solid rgba(190,170,255,.22)}
+.hud .mbtn{min-width:44px;width:44px;padding:0}
+.loretrk{flex-direction:row;align-items:center;gap:8px;min-width:0;margin-right:auto}
+.loretrk b,.h1 .loretrk b{font-size:32px;min-width:34px;text-align:center}
+.loretrk span{font-size:10px;display:block}
+.chips{display:flex;gap:5px}
+.chip.pile{width:auto;height:40px;min-width:46px;flex-direction:row;justify-content:center;gap:4px;padding:0 8px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid rgba(190,170,255,.25);box-shadow:none;color:#c6bde6}
+.chip.pile svg{width:16px;height:16px}.chip.ink svg{color:#6fb4ff}.chip.pile b{font-size:15px}
+.chip.disc{min-height:44px;height:44px}
+.zone{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:2px 8px;border-radius:16px;background:radial-gradient(120% 90% at 50% 50%,rgba(70,60,150,.16),rgba(10,8,30,.25));border:1px solid rgba(245,201,85,.16);box-shadow:inset 0 0 30px rgba(0,0,0,.3);overflow:hidden}
+.zone .row.chars{flex:1 1 0;min-height:0;border:0!important;justify-content:center;gap:8px;padding:8px 10px;--ch:120px}
+.zone .row.chars.scroll{justify-content:flex-start}
+.strip{flex:0 0 auto;display:flex;gap:6px;justify-content:center;overflow-x:auto;padding:5px 8px;background:rgba(0,0,0,.22);scrollbar-width:none}
+.z1 .strip{border-top:1px solid rgba(245,201,85,.14)}.z0 .strip{border-bottom:1px solid rgba(245,201,85,.14)}
+.ct.lg,.ct.sm{width:calc(var(--ch)*.716);height:var(--ch)}
+.ct.ex{width:var(--ch)}
+.ct.ex .art{inset:auto;left:50%;top:50%;width:calc(var(--ch)*.716);height:var(--ch);transform:translate(-50%,-50%) rotate(90deg)}
+.ct.sm.ex .art{transform:translate(-50%,-50%) rotate(90deg)}
+.ct.sel{transform:translateY(-4px)}
+.stats b,.stats i{font-size:13px;min-width:24px;padding:1px 5px}
+.ct.ex .stats{bottom:calc(var(--ch)*.14 - 4px)}
+.ct.ex .dtok{top:calc(var(--ch)*.14 - 6px)}
+.banner{flex:0 0 auto;margin:4px 8px!important;min-height:52px}
+.handwrap{flex:0 0 auto;background:none}
+.hand2{display:flex;gap:0;padding:16px 10px max(10px,env(safe-area-inset-bottom));justify-content:center;overflow-x:auto;overflow-y:visible}
+.hand2.scroll{justify-content:flex-start}
+.hc{flex:0 0 78px;height:109px;margin-left:var(--ov,0px);transform:rotate(var(--rot,0)) translateY(var(--dy,0));transform-origin:50% 120%}
+.hc:first-child{margin-left:0}
+.hc.sel{transform:translateY(-18px)!important;z-index:50}
+.hc .mcost{left:2px;top:2px}
+.abar{bottom:calc(100% + 6px)}
+@media (max-height:800px){.hud{min-height:48px;margin:3px 8px}.banner{min-height:46px}.hc{flex-basis:70px;height:98px}.hand2{padding-top:12px}}
+.ftext.dmg{background:none;right:auto;height:auto;min-width:0;border-radius:0;display:block}
+.zone .row.chars,.strip{width:100%;max-width:100%;min-width:0}
+.zone .row.chars.wrap{flex-wrap:wrap;align-content:center;row-gap:8px;overflow-y:auto}
+.hand2{padding-left:20px;padding-right:20px}
+.chips{gap:4px;flex:none}.chip.pile{min-width:40px;padding:0 6px;gap:3px}
+.loretrk{flex:1 1 auto;overflow:hidden}.loretrk>div{min-width:0;overflow:hidden}
+.pips{grid-template-columns:repeat(10,6px)}.pips i{width:6px}
+.abar{position:static;border-radius:14px;margin:0 8px;border:1px solid rgba(245,201,85,.5)}
+@media (max-width:375px){.loretrk span{font-size:9px}.chip.pile{min-width:36px;padding:0 5px}.chip.pile b{font-size:14px}.chip.pile svg{width:14px;height:14px}}
+.hand2.big .hc{flex-basis:66px;height:92px}
+.handwrap{flex-shrink:0}.hand2{min-height:135px;align-items:flex-start}.hand2.big{min-height:118px}@media (max-height:800px){.hand2{min-height:122px}}

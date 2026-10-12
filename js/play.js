@@ -221,7 +221,7 @@ function runGroup(k){const acts=groupActs(legalFor(S.sel))[k];if(!acts)return;co
   if(k==="shift")return startTargeting(acts,"shift",`Choose which ${c.name} to shift onto`);
   if(k==="sing")return startTargeting(acts,"singer",`Choose a character to sing ${c.name}`);
   if(k==="singT")return doAct(acts[0]);
-  if(k==="act"){const idx=[...new Set(acts.map(a=>a.i))];if(idx.length>1)return choose("Which ability?",idx.map(i=>({label:(c.acts[i].ink?c.acts[i].ink+" ink: ":"")+"Ability "+(i+1),fn:()=>effectFlow(acts.filter(a=>a.i===i),c)})));return effectFlow(acts,c)}
+  if(k==="act"){const idx=[...new Set(acts.map(a=>a.i))];if(idx.length>1)return choose("Which ability?",idx.map(i=>({label:(E.actsOf(f.inst)[i].ink?E.actsOf(f.inst)[i].ink+" ink: ":"")+"Ability "+(i+1),fn:()=>effectFlow(acts.filter(a=>a.i===i),c)})));return effectFlow(acts,c)}
   if(k==="quest"){if(c.kw.support&&S.st.players[0].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).length){const base=acts[0];
       return startTargeting(S.st.players[0].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).map(x=>({...base,support:x.uid})),"support",`Support: choose a character to get +${E.strOf(f.inst)} strength`)}
     return effectFlow(acts,c)}

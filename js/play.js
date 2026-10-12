@@ -168,7 +168,12 @@ function renderBoard(){
   animate(rects);
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
-function discardPrompt(){const p=S.st.players[0];return`<div class="modal"><div class="mbox"><h3>${esc(S.st.pending.why)}</h3><p class="meta">Tap a card to discard it (${S.st.pending.n} left).</p>
+function discardPrompt(){const P=S.st.pending,p=S.st.players[0];
+  if(P.kind==="dig"||P.kind==="free"){const cards=(P.kind==="dig"?P.top.map(u=>p.deck.find(d=>d.uid===u)):P.opts.map(u=>p.hand.find(h=>h.uid===u))).filter(Boolean);
+    return`<div class="modal"><div class="mbox"><h3>${esc(P.why)}</h3><p class="meta">${P.kind==="dig"?"Glowing cards can go to your hand. The rest go to the bottom of your deck.":"Tap a card to play it for free."}</p>
+    <div class="bgrid">${cards.map(c=>{const ok=P.opts.includes(c.uid);return`<button class="bcard ${ok?"in":"out"}" ${ok?`data-a="ppick" data-uid="${c.uid}"`:"disabled"}><img src="${esc(c.card.img)}" alt="${esc(c.card.full)}"></button>`}).join("")}</div>
+    <button class="wide" data-a="pdone">${P.kind==="dig"?"Done":"Skip"}</button></div></div>`}
+  return`<div class="modal"><div class="mbox"><h3>${esc(S.st.pending.why)}</h3><p class="meta">Tap a card to discard it (${S.st.pending.n} left).</p>
   <div class="bgrid">${p.hand.map(h=>`<button class="bcard" data-a="pdisc" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"></button>`).join("")}</div></div></div>`}
 function endScreen(){const st=S.st,w=st.winner===0,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
@@ -282,6 +287,8 @@ function onClick(e){const b=e.target.closest("[data-a]");if(!b)return;const a=b.
     case"grp":runGroup(b.dataset.k);break;case"cancel":S.tm=null;renderBoard();break;
     case"zoom":zoom(+b.dataset.uid);break;
     case"chs":{const o=S.chs[+b.dataset.i];closeSheet();o.fn();break}
+    case"ppick":E.act(S.st,{t:"pick",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
+    case"pdone":E.act(S.st,{t:"pickDone"});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
     case"pdisc":E.act(S.st,{t:"discard",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
     case"disc":{const p=S.st.players[+b.dataset.pi];sheet(`<h4>${p.name==="You"?"Your":"AI"} discard (${p.discard.length})</h4><div class="bgrid">${p.discard.slice().reverse().map(x=>`<div class="bcard"><img src="${esc(x.card.img)}" alt="${esc(x.card.full)}"></div>`).join("")||`<p class="meta">Empty</p>`}</div><button class="wide" data-a="close">Close</button>`);break}
     case"pause":pauseMenu();break;case"resume":S.paused=false;closeSheet();if(S.st.active===1)aiLoop();break;

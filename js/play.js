@@ -38,7 +38,7 @@ function deckFromSel(sel){
 }
 /* ---------- rendering ---------- */
 function bar(title,right=""){return`<div class="pbar"><button class="pbtn ghost" data-a="quit">${S.screen==="menu"?"Close":"Back"}</button><div class="ptitle">${esc(title)}</div>${right}</div>`}
-function render(){if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
+function render(){clearFx();if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
   if(!pool){root.innerHTML=bar("Play")+`<p class="empty">Loading all cards...</p>`;return}
   ({menu:renderMenu,builder:renderBuilder,mull:renderMull,board:renderBoard,coin:renderCoin}[S.screen])();
 }
@@ -165,7 +165,7 @@ function renderBoard(){
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,0,h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    <div id="toast" class="toast"></div></div>
    ${st.pending&&st.pending.pi===0&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
+  if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
 function discardPrompt(){return pickerSheet()}
@@ -202,7 +202,8 @@ function endScreen(){const st=S.st,w=st.winner===0,s0=(st.stats||[{},{}])[0],s1=
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||""})});
   for(const id of["lore-0","lore-1","ink-0","ink-1","deck-0","deck-1","disc-0","disc-1"]){const e=document.getElementById(id);if(e)m.set(id,{r:e.getBoundingClientRect()})}return m}
-function ghost(r,html,cls){const g=document.createElement("div");g.className="ghost "+(cls||"");g.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;g.innerHTML=html;document.body.appendChild(g);return g}
+function ghost(r,html,cls){const g=document.createElement("div");g.className="ghost "+(cls||"");g.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;g.innerHTML=html;document.body.appendChild(g);GH.add(g);const kill=()=>{g.remove();GH.delete(g)};g.addEventListener("animationend",kill);g._t=setTimeout(kill,2500);return g}
+const GH=new Set();function clearFx(){for(const g of GH){clearTimeout(g._t);g.getAnimations&&g.getAnimations().forEach(a=>a.cancel());g.remove()}GH.clear();document.querySelectorAll(".ghost,.ftext").forEach(x=>x.remove())}
 function floatText(r,text,cls){const g=document.createElement("div");g.className="ftext "+cls;g.textContent=text;g.style.left=(r.left+r.width/2)+"px";g.style.top=(r.top+r.height/3)+"px";document.body.appendChild(g);setTimeout(()=>g.remove(),1300);return g}
 const elOf=u=>root.querySelector(`[data-uid="${u}"]`),rectOf=(m,u)=>m.get(u)?.r||elOf(u)?.getBoundingClientRect();
 const fxp=(el,o)=>{if(window.FX&&el)FX.at(el,o)};

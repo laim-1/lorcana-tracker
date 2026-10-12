@@ -104,4 +104,16 @@ t("Conditions: class in play, used Shift, team buffs, recur with cost", () => {
   const d = st.players[0]; const cheap = R({ cost: 2 }), dear = R({ cost: 7 }); d.discard.push(E.mk ? E.mk(cheap, 0) : { card: cheap, under: [] });
 });
 t("Banish all opposing characters with N STR or less", () => { const st = game(); ink(st, 0, 3); const w = put(st, 1, C({ strength: 1 })), s2 = put(st, 1, C({ strength: 4 })); const h = hand(st, 0, R({ text: "X When you play this character, banish all opposing characters with 2 {S} or less." })); E.act(st, { t: "play", uid: h.uid }); assert.ok(!st.players[1].play.includes(w)); assert.ok(st.players[1].play.includes(s2)); });
+const real = (n) => { const r = window.LORCANA_GAME_CARDS.cards.find(c => (c.name + (c.version ? " - " + c.version : "")) === n); assert.ok(r, "card " + n); return E.normCard(r); };
+t("Set 1 spot: Steal from the Rich, Mickey Musketeer aura, Belle extra ink, Gantu protect", () => {
+  const st = game(); st.human = [false, false]; ink(st, 0, 7); const q = put(st, 0, C({ lore: 1 })); const h = hand(st, 0, real("Steal from the Rich")); E.act(st, { t: "play", uid: h.uid }); E.act(st, { t: "quest", uid: q.uid }); assert.equal(st.players[0].lore, 1); assert.equal(st.players[1].lore, 0);
+  const m = put(st, 0, real("Mickey Mouse - Musketeer")), d = put(st, 0, real("Donald Duck - Musketeer")); assert.equal(E.strOf(d), d.card.str + 1); assert.equal(E.strOf(m), m.card.str);
+  const st2 = game(); put(st2, 0, real("Belle - Strange but Special")); const a = hand(st2, 0, C({})), b = hand(st2, 0, C({})); E.act(st2, { t: "ink", uid: a.uid }); assert.ok(has(st2, { t: "ink", uid: b.uid }));
+  const st3 = game(); const g = put(st3, 0, real("Gantu - Galactic Federation Captain")), v = put(st3, 0, C({}), { exerted: true }); E.act(st3, { t: "end" }); const cheap = put(st3, 1, C({ cost: 2 })); assert.ok(!has(st3, { t: "challenge", uid: cheap.uid, target: v.uid }));
+});
+t("Set 2 spot: Beast shield redirect, Gruesome and Grim EOT banish, Pack Tactics count", () => {
+  const st = game(); const bs = put(st, 0, real("Beast - Selfless Protector")), o = put(st, 0, C({ willpower: 5 })); ink(st, 0, 5); const z = hand(st, 0, R({ type: ["Action"], text: "Deal 2 damage to chosen character." })); E.act(st, { t: "play", uid: z.uid, target: o.uid }); assert.equal(o.damage, 0); assert.equal(bs.damage, 2);
+  const st2 = game(); st2.human = [false, false]; ink(st2, 0, 8); const ch = hand(st2, 0, C({ cost: 4 })); const gg = hand(st2, 0, real("Gruesome and Grim")); E.act(st2, { t: "play", uid: gg.uid }); assert.ok(st2.players[0].play.includes(ch)); E.act(st2, { t: "end" }); assert.ok(!st2.players[0].play.includes(ch));
+  const st3 = game(); ink(st3, 0, 4); put(st3, 1, C({}), { damage: 1 }); put(st3, 1, C({}), { damage: 1 }); const pt = hand(st3, 0, real("Pack Tactics")); E.act(st3, { t: "play", uid: pt.uid }); assert.equal(st3.players[0].lore, 2);
+});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

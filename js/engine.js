@@ -59,6 +59,10 @@ function parseOne0(s){let l=s.toLowerCase().replace(/^if you do, /,"").trim();le
   if((m=l.match(/^if an opponent has an exerted character in play, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",oppExerted:true,eff:e}}
   if((m=l.match(/^ready one of your items$/)))return{k:"readyItem"};
   if((m=l.match(/^put all cards from under (?:him|her|it|this character) into your hand$/)))return{k:"underToHand"};
+  if((m=l.match(/^(deal (\d+) damage to|exert|banish|ready|return) up to (\d+) chosen (.+?)( to (?:their|its) player's hand)?$/))&&(t=parseTarget("chosen "+m[4]))){const inner=parseOne0(m[1].replace(/ to$/," to")+" chosen "+m[4]+(m[5]||""));if(inner)return{k:"multi",n:+m[3],inner}}
+  if((m=l.match(/^search your deck for an? (?:([a-z]+) )?(character|item|action|song|location) card(?: named (.+?))?(?: with cost (\d+) or less)?(?: and reveal that card to all players)?(?:\. (?:then, )?shuffle your deck and put that card on top of it|,? and put (?:it|that card) into your hand\. (?:then, )?shuffle your deck|\. put that card into your hand and shuffle your deck)$/)))return{k:"tutor",cls:m[1]||null,type:m[2],name:m[3]||null,max:m[4]?+m[4]:99,top:/on top/.test(l)};
+  if((m=l.match(/^name a card, then reveal the top card of your deck\. if it's the named card, put (?:it|that card) into your (hand|inkwell facedown and exerted)\. otherwise, put it on the (top|bottom) of your deck$/)))return{k:"nameReveal",to:m[1].startsWith("hand")?"hand":"ink"};
+  if((m=l.match(/^each player discards their hand and draws (\d+) cards$/)))return{k:"wheel",n:+m[1]};
   if(RIDE.test(l)){const r=l.match(RIDE);return{k:"noQuest",rider:true,also:r[2]}}
   if((m=l.match(/^__reveal (\w+) (hand|play|playex)$/)))return{k:"reveal",type:m[1],to:m[2]};
   if((m=l.match(/^__digm (\d+) (\d+) (\w+)$/)))return{k:"dig",n:+m[1],take:+m[2],type:m[3]};
@@ -90,7 +94,7 @@ function parseOne0(s){let l=s.toLowerCase().replace(/^if you do, /,"").trim();le
   if((m=l.match(/^each player puts the top (\d+) cards? of their deck into their inkwell facedown and exerted$/)))return{k:"rampAll",n:+m[1]};
   if((m=l.match(/^the challenging player chooses and discards (a|one) card$/)))return{k:"oppDiscard",n:1};
   if((m=l.match(/^__dig (\d+) (\w+)$/)))return{k:"dig",n:+m[1],type:m[2]};
-  if(l==="__ramp")return{k:"ramp"};if(l==="__banishchallenger")return{k:"banishChallenger"};if(l==="__scry")return{k:"scry"};
+  if(l==="__ramp")return{k:"ramp"};if(/^return that card to your hand$/.test(l))return{k:"fn",v:4,f:(st,pi)=>{const b=st._banished,P=st.players[pi];if(b&&P.discard.includes(b)){P.discard.splice(P.discard.indexOf(b),1);P.hand.push(b)}}};if(l==="__banishchallenger")return{k:"banishChallenger"};if(l==="__scry")return{k:"scry"};
   if((m=l.match(/^draw (a|an|one|two|three|four|\d+) cards?$/)))return{k:"draw",n:nw(m[1])};
   if((m=l.match(/^each player draws (a|one|two|three|\d+) cards?$/)))return{k:"drawAll",n:nw(m[1])};
   if((m=l.match(/^gain (\d+) lore$/)))return{k:"gainLore",n:+m[1]};
@@ -157,6 +161,7 @@ function preDig(t){
 }
 function parseEffects(txt){
   txt=preDig(txt);let m;
+  txt=txt.replace(/(choose one(?: of the following)?:)\s*[-*]\s+/i,"$1 • ").replace(/\s+[-*]\s+(?=[A-Z])/g," • ").replace(/choose one of the following:/i,"choose one:");
   if((m=txt.match(/^(?:you may )?choose one:\s*•\s*(.+)$/i))){const raw=m[1].split(/\s*•\s*/),opts=raw.map(o=>parseEffects(o));if(opts.every(Boolean))return[{k:"modal",opts,optText:raw.map(x=>x.replace(/\.$/,""))}];return null}
   if((m=txt.match(/^if you have a character named ([^,]+?) in play, (.+)$/i))){const e=parseEffects(m[2]);return e?[{k:"cond",name:m[1],eff:e}]:null}
   if((m=txt.match(/^if you have (\d+) or more other characters in play, (.+)$/i))){const e=parseEffects(m[2]);return e?[{k:"cond",count:+m[1],eff:e}]:null}
@@ -171,6 +176,94 @@ function onceTrig(c,when,e){when=when.toLowerCase();
   if(/^you play (a|an) (song|item|character|action|location)$/.test(when)){c.onYouPlay.push({type:when.split(" ").pop(),eff:e,once:true});return true}
   if(/^one of your (?:other )?characters quests$/.test(when)){c.onAllyQuest.push({eff:e,once:true});return true}
   return false}
+const DEFS_EXTRA={};
+// ---------- per-card definitions (cards whose wording the generic parser can't express) ----------
+const T_=(o)=>Object.assign({kind:"char"},o);
+const FN=(f,v,t,extra)=>Object.assign({k:"fn",f,v:v??2},t?{t}:{},extra||{});
+const DH={P:s=>parseEffects(s)};
+const inDiscard=(st,x)=>{const f=find(st,x.uid);return f&&f.zone==="discard"};
+const OWNCH=(st,pi)=>st.players[pi].play.filter(isChar);const hasCls=(x,c)=>x.card.cls.some(k=>k.toLowerCase()===c);
+const cheapest=a=>a.slice().sort((p,q)=>instVal(p)-instVal(q))[0];
+function mimBounce(n){return FN((st,pi,self)=>{const P=st.players[pi],o=OWNCH(st,pi).filter(y=>y!==self).sort((a,b)=>instVal(a)-instVal(b)).slice(0,n);
+  if(self&&o.length===n&&o.reduce((s,y)=>s+instVal(y),0)<instVal(self)*1.2){for(const y of o){P.play=P.play.filter(c=>c!==y);P.hand.push(y,...y.under);y.under=[];reset(y)}}else if(self)banish(st,self)},0)}
+function freeRushEOT(st,pi){const P=st.players[pi],h=P.hand.filter(y=>isChar(y)&&y.card.cost<=4).sort((a,b)=>b.card.cost-a.card.cost)[0];if(!h)return;playFree(st,pi,h);h.grants.push({kw:"rush",until:"turnEnd",src:pi});h.banishEOT=st.turnNo}
+Object.assign(DEFS_EXTRA,{
+ "Bashful - Hopeless Romantic":c=>c.statics.push({block:"quest",cond:(x,S)=>!S||!S.players[x.owner].play.some(y=>y!==x&&hasCls(y,"seven dwarfs"))}),
+ "Christopher Robin - Adventurer":c=>c.onReadyT=[FN((st,pi,self)=>{if(OWNCH(st,pi).length>=3)gain(st,pi,2)},3)],
+ "Dopey - Always Playful":c=>c.onBanish.push(FN((st,pi,self)=>{OWNCH(st,pi).filter(y=>y!==self&&hasCls(y,"seven dwarfs")).forEach(y=>y.lStr=(y.lStr||0)+2)},2)),
+ "Grand Duke - Advisor to the King":c=>(c.auras=c.auras||[]).push({side:"own",test:x=>["prince","princess","king","queen"].some(k=>hasCls(x,k)),stat:"str",n:1}),
+ "King Louie - Jungle VIP":c=>c.onAnyBanished=[FN((st,pi,self)=>{if(self)self.damage=Math.max(0,self.damage-2)},1)],
+ "Rapunzel - Gifted Artist":c=>c.onHeal=[{k:"draw",n:1,may:true}],
+ "Sneezy - Very Allergic":c=>{const e=FN((st,pi,self,x)=>{x.tStr-=1},1,T_({opp:true}),{may:true});c.onPlay.push(e);c.onYouPlay.push({type:"character",test:(st,pi,x)=>hasCls(x,"seven dwarfs"),eff:[e]})},
+ "Snow White - Unexpected Houseguest":c=>(c.auras=c.auras||[]).push({side:"none",costCls:"seven dwarfs",costN:1}),
+ "The Queen - Commanding Presence":c=>c.onQuest.push(FN((st,pi,self,x)=>{x.tStr-=4;const b=OWNCH(st,pi).filter(y=>!y.exerted).sort((a,b)=>strOf(b)-strOf(a))[0]||self;if(b)b.tStr+=4},3,T_({opp:true}))),
+ "Last Stand":c=>c.onPlay.push({k:"banish",t:T_({test:(x,st)=>x.chalT===st.turnNo})}),
+ "Painting the Roses Red":c=>c.onPlay.push({k:"multi",n:2,inner:{k:"debuff",n:1,t:T_({opp:true})}},{k:"draw",n:1}),
+ "Zero to Hero":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi];(P.disc=P.disc||[]).push({type:"character",n:OWNCH(st,pi).length})},(st,pi)=>OWNCH(st,pi).length*1.5)),
+ "Dragon Gem":c=>c.acts.push({ink:3,eff:[FN((st,pi)=>{const P=st.players[pi],y=P.discard.filter(z=>isChar(z)&&z.card.kw.support).pop();if(y){P.discard.splice(P.discard.indexOf(y),1);P.hand.push(y)}},2)],req:(st,pi)=>st.players[pi].discard.some(z=>isChar(z)&&z.card.kw.support)}),
+ "Arthur - Wizard's Apprentice":c=>c.onQuest.push(FN((st,pi,self,x)=>{const P=st.players[pi];P.play=P.play.filter(y=>y!==x);P.hand.push(x,...x.under);x.under=[];reset(x);gain(st,pi,2);fire(st,pi,"onAllyReturned",x)},(st,pi,x)=>x&&x.card.cost<=2?6:-4,T_({own:true,other:true,helpful:true}),{may:true})),
+ "Fairy Godmother - Mystic Armorer":c=>c.onQuest.push(FN((st,pi)=>OWNCH(st,pi).forEach(y=>{y.grants.push({kw:"challenger 3",until:"turnEnd",src:pi});y._rcb=st.turnNo}),3)),
+ "Madam Mim - Fox":c=>c.onPlay.push(mimBounce(1)),"Madam Mim - Snake":c=>c.onPlay.push(mimBounce(1)),"Madam Mim - Purple Dragon":c=>c.onPlay.push(mimBounce(2)),
+ "Madam Mim - Rival of Merlin":c=>c.acts.push({ink:0,eff:[FN(freeRushEOT,4)],req:(st,pi)=>st.players[pi].hand.some(y=>isChar(y)&&y.card.cost<=4)}),
+ "Gruesome and Grim":c=>c.onPlay.push(FN(freeRushEOT,4)),
+ "Merlin - Shapeshifter":c=>c.onAllyReturned=[FN((st,pi,self)=>{if(self&&st._ctx!==self)self.tLore+=1},1)],
+ "Peter Pan's Shadow - Not Sewn On":c=>(c.auras=c.auras||[]).push({side:"own",other:true,kw2:"rush",kw:"evasive"}),
+ "Yzma - Scary Beyond All Reason":c=>c.onPlay.push(FN((st,pi,self,x)=>{const f=find(st,x.uid),P=st.players[f.pi];P.play=P.play.filter(y=>y!==x);reset(x);P.deck.push(x,...x.under);x.under=[];shuffle(P.deck,st.r);draw(st,f.pi,2)},(st,pi,x,mine)=>x?(mine?-12:instVal(x)-6):0,T_({other:true}))),
+ "Binding Contract":c=>c.acts.push({ink:0,eff:[{k:"exert",t:T_({opp:true})}],req:(st,pi)=>OWNCH(st,pi).some(y=>!y.exerted&&dry(st,y)),cost:(st,pi)=>{const y=cheapest(OWNCH(st,pi).filter(y=>!y.exerted&&dry(st,y)));if(y)y.exerted=true}}),
+ "Beast - Relentless":c=>c.onOppDamaged=[FN((st,pi,self)=>{if(self)self.exerted=false},2,null,{may:true})],
+ "Belle - Bookworm":c=>c.statics.push({stat:"lore",n:2,cond:(x,S)=>!!S&&!S.players[opp(x.owner)].hand.length}),
+ "Belle - Hidden Archer":c=>c.onChallenged.push(FN((st,pi)=>{const o=st.players[opp(pi)];o.discard.push(...o.hand);o.hand=[]},6)),
+ "Flynn Rider - His Own Biggest Fan":c=>c.statics.push({stat:"lore",per:-1,cond:"always",count:(x,P,S)=>S.players[opp(x.owner)].hand.length}),
+ "Gaston - Scheming Suitor":c=>c.statics.push({stat:"str",n:3,cond:(x,S)=>!!S&&!S.players[opp(x.owner)].hand.length}),
+ "Lucifer - Cunning Cat":c=>c.onPlay.push(FN((st,pi)=>{const o=st.players[opp(pi)],a=o.hand.find(y=>y.card.type==="action"||y.card.type==="song");if(a&&o.hand.length>=2&&discardPri(a)<0)resolve(st,pi,[{k:"oppDiscard",n:2}],null,null);else if(a){o.hand.splice(o.hand.indexOf(a),1);o.discard.push(a);fire(st,pi,"onOppDiscard",1)}else resolve(st,pi,[{k:"oppDiscard",n:2}],null,null)},6)),
+ "Panic - Underworld Imp":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.tStr+=x.card.name==="Pain"?4:2},1,T_({own:true,helpful:true}))),
+ "Prince John - Greediest of All":c=>c.onOppDiscard=[FN((st,pi)=>draw(st,pi,st._ctx||1),4,null,{may:true})],
+ "The Queen - Disguised Peddler":c=>c.acts.push({ink:0,eff:[FN((st,pi)=>{const P=st.players[pi],h=P.hand.filter(isChar).sort((a,b)=>b.card.lore-a.card.lore)[0];if(h){P.hand.splice(P.hand.indexOf(h),1);P.discard.push(h);gain(st,pi,h.card.lore)}},(st,pi)=>{const h=st.players[pi].hand.filter(isChar).sort((a,b)=>b.card.lore-a.card.lore)[0];return h?h.card.lore*6-5:-9})],req:(st,pi)=>st.players[pi].hand.some(isChar)}),
+ "Bibbidi Bobbidi Boo":c=>c.onPlay.push(FN((st,pi,self,x)=>{const P=st.players[pi],cost=x.card.cost;P.play=P.play.filter(y=>y!==x);reset(x);P.hand.push(...x.under);x.under=[];const h=P.hand.filter(y=>isChar(y)&&y.card.cost<=cost).sort((a,b)=>b.card.cost-a.card.cost)[0];P.hand.push(x);if(h)playFree(st,pi,h)},(st,pi,x)=>x?(st.players[pi].hand.some(y=>isChar(y)&&y.card.cost<=x.card.cost&&y.card.cost>=x.card.cost-1)?4+x.damage*2:-3):0,T_({own:true,helpful:true}))),
+ "Pack Tactics":c=>c.onPlay.push(FN((st,pi)=>gain(st,pi,st.players[opp(pi)].play.filter(y=>isChar(y)&&y.damage).length),(st,pi)=>st.players[opp(pi)].play.filter(y=>isChar(y)&&y.damage).length*6)),
+ "Donald Duck - Not Again!":c=>c.statics.push({stat:"lore",per:1,cond:"always",count:x=>x.damage}),
+ "Minnie Mouse - Wide-Eyed Diver":c=>c.onYouPlay.push({type:"action",test:(st,pi)=>st.players[pi].actionsN===2,eff:[FN((st,pi,self)=>{if(self)self.tLore+=2},4)]}),
+ "Ratigan - Very Large Mouse":c=>c.onPlay.push({k:"exert",t:T_({opp:true,maxStr:3})},FN((st,pi,self)=>{const y=OWNCH(st,pi).filter(z=>z.exerted).sort((a,b)=>strOf(b)-strOf(a))[0];if(y){y.exerted=false;y.noQuest=true}},1)),
+ "Raya - Leader of Heart":c=>c.onChallenge.push(FN((st,pi,self)=>{const d=st._defender!=null&&find(st,st._defender);if(self&&d&&d.inst.damage)self.noChalDmg=true},2)),
+ "Teeth and Ambitions":c=>c.onPlay.push(FN((st,pi,self,x)=>{const y=OWNCH(st,pi).filter(z=>wilOf(z)-z.damage>2).sort((a,b)=>instVal(a)-instVal(b))[0]||cheapest(OWNCH(st,pi));if(!y)return;damage(st,y,2);if(find(st,x.uid)?.zone==="play")damage(st,x,2)},(st,pi,x)=>OWNCH(st,pi).length&&x?(wilOf(x)-x.damage<=2?instVal(x)-3:1):-5,T_({opp:true}))),
+ "Dinner Bell":c=>c.acts.push({ink:2,eff:[FN((st,pi,self,x)=>{draw(st,pi,x.damage);banish(st,x)},(st,pi,x)=>x?x.damage*4-instVal(x)*0.5:-5,T_({own:true,helpful:true}))]}),
+ "Peter Pan's Dagger":c=>(c.auras=c.auras||[]).push({side:"own",kw2:"evasive",stat:"str",n:1}),
+ "Sword in the Stone":c=>c.acts.push({ink:2,eff:[FN((st,pi,self,x)=>{x.tStr+=x.damage},(st,pi,x)=>x?x.damage-1:-1,T_({own:true,helpful:true}))]}),
+ "Basil - Great Mouse Detective":c=>c.onPlay.push({k:"cond",shifted:true,eff:[{k:"draw",n:2,may:true}]}),
+ "Cogsworth - Talking Clock":c=>(c.auras=c.auras||[]).push({side:"own",kw2:"reckless",grantAct:{ink:0,eff:[{k:"gainLore",n:1}]}}),
+ "Grand Pabbie - Oldest and Wisest":c=>c.onHeal=[{k:"gainLore",n:2}],
+ "Hiram Flaversham - Toymaker":c=>{const e=FN((st,pi)=>{const P=st.players[pi],it=cheapest(P.play.filter(isItem));if(it){banish(st,it);draw(st,pi,2)}},(st,pi)=>st.players[pi].play.some(isItem)?5:0,null,{may:true});c.onPlay.push(e);c.onQuest.push(e)},
+ "Judy Hopps - Optimistic Officer":c=>c.onPlay.push(FN((st,pi,self,x)=>{const f=find(st,x.uid);banish(st,x);draw(st,f.pi,1)},(st,pi,x,mine)=>x?(mine?-5:instVal(x)-4):0,{kind:"item",kinds:["item"]},{may:true})),
+ "Noi - Orphaned Thief":c=>c.statics.push({cond:"item",kw:"resist 1"},{cond:"item",kw:"ward"}),
+ "Falling Down the Rabbit Hole":c=>c.onPlay.push(FN((st,pi)=>{for(const q of [pi,opp(pi)]){const y=cheapest(OWNCH(st,q));if(y){const P=st.players[q];P.play=P.play.filter(z=>z!==y);P.discard.push(...y.under);y.under=[];reset(y);y.exerted=true;P.ink.push(y)}}},(st,pi)=>{const a=cheapest(OWNCH(st,pi)),b=cheapest(OWNCH(st,opp(pi)));return(b?instVal(b):0)-(a?instVal(a):0)+2})),
+ "Launch":c=>c.onPlay.push(FN((st,pi,self,x)=>{const it=cheapest(st.players[pi].play.filter(isItem));if(!it)return;banish(st,it);damage(st,x,5)},(st,pi,x)=>st.players[pi].play.some(isItem)&&x?(wilOf(x)-x.damage<=5?instVal(x)-4:0):-9,T_({opp:true,kinds:["character","location"],kind:"any"}))),
+ "Nothing to Hide":c=>c.onPlay.push({k:"draw",n:1}),
+ "Gumbo Pot":c=>c.acts.push({ink:0,eff:[{k:"multi",n:2,inner:{k:"heal",n:1,t:T_({own:true,helpful:true,state:"damaged"})}}]}),
+ "Beast - Selfless Protector":c=>{c.shield=true},
+ "Beast - Tragic Hero":c=>c.onStart.push(FN((st,pi,self)=>{if(!self)return;if(!self.damage)draw(st,pi,1);else self.tStr+=4},4)),
+ "Cinderella - Stouthearted":c=>c.onYouPlay.push({type:"song",eff:[FN((st,pi,self)=>{if(self)self.chReady=st.turnNo},2)]}),
+ "Tiana - Celebrating Princess":c=>{c.blockActions=(y,S)=>y.exerted&&!S.players[y.owner].hand.length},
+ "Pick a Fight":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.chReady=st.turnNo},2,T_({own:true,helpful:true}))),
+ "Strength of a Raging Fire":c=>c.onPlay.push(FN((st,pi,self,x)=>damage(st,x,OWNCH(st,pi).length),(st,pi,x)=>x&&wilOf(x)-x.damage<=OWNCH(st,pi).length?instVal(x):1,T_({opp:true}))),
+ "Last Cannon":c=>c.acts.push({ink:1,sac:true,noExert:true,eff:[parseOne0("chosen character gains challenger +3 this turn")]}),
+ "Weight Set":c=>c.onYouPlay.push({type:"character",test:(st,pi,x)=>x.card.str>=4,eff:[{k:"pay",n:1,eff:[{k:"draw",n:1}],may:true}]}),
+});
+const DEFS={
+ "Prince Phillip - Dragonslayer":c=>c.onBanish.push(FN((st,pi)=>{if(st._challenger!=null&&st._defender!=null){const f=find(st,st._defender);if(f&&f.zone==="play"&&st.players[f.pi]!==st.players[pi]&&(st._chalSrc===pi))banish(st,f.inst)}},3)),
+ "Rapunzel - Gifted with Healing":c=>c.onPlay.push(FN((st,pi,self,x)=>{const n=Math.min(3,x.damage);x.damage-=n;draw(st,pi,n)},(st,pi,x,mine)=>mine&&x?Math.min(3,x.damage)*5:-1,T_({own:true,helpful:true}))),
+ "Stitch - Rock Star":c=>c.onYouPlay.push({type:"character",maxCost:2,eff:[FN((st,pi)=>{const P=st.players[pi],y=P.play[P.play.length-1];if(y&&isChar(y)&&y.card.cost<=2&&!y.exerted){y.exerted=true;draw(st,pi,1)}},3,null,{may:true})]}),
+ "Anna - Heir to Arendelle":c=>c.onPlay.push(FN((st,pi,self,x)=>{if(st.players[pi].play.some(y=>y.card.name==="Elsa"))x.noReady=true},(st,pi,x)=>st.players[pi].play.some(y=>y.card.name==="Elsa")?4:0,T_({opp:true}))),
+ "Elsa - Spirit of Winter":c=>c.onPlay.push({k:"multi",n:2,inner:FN((st,pi,self,x)=>{x.exerted=true;x.noReady=true},(st,pi,x,mine)=>x?(mine?-6:3+x.card.cost):3,T_({}))}),
+ "Magic Broom - Bucket Brigade":c=>c.onPlay.push(FN((st,pi)=>{const o=st.players[opp(pi)],c2=o.discard.filter(y=>y.card.onBanish.length||y.card.cost>=5).pop()||o.discard[o.discard.length-1];if(c2){o.discard.splice(o.discard.indexOf(c2),1);o.deck.push(c2);shuffle(o.deck,st.r)}},1,null,{may:true})),
+ "Ursula - Power Hungry":c=>c.onPlay.push(FN((st,pi)=>{const o=st.players[opp(pi)],n=Math.min(1,o.lore);o.lore-=n;draw(st,pi,n)},9)),
+ "Befuddle":c=>c.onPlay.push(parseOne0("return chosen character or item with cost 2 or less to their player's hand")),
+ "Kuzco - Temperamental Emperor":c=>c.onBanish.push({k:"banishChallenger",challengedOnly:true,may:true}),
+ "Steal from the Rich":c=>c.onPlay.push(FN((st,pi)=>{const P=st.players[pi];(P.hooks=P.hooks||[]).push({on:"quest",eff:[{k:"oppLose",n:1}]})},(st,pi)=>st.players[pi].play.filter(y=>isChar(y)&&!y.exerted).length*5)),
+ "Vicious Betrayal":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.tStr+=x.card.cls.includes("Villain")?3:2},2,T_({own:true,helpful:true}))),
+ "Stolen Scimitar":c=>c.acts.push({ink:0,eff:[FN((st,pi,self,x)=>{x.tStr+=x.card.name==="Aladdin"?2:1},1,T_({own:true,helpful:true}))]}),
+ "Elsa - Ice Surfer":c=>c.onYouPlay.push({type:"character",name:"anna",eff:[FN((st,pi,self)=>{if(self){self.exerted=false;self.noQuest=true}},2)]}),
+ "Poisoned Apple":c=>c.acts.push({ink:1,sac:true,noExert:true,eff:[FN((st,pi,self,x)=>{if(x.card.cls.includes("Princess"))banish(st,x);else x.exerted=true},(st,pi,x,mine)=>x?(mine?-5:x.card.cls.includes("Princess")?instVal(x):3):3,T_({opp:true}))]}),
+};
 function normCard(r){
   const type=(r.type||[]).map(x=>x.toLowerCase());
   const c={id:r.id,name:r.name,version:r.version||"",full:r.name+(r.version?" - "+r.version:""),ink:r.ink||null,inks:r.inks||(r.ink?[r.ink]:[]),
@@ -239,7 +332,17 @@ function normCard(r){
     else if((m=line.match(/^Whenever this character sings a song, (.+)$/i))&&(e=parseEffects(m[1])))c.onSing.push(...e);
     else if((m=line.match(/^Whenever this character quests while at a location, (.+)$/i))&&(e=parseEffects(m[1])))c.onQuest.push({k:"cond",atLoc:true,eff:e});
     else if((m=line.match(/^When(?:ever)? this character is challenged and banished, (.+)$/i))&&(e=parseEffects(m[1].replace(/^banish the challenging character$/i,"__banishChallenger"))))c.onBanish.push(...e.map(x=>({...x,challengedOnly:true})));
-    else if((m=line.match(/^Whenever one of your (other )?characters is banished( in a challenge)?, (.+)$/i))&&(e=parseEffects(m[3])))c.onAllyBanished.push({other:!!m[1],eff:e});
+    else if((m=line.match(/^(During your turn, )?when(?:ever)? one of your (other )?(?:([A-Z][a-z]+) )?characters(?: with (Bodyguard|Evasive|Support|Rush|Ward))? is banished( in a challenge)?, (.+)$/i))&&(e=parseEffects(m[6])))c.onAllyBanished.push({yourTurn:!!m[1],other:!!m[2],cls:m[3]?m[3].toLowerCase():null,kw:m[4]?m[4].toLowerCase():null,inChal:!!m[5],eff:e});
+    else if((m=line.match(/^(During your turn, )?whenever an opposing (?:([A-Z][a-z]+) )?(character|item|character or location) is banished( in a challenge)?, (.+)$/i))&&(e=parseEffects(m[5])))(c.onOppBanished=c.onOppBanished||[]).push({yourTurn:!!m[1],cls:m[2]?m[2].toLowerCase():null,kinds:m[3].split(" or "),inChal:!!m[4],eff:e});
+    else if((m=line.match(/^(During your turn, |While this character is exerted, |During opponents' turns, |During an opponent's turn, )?Your (other )?(?:([A-Z][a-z]+(?: [A-Z][a-z]+)?) )?(characters|items|locations)(?: named (.+?))?( with Bodyguard)? (?:get \+(\d+) (STR|WIL|LORE)|gain (Evasive|Ward|Rush|Bodyguard|Alert|Support|Resist \+\d+|Challenger \+\d+))$/i))&&!/^(this|other)$/i.test(m[3]||"")){
+      const cond={"during your turn, ":"yourTurn","while this character is exerted, ":"exerted","during opponents' turns, ":"oppTurn","during an opponent's turn, ":"oppTurn"}[(m[1]||"").toLowerCase()];(c.auras=c.auras||[]).push({side:"own",other:!!m[2],cls:m[3]?m[3].toLowerCase():null,kinds:[m[4].toLowerCase().replace(/s$/,"")],name:m[5]?m[5].toLowerCase().split(/ or /):null,kw2:m[6]?"bodyguard":null,cond,stat:m[8]?m[8].toLowerCase():null,n:m[7]?+m[7]:0,kw:m[9]?m[9].toLowerCase():null})}
+    else if((m=line.match(/^(While this character is exerted, |During your turn, )?opposing characters( with Evasive)? (?:get -(\d+) (STR|LORE)|can't (quest|challenge)|gain (Reckless))$/i))){const cond={"while this character is exerted, ":"exerted","during your turn, ":"yourTurn"}[(m[1]||"").toLowerCase()];(c.auras=c.auras||[]).push({side:"opp",cond,kw2:m[2]?"evasive":null,stat:m[4]?m[4].toLowerCase():null,n:m[3]?-m[3]:0,block:m[5]?m[5].toLowerCase():null,kw:m[6]?"reckless":null})}
+    else if((m=line.match(/^(?:During your turn, )?each opposing character with cost (\d+) or less gets -(\d+) (STR|LORE)$/i)))(c.auras=c.auras||[]).push({side:"opp",maxCost:+m[1],stat:m[3].toLowerCase(),n:-m[2],cond:/^during/i.test(line)?"yourTurn":null});
+    else if((m=line.match(/^Characters with cost (\d+) or less can't challenge (this character|your characters)$/i)))(c.auras=c.auras||[]).push(m[2].toLowerCase()==="this character"?{side:"own",test:(x,y)=>x===y,protect:+m[1]}:{side:"own",protect:+m[1]});
+    else if((m=line.match(/^You pay (\d+) INK less to play ([A-Z][a-z]+) (characters|items)$/i)))(c.auras=c.auras||[]).push({side:"none",costCls:m[2].toLowerCase(),costN:+m[1]});
+    else if((m=line.match(/^This character gets \+(\d+) (STR|LORE|WIL) for each (other )?(?:([A-Z][a-z]+) )?(character|item|location|card in your hand|card under (?:him|her|it|this character)) you have in play$/i))||(m=line.match(/^This character gets \+(\d+) (STR|LORE|WIL) for each (other )?(?:([A-Z][a-z]+) )?(card under (?:him|her|it|this character)|damage on (?:him|her|it))$/i))){
+      const oth=!!m[3],cl=m[4]?m[4].toLowerCase():null,kind=m[5].toLowerCase();c.statics.push({stat:m[2].toLowerCase(),per:+m[1],cond:"always",count:(x,P)=>kind.startsWith("card under")?x.under.length:kind.startsWith("damage")?x.damage:kind.startsWith("card in")?P.hand.length:P.play.filter(y=>y.card.type===kind&&(!oth||y!==x)&&(!cl||y.card.cls.some(k=>k.toLowerCase()===cl))).length})}
+    else if((m=line.match(/^(During your turn, )?you may put an additional card from your hand into your inkwell facedown(?: during your turn)?$/i))){c.extraInk=true}
     else if((m=line.match(/^Whenever one of your (?:other )?characters challenges another character, (.+)$/i))&&(e=parseEffects(m[1])))c.onAllyChallenge.push(...e);
     else if((m=line.match(/^Whenever one of your (?:other )?(?:([A-Z][a-z]+) )?characters quests, (.+)$/i))&&(e=parseEffects(m[2])))c.onAllyQuest.push({cls:m[1]?m[1].toLowerCase():null,eff:e});
     else if((m=line.match(/^Whenever you play a character named (.+?), (.+)$/i))&&(e=parseEffects(m[2])))c.onYouPlay.push({type:"character",name:m[1].toLowerCase(),eff:e});
@@ -262,9 +365,10 @@ function normCard(r){
     else if((m=line.match(/^(\d+) INK\s*[—–-]\s*(.+)$/))&&c.type==="item"&&(e=parseEffects(m[2])))c.acts.push({ink:+m[1],eff:e,noExert:true});
     else c.unsupported.push(raw);
   }
+  const DF=DEFS[c.full]||DEFS_EXTRA[c.full];if(DF){DF(c,DH);c.unsupported=[];c.custom=true}
   if(c.onPlay.filter(e=>e.t).length>1){c.unsupported.push("multi-target");c.onPlay=c.onPlay.filter(e=>!e.t);}
   c.supported=c.unsupported.length===0;
-  const simulated=c.onSing.length+c.onAllyBanished.length+c.onAllyChallenge.length+c.onAllyQuest.length+c.onUnder.length+(c.alias?1:0)+(c.kw.shiftAny||c.kw.shiftCls?1:0)+(c.kw.boost!=null?1:0)+(c.costRed?1:0)+(c.singTogether?1:0)+c.onBanishOther.length+c.onYouPlay.length+c.onInk.length+c.onPlay.length+c.onQuest.length+c.onBanish.length+c.onStart.length+c.onEnd.length+c.onChallenge.length+c.onChallenged.length+c.onActionPlayed.length+c.statics.length+c.acts.length+(c.entersExerted?1:0)+(c.enterDamage?1:0);
+  const simulated=(c.custom?1:0)+(c.auras||[]).length+(c.extraInk?1:0)+(c.onOppBanished||[]).length+(c.onLeave?1:0)+c.onSing.length+c.onAllyBanished.length+c.onAllyChallenge.length+c.onAllyQuest.length+c.onUnder.length+(c.alias?1:0)+(c.kw.shiftAny||c.kw.shiftCls?1:0)+(c.kw.boost!=null?1:0)+(c.costRed?1:0)+(c.singTogether?1:0)+c.onBanishOther.length+c.onYouPlay.length+c.onInk.length+c.onPlay.length+c.onQuest.length+c.onBanish.length+c.onStart.length+c.onEnd.length+c.onChallenge.length+c.onChallenged.length+c.onActionPlayed.length+c.statics.length+c.acts.length+(c.entersExerted?1:0)+(c.enterDamage?1:0);
   c.status=!c.text?"plain":c.supported?(simulated?"full":"keywords"):(simulated||Object.keys(c.kw).length?"partial":"vanilla");
   return c;
 }
@@ -294,12 +398,13 @@ const ev=(st,o)=>{(st.events=st.events||[]).push(o)};
 function find(st,uid){for(let i=0;i<2;i++){const p=st.players[i];for(const z of["hand","play","deck","discard"]){const x=p[z].find(c=>c.uid===uid);if(x)return{inst:x,pi:i,zone:z}}const k=p.ink.find(c=>c.uid===uid);if(k)return{inst:k,pi:i,zone:"ink"}}return null}
 const inkAvail=p=>p.ink.filter(c=>!c.exerted).length;
 function costOf(st,pi,c){let n=c.cost;const P=st.players[pi];for(const d of (P.disc||[]))if(d.type===c.type||d.type==="action"&&c.type==="song")n-=d.n;
+  for(const y of P.play)for(const a of (y.card.auras||[]))if(a.costCls&&(a.costCls==="any"||c.cls.some(k=>k.toLowerCase()===a.costCls))&&(!a.costType||a.costType===c.type))n-=a.costN;
   if(c.costRed&&c.costRed.perChar)n-=c.costRed.perChar*P.play.filter(x=>x.card.type==="character").length;else if(c.costRed&&c.costRed.secondFirst){if(pi!==st.first&&st.turnNo===2)n-=c.costRed.n}else if(c.costRed&&st.players[pi].play.some(x=>x.card.type==="character"&&x.card.name.toLowerCase()===c.costRed.name.toLowerCase()))n-=c.costRed.n;return Math.max(0,n)}
 function payInk(p,n){for(const c of p.ink){if(n<=0)break;if(!c.exerted){c.exerted=true;n--}}}
 const isChar=x=>x.card.type==="character",isLoc=x=>x.card.type==="location",isItem=x=>x.card.type==="item";
 const dry=(st,x)=>x.playedOn<st.turnNo;
 let CUR=null; // current state, for "during your turn" statics
-function condOk(x,c){switch(c){case"damaged":return!!x.damage;case"undamaged":return!x.damage;case"exerted":return x.exerted;case"atLoc":return x.at!=null;case"under":return x.under.length>0;case"yourTurn":return!!(CUR&&CUR.active===x.owner);case"oppTurn":return!!(CUR&&CUR.active!==x.owner);
+function condOk(x,c){if(typeof c==="function")return c(x,CUR);switch(c){case"damaged":return!!x.damage;case"undamaged":return!x.damage;case"exerted":return x.exerted;case"atLoc":return x.at!=null;case"under":return x.under.length>0;case"yourTurn":return!!(CUR&&CUR.active===x.owner);case"oppTurn":return!!(CUR&&CUR.active!==x.owner);
   case"emptyHand":return!!(CUR&&!CUR.players[x.owner].hand.length);case"another":return!!(CUR&&CUR.players[x.owner].play.some(y=>y!==x&&y.card.type==="character"));case"item":return!!(CUR&&CUR.players[x.owner].play.some(y=>y.card.type==="item"));case"defending":return!!x.defending;default:
   if(!CUR)return true;const P=CUR.players[x.owner];
   if(c.startsWith("named:"))return P.play.some(y=>y!==x&&y.card.type==="character"&&y.card.name.toLowerCase()===c.slice(6));
@@ -307,14 +412,22 @@ function condOk(x,c){switch(c){case"damaged":return!!x.damage;case"undamaged":re
   if(c.startsWith("ink:"))return P.ink.length>=+c.slice(4);
   if(c.startsWith("str:"))return x.card.str+x.tStr>=+c.slice(4);
   return true}}
+function auras(x){if(!CUR)return[];const r=[];for(const P of CUR.players)for(const y of P.play)for(const a of (y.card.auras||[])){
+    if(a.side==="none")continue;if(a.side==="own"?y.owner!==x.owner:y.owner===x.owner)continue;if(a.other&&y===x)continue;if(a.self===false&&y===x)continue;if(a.kinds&&!a.kinds.includes(x.card.type))continue;else if(!a.kinds&&x.card.type!=="character")continue;
+    if(a.cls&&!x.card.cls.some(k=>k.toLowerCase()===a.cls))continue;if(a.name&&!a.name.some(n=>namesOf(x).includes(n)))continue;if(a.maxCost!=null&&x.card.cost>a.maxCost)continue;
+    if(a.damaged&&!x.damage)continue;if(a.kw2&&!x.card.kw[a.kw2])continue;if(a.cond&&!condOk(y,a.cond))continue;if(a.test&&!a.test(x,y,CUR))continue;r.push({...a,src:y})}return r}
+function countOf(x,what){if(!CUR)return 0;const P=CUR.players[x.owner];if(typeof what==="function")return what(x,P,CUR);return 0}
+function actsOf(x){const g=auras(x).filter(a=>a.grantAct).map(a=>a.grantAct);return g.length?x.card.acts.concat(g):x.card.acts}
 function hereStatics(x){if(x.at==null||!CUR)return[];const l=CUR.players[x.owner].play.find(y=>y.uid===x.at);return l?l.card.statics.filter(s=>s.here&&(!s.name||namesOf(x).includes(s.name))):[]}
 function statOn(x,f){let n=0;for(const s of x.card.statics){if(s.stat!==f||s.here||!condOk(x,s.cond))continue;n+=s.perHand?s.perHand*(CUR?CUR.players[x.owner].hand.length:0):s.perOther?s.perOther*(CUR?CUR.players[x.owner].play.filter(y=>y!==x&&y.card.type==="character").length:0):s.n}
-  for(const s of hereStatics(x))if(s.stat===f)n+=s.n;return n}
+  for(const s of hereStatics(x))if(s.stat===f)n+=s.n;for(const s of x.card.statics)if(s.stat===f&&s.per&&condOk(x,s.cond||"always"))n+=s.per*countOf(x,s.count);
+  for(const a of auras(x))if(a.stat===f)n+=a.n;return n}
 function K(x,k){const v=x.card.kw[k];if(v!=null)return v;
   for(const g of (x.grants||[])){const [nm,val]=g.kw.split(" ");if(nm===k)return val?parseInt(val):true}
+  for(const a of auras(x)){if(!a.kw)continue;const [nm,val]=a.kw.split(" ");if(nm===k)return val?parseInt(val):true}
   for(const s of hereStatics(x)){if(!s.kw)continue;const [nm,val]=s.kw.split(" ");if(nm===k)return val?parseInt(val):true}
   for(const s of x.card.statics){if(!s.kw||s.here||!condOk(x,s.cond))continue;const [nm,val]=s.kw.split(" ");if(nm===k)return val?parseInt(val):true}return k==="challenger"||k==="resist"?0:undefined}
-const blocked=(x,b)=>x.card.statics.some(s=>s.block===b)||(b==="quest"&&x.noQuestNow)||(b==="challenge"&&x.noChalNow);const flag=(x,f)=>x.card.statics.some(s=>s.flag===f);
+const blocked=(x,b)=>x.card.statics.some(s=>s.block===b&&condOk(x,s.cond||"always"))||auras(x).some(a=>a.block===b)||(b==="quest"&&x.noQuestNow)||(b==="challenge"&&x.noChalNow);const flag=(x,f)=>x.card.statics.some(s=>s.flag===f);
 const strOf=x=>Math.max(0,x.card.str+x.tStr+(x.lStr||0)+statOn(x,"str"));const loreOf=x=>Math.max(0,x.card.lore+(x.tLore||0)+statOn(x,"lore"));const wilOf=x=>x.card.wil+statOn(x,"wil");
 
 function mulligan(st,pi,uids){
@@ -329,10 +442,11 @@ function draw(st,pi,n){const p=st.players[pi];for(let k=0;k<n;k++){if(!p.deck.le
 function lose(st,pi,why){if(st.winner!=null)return;st.winner=opp(pi);st.phase="over";log(st,`${st.players[pi].name} ${why}. ${st.players[opp(pi)].name} wins!`)}
 function gain(st,pi,n){const p=st.players[pi];p.lore+=n;if(n)ev(st,{t:"lore",pi,n});if(p.lore>=20&&st.winner==null){st.winner=pi;st.phase="over";log(st,`${p.name} reaches ${p.lore} lore and wins!`)}}
 function startTurn(st){
-  const pi=st.active,p=st.players[pi];p.inked=false;p.disc=[];p.boosted=new Set();
+  const pi=st.active,p=st.players[pi];const wasEx=p.play.filter(c=>c.exerted);p.actionsN=0;p.inked=false;p.inkN=0;p.disc=[];p.boosted=new Set();
   p.ink.forEach(c=>c.exerted=false);p.play.forEach(c=>{const nrh=c.card.statics.find(s=>s.noReadyHand);if(c.noReady)c.noReady=false;else if(!(nrh&&p.hand.length>=nrh.noReadyHand))c.exerted=false;c.lStr=0;c.noQuestNow=!!c.noQuestNext;c.noChalNow=!!c.noChalNext;c.noQuestNext=c.noChalNext=false});
   for(const q of st.players)q.play.forEach(c=>{c.grants=(c.grants||[]).filter(g=>!(g.until==="srcStart"&&g.src===pi))});           // ready (long debuffs from this player expire)
   st.players[opp(pi)].play.forEach(c=>{if(c.lSrc===pi){c.lStr=0;c.lSrc=null}});
+  for(const c of wasEx)if(!c.exerted&&c.card.onReadyT&&c.card.onReadyT.length)resolve(st,pi,c.card.onReadyT,autoTarget(st,pi,c.card.onReadyT),c);
   log(st,`-- Turn ${st.turnNo}: ${p.name} --`);ev(st,{t:"turn",pi});
   for(const l of p.play.filter(isLoc))if(l.card.lore){gain(st,pi,l.card.lore);log(st,`${l.card.name} gives ${p.name} ${l.card.lore} lore.`)} // set
   if(st.winner!=null)return;
@@ -342,17 +456,24 @@ function startTurn(st){
 function endTurn(st){
   const pi=st.active;for(const x of [...st.players[pi].play])if(x.card.onEnd.length){resolve(st,pi,x.card.onEnd,autoTarget(st,pi,x.card.onEnd),x);if(st.winner!=null)return}
   st.players.forEach(p=>p.play.forEach(c=>{c.tStr=0;c.tLore=0;c.tChal=0;c.noQuest=false;c.grants=(c.grants||[]).filter(g=>g.until!=="turnEnd"&&!(g.until==="ownerTurnEnd"&&c.owner===st.active));if(c.owner===st.active){c.noQuestNow=c.noChalNow=false}}));
-  st.active=opp(st.active);st.turnNo++;startTurn(st);
+  for(const q of st.players)for(const c of [...q.play])if(c.banishEOT===st.turnNo)banish(st,c);
+  st.players.forEach(p=>p.hooks=[]);st.active=opp(st.active);st.turnNo++;startTurn(st);
 }
 function banish(st,x){
   const f=find(st,x.uid);if(!f||f.zone!=="play")return;const p=st.players[f.pi];
   p.play=p.play.filter(c=>c!==x);reset(x);
   if(isLoc(x))p.play.forEach(c=>{if(c.at===x.uid)c.at=null});
-  p.discard.push(...x.under,x);x.under=[];log(st,`${x.card.full} is banished.`);ev(st,{t:"banish",uid:x.uid,pi:f.pi});(st.stats=st.stats||[{},{}])[opp(f.pi)].banished=((st.stats[opp(f.pi)].banished)||0)+1;
+  p.discard.push(...x.under,x);x.under=[];log(st,`${x.card.full} is banished.`);
+  if(x._rcb===st.turnNo&&st._challenger!=null){p.discard.splice(p.discard.indexOf(x),1);p.hand.push(x);log(st,`${x.card.name} returns to hand.`)}
+  if(isChar(x))for(const q of [0,1])fire(st,q,"onAnyBanished",x);ev(st,{t:"banish",uid:x.uid,pi:f.pi});(st.stats=st.stats||[{},{}])[opp(f.pi)].banished=((st.stats[opp(f.pi)].banished)||0)+1;
   if(x.card.onBanish.length&&st.winner==null){const effs=x.card.onBanish.filter(e=>!e.challengedOnly||(st._challenger!=null&&st._challenger!==x.uid&&st.active!==f.pi));if(effs.length)resolve(st,f.pi,effs,autoTarget(st,f.pi,effs),x)}
-  if(isChar(x)&&st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyBanished){resolve(st,f.pi,h.eff,autoTarget(st,f.pi,h.eff),y)}
+  st._banished=x;
+  if(isChar(x)&&st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyBanished){if(h.inChal&&st._challenger==null)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.kw&&!x.card.kw[h.kw])continue;if(h.yourTurn&&st.active!==f.pi)continue;resolve(st,f.pi,h.eff,autoTarget(st,f.pi,h.eff),y)}
+  if(st.winner==null)for(const y of [...st.players[opp(f.pi)].play])for(const h of (y.card.onOppBanished||[])){if(h.inChal&&st._challenger==null)continue;if(h.yourTurn&&st.active===f.pi)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.kinds&&!h.kinds.includes(x.card.type))continue;resolve(st,opp(f.pi),h.eff,autoTarget(st,opp(f.pi),h.eff),y)}
+  if(st.winner==null&&x.card.onLeave)resolve(st,f.pi,x.card.onLeave,autoTarget(st,f.pi,x.card.onLeave),x);
 }
-function damage(st,x,n){if(n<=0)return;const d=Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(wilOf(x)&&x.damage>=wilOf(x))banish(st,x)}
+function fire(st,pi,key,ctx){for(const y of [...st.players[pi].play]){const h=y.card[key];if(h&&h.length&&st.winner==null&&find(st,y.uid)?.zone==='play'){st._ctx=ctx;resolve(st,pi,h,autoTarget(st,pi,h),y)}}}
+function damage(st,x,n){if(n<=0)return;{const sh=st.players[x.owner].play.find(y=>y!==x&&isChar(y)&&y.card.shield);if(sh&&isChar(x)){sh.damage+=n;ev(st,{t:'damage',uid:sh.uid,n});if(sh.damage>=wilOf(sh))banish(st,sh);return}}const d=Math.max(0,n-(K(x,'resist')||0));x.damage+=d;ev(st,{t:"damage",uid:x.uid,n:d});if(d>0)fire(st,opp(x.owner),'onOppDamaged',x);if(wilOf(x)&&x.damage>=wilOf(x)&&find(st,x.uid)?.zone==='play')banish(st,x)}
 
 /* targets */
 function namesOf(x){return[x.card.name.toLowerCase(),...(x.card.alias||[])]}
@@ -366,7 +487,7 @@ function targets(st,pi,t){
       if(t.damaged&&!x.damage)continue;
       if(t.kinds&&!t.kinds.includes(x.card.type))continue;if(t.state==="damaged"&&!x.damage||t.state==="undamaged"&&x.damage||t.state==="exerted"&&!x.exerted||t.state==="ready"&&x.exerted)continue;
       if(t.cls&&!x.card.cls.some(c=>c.toLowerCase()===t.cls))continue;if(t.name&&!namesOf(x).includes(t.name.toLowerCase()))continue;if(t.minStr!=null&&strOf(x)<t.minStr)continue;
-      if(t.other&&CUR&&CUR._src&&x.uid===CUR._src)continue;
+      if(t.other&&CUR&&CUR._src&&x.uid===CUR._src)continue;if(t.test&&!t.test(x,st))continue;
       if(t.maxStr!=null&&strOf(x)>t.maxStr)continue;if(t.maxCost!=null&&x.card.cost>t.maxCost)continue;
       out.push(x.uid);
     }
@@ -376,7 +497,7 @@ function targets(st,pi,t){
 const needsTarget=effs=>effs.find(e=>e.t);
 function yp(st,pi,x){const t=x.card.type,fl=x.card.cls.includes("Floodborn");for(const y of [...st.players[pi].play]){if(y===x)continue;for(const h of y.card.onYouPlay){
   let ok=h.type===t||h.type==="action"&&t==="song"||h.type==="floodborn character"&&fl&&t==="character"||h.type==="actionOnly"&&t==="action"||h.type==="another character"&&t==="character";
-  if(h.name&&x.card.name.toLowerCase()!==h.name)ok=false;if(h.kw&&!x.card.kw[h.kw])ok=false;if(ok&&h.once){if(y.onceP===st.turnNo)ok=false;else y.onceP=st.turnNo}
+  if(h.name&&x.card.name.toLowerCase()!==h.name)ok=false;if(h.maxCost!=null&&x.card.cost>h.maxCost)ok=false;if(h.test&&!h.test(st,pi,x,y))ok=false;if(h.kw&&!x.card.kw[h.kw])ok=false;if(ok&&h.once){if(y.onceP===st.turnNo)ok=false;else y.onceP=st.turnNo}
   if(ok)resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),y)}if(st.winner!=null)return}}
 function playFree(st,pi,x,exerted){const p=st.players[pi],c=x.card;p.hand=p.hand.filter(h=>h!==x);ev(st,{t:"play",pi,uid:x.uid,name:c.full});log(st,`${p.name} plays ${c.full} for free.`);
   if(c.type==="action"||c.type==="song"){resolve(st,pi,c.onPlay,autoTarget(st,pi,c.onPlay),x,true);p.discard.push(x);return}
@@ -393,6 +514,13 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
     if(e.payInk){if(inkAvail(me)<e.payInk)continue;payInk(me,e.payInk)}
     switch(e.k){
       case"draw":draw(st,pi,e.n);break;
+      case"fn":e.f(st,pi,self,x,{me,o,src,e});break;
+      case"multi":{const ts=targets(st,pi,e.inner.t).map(u=>({u,v:effVal(st,pi,[e.inner],u)})).sort((a,b)=>b.v-a.v).filter(z=>z.v>0).slice(0,e.n);for(const z of ts)resolve(st,pi,[e.inner],z.u,src,fromAction);break}
+      case"tutor":{const ok=me.deck.filter(c=>c.card.type===e.type&&(!e.cls||c.card.cls.some(k=>k.toLowerCase()===e.cls))&&(!e.name||c.card.name.toLowerCase()===e.name)&&c.card.cost<=e.max).sort((a,b)=>b.card.cost-a.card.cost);
+        shuffle(me.deck,st.r);if(ok.length){me.deck.splice(me.deck.indexOf(ok[0]),1);if(e.top)me.deck.push(ok[0]);else me.hand.push(ok[0]);log(st,`${me.name} searches for ${ok[0].card.full}.`)}break}
+      case"nameReveal":{if(!me.deck.length)break;const cnt={};me.deck.forEach(c=>cnt[c.card.full]=(cnt[c.card.full]||0)+1);const nm=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];const top=me.deck[me.deck.length-1];
+        log(st,`${me.name} names ${nm} and reveals ${top.card.full}.`);if(top.card.full===nm){me.deck.pop();if(e.to==="hand")me.hand.push(top);else{top.exerted=true;me.ink.push(top)}}break}
+      case"wheel":for(const P of st.players){P.discard.push(...P.hand);P.hand=[]}draw(st,pi,e.n);draw(st,opp(pi),e.n);break;
       case"pay":if(inkAvail(me)>=e.n){payInk(me,e.n);resolve(st,pi,e.eff,tgt,src,fromAction)}break;
       case"toInk":{const P=st.players[T.pi];P.play=P.play.filter(c=>c!==x);reset(x);x.exerted=true;P.ink.push(x);P.discard.push(...x.under);x.under=[];log(st,`${x.card.full} goes into the inkwell.`);break}
       case"moveDmg":{const n=Math.min(e.n,x.damage);if(!n)break;const ts=o.play.filter(isChar).filter(c=>!K(c,"ward")).sort((a,b)=>(wilOf(a)-a.damage<=n?-100:0)-(wilOf(b)-b.damage<=n?-100:0)||instVal(b)-instVal(a));if(!ts.length)break;x.damage-=n;ts[0].damage+=n;ev(st,{t:"damage",uid:ts[0].uid,n});if(ts[0].damage>=wilOf(ts[0]))banish(st,ts[0]);break}
@@ -423,9 +551,9 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
       case"banish":banish(st,x);break;
       case"bounce":{const o=st.players[T.pi];o.play=o.play.filter(c=>c!==x);const cards=[...x.under,x];x.under=[];
         if(isLoc(x))o.play.forEach(c=>{if(c.at===x.uid)c.at=null});
-        cards.forEach(c=>{c.damage=0;c.exerted=false;c.tStr=0;c.at=null;st.players[c.owner].hand.push(c)});log(st,`${x.card.full} returns to hand.`);break}
-      case"heal":x.damage=Math.max(0,x.damage-e.n);break;
-      case"healAll":st.players[pi].play.filter(c=>isChar(c)&&(!e.cls||c.card.cls.some(k=>k.toLowerCase()===e.cls))).forEach(c=>c.damage=Math.max(0,c.damage-e.n));break;
+        cards.forEach(c=>{c.damage=0;c.exerted=false;c.tStr=0;c.at=null;st.players[c.owner].hand.push(c)});log(st,`${x.card.full} returns to hand.`);fire(st,T.pi,"onAllyReturned",x);break}
+      case"heal":{const r0=Math.min(x.damage,e.n);x.damage-=r0;if(r0)fire(st,T.pi,"onHeal",r0);break}
+      case"healAll":st.players[pi].play.filter(c=>isChar(c)&&(!e.cls||c.card.cls.some(k=>k.toLowerCase()===e.cls))).forEach(c=>{const r0=Math.min(c.damage,e.n);c.damage-=r0;if(r0)fire(st,pi,"onHeal",r0)});break;
       case"buffStr":x.tStr+=e.n;break;
       case"exert":x.exerted=true;break;
       case"ready":x.exerted=false;break;
@@ -433,7 +561,7 @@ function resolve(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;
       case"debuff":if(e.long){x.lStr-=e.n;x.lSrc=pi}else x.tStr-=e.n;if(e.reckless){x.grants=x.grants||[];x.grants.push({kw:"reckless",until:e.long?"ownerTurnEnd":"turnEnd",src:pi})}break;
       case"buffLore":x.tLore+=e.n;break;
       case"buffChal":x.tChal+=e.n;break;
-      case"oppDiscard":{if(e.nonChar){const ok=o.hand.filter(h=>!isChar(h)).sort((a,b)=>b.card.cost-a.card.cost);if(ok.length){o.hand.splice(o.hand.indexOf(ok[0]),1);o.discard.push(ok[0])}break}if(st.human[opp(pi)]){st.pending={pi:opp(pi),n:e.n,why:"Your opponent makes you discard"};break}for(let k=0;k<e.n&&o.hand.length;k++){o.hand.sort((a,b)=>discardPri(b)-discardPri(a));o.discard.push(o.hand.shift())}break}
+      case"oppDiscard":{if(e.nonChar){const ok=o.hand.filter(h=>!isChar(h)).sort((a,b)=>b.card.cost-a.card.cost);if(ok.length){o.hand.splice(o.hand.indexOf(ok[0]),1);o.discard.push(ok[0])}break}if(st.human[opp(pi)]){if(o.hand.length)st.pending={pi:opp(pi),n:Math.min(e.n,o.hand.length),why:"Your opponent makes you discard"};break}{let n0=0;for(let k=0;k<e.n&&o.hand.length;k++){o.hand.sort((a,b)=>discardPri(b)-discardPri(a));o.discard.push(o.hand.shift());n0++}if(n0)fire(st,pi,"onOppDiscard",n0)}break}
       case"recur":{const d=st.players[pi].discard,cs=d.filter(c=>(c.card.type===(e.type||"character")||e.type==="action"&&c.card.type==="song")&&(!e.name||c.card.name.toLowerCase()===e.name)&&(e.max==null||c.card.cost<=e.max)).sort((a,b)=>b.card.cost-a.card.cost);for(const c of cs.slice(0,e.n||1)){d.splice(d.indexOf(c),1);reset(c);st.players[pi].hand.push(c)}break}
       case"noReady":x.noReady=true;break;
       case"noQuest":x.noQuest=true;if(e.also&&e.also.includes("challenge"))x.noChalNow=true;break;
@@ -492,7 +620,7 @@ function withTargets0(st,pi,base,effs){st._src=base.uid;
 }
 function challengeTargets(st,pi,a){
   const o=st.players[opp(pi)];
-  let chars=o.play.filter(x=>isChar(x)&&(x.exerted||flag(a,"challengeReady"))&&!blocked(x,"challenged")&&(!K(x,'evasive')||K(a,'evasive')||K(a,'alert')));
+  let chars=o.play.filter(x=>isChar(x)&&(x.exerted||flag(a,"challengeReady")||a.chReady===st.turnNo)&&!blocked(x,"challenged")&&!auras(x).some(z=>z.protect!=null&&a.card.cost<=z.protect)&&(!K(x,'evasive')||K(a,'evasive')||K(a,'alert')));
   const bg=chars.filter(x=>K(x,'bodyguard'));if(bg.length)chars=bg;
   return[...chars,...o.play.filter(isLoc)].map(x=>x.uid);
 }
@@ -504,6 +632,7 @@ function legalActions(st){
   for(const h of p.hand){
     const c=h.card;
     if(!p.inked&&c.inkable)A.push({t:"ink",uid:h.uid});
+    if((c.type==="action"||c.type==="song")&&st.players[opp(pi)].play.some(y=>y.card.blockActions&&y.card.blockActions(y,st)))continue;
     if(costOf(st,pi,c)<=ink){A.push(...withTargets(st,pi,{t:"play",uid:h.uid},c.onPlay));if(c.kw.bodyguard&&c.type==="character")A.push(...withTargets(st,pi,{t:"play",uid:h.uid,exerted:true},c.onPlay))}
     if(c.singTogether){const sg=p.play.filter(x=>isChar(x)&&!x.exerted&&dry(st,x)&&!blocked(x,"sing")).sort((a,b)=>a.card.cost-b.card.cost);let tot=0,set=[];for(const x of sg){if(tot>=c.singTogether)break;set.push(x.uid);tot+=x.card.cost}
       if(tot>=c.singTogether&&set.length>1)A.push(...withTargets(st,pi,{t:"play",uid:h.uid,singers:set.join(",")},c.onPlay))}
@@ -516,7 +645,7 @@ function legalActions(st){
     if(canChallenge(st,pi,x))for(const t of challengeTargets(st,pi,x))A.push({t:"challenge",uid:x.uid,target:t});
     if(isChar(x))for(const l of p.play.filter(isLoc))if(x.at!==l.uid&&l.card.move!=null&&l.card.move<=ink)A.push({t:"move",uid:x.uid,loc:l.uid});
     if(x.card.kw.boost!=null&&isChar(x)&&!(p.boosted&&p.boosted.has(x.uid))&&x.card.kw.boost<=ink&&p.deck.length)A.push({t:"boost",uid:x.uid});
-    x.card.acts.forEach((ab,i)=>{if((ab.noExert||!x.exerted)&&(!isChar(x)||dry(st,x))&&ab.ink<=ink)A.push(...withTargets(st,pi,{t:"act",uid:x.uid,i},ab.eff))});
+    actsOf(x).forEach((ab,i)=>{if((ab.noExert||!x.exerted)&&(!isChar(x)||dry(st,x))&&ab.ink<=ink&&(!ab.req||ab.req(st,pi,x)))A.push(...withTargets(st,pi,{t:"act",uid:x.uid,i},ab.eff))});
   }
   const mustChallenge=p.play.some(x=>K(x,'reckless')&&canChallenge(st,pi,x)&&challengeTargets(st,pi,x).length);
   if(!mustChallenge)A.push({t:"end"});
@@ -531,15 +660,15 @@ function act(st,a){
     if(a.t==="pick"){const c=me.deck.find(d=>d.uid===a.uid);me.deck.splice(me.deck.indexOf(c),1);me.hand.push(c);log(st,`${me.name} puts a card into their hand.`);P.opts=P.opts.filter(u=>u!==a.uid);P.top=P.top.filter(u=>u!==a.uid);P.n--}
     if(a.t==="pickDone"||P.n<=0||!P.opts.length){const rest=me.deck.filter(d=>P.top.includes(d.uid));me.deck=me.deck.filter(d=>!P.top.includes(d.uid));me.deck.unshift(...rest);st.pending=null}
     return st}
-  if(a.t==="discard"){const P=st.players[st.pending.pi],x=P.hand.find(h=>h.uid===a.uid);P.hand=P.hand.filter(h=>h!==x);P.discard.push(x);log(st,`${P.name} discards ${x.card.full}.`);if(--st.pending.n<=0||!P.hand.length)st.pending=null;return st}
+  if(a.t==="discard"){const P=st.players[st.pending.pi],x=P.hand.find(h=>h.uid===a.uid);P.hand=P.hand.filter(h=>h!==x);P.discard.push(x);log(st,`${P.name} discards ${x.card.full}.`);if(st.pending.pi!==st.active)fire(st,opp(st.pending.pi),"onOppDiscard",1);if(--st.pending.n<=0||!P.hand.length)st.pending=null;return st}
   st._mode=a.mode??null;st._decline=!!a.decline;const pi=st.active,p=st.players[pi],o=st.players[opp(pi)];
   const F=a.uid!=null?find(st,a.uid):null,x=F&&F.inst;
   switch(a.t){
-    case"ink":p.hand=p.hand.filter(c=>c!==x);x.exerted=false;p.ink.push(x);p.inked=true;ev(st,{t:"ink",pi,uid:x.uid});log(st,`${p.name} inks ${x.card.full}.`);
+    case"ink":p.hand=p.hand.filter(c=>c!==x);x.exerted=false;p.ink.push(x);p.inkN=(p.inkN||0)+1;p.inked=p.inkN>=1+p.play.filter(y=>y.card.extraInk&&(!y.card.extraInkCond||condOk(y,y.card.extraInkCond))).length;ev(st,{t:"ink",pi,uid:x.uid});log(st,`${p.name} inks ${x.card.full}.`);
       for(const y of [...p.play])if(y.card.onInk.length&&!y.inkUsed){y.inkUsed=st.turnNo;resolve(st,pi,y.card.onInk,autoTarget(st,pi,y.card.onInk),y)}break;
     case"play":{
       const c=x.card;p.hand=p.hand.filter(h=>h!==x);ev(st,{t:"play",pi,uid:x.uid,name:c.full});
-      if(c.type==="song")p.songTurn=st.turnNo;
+      if(c.type==="song")p.songTurn=st.turnNo;if(c.type==="action"||c.type==="song")p.actionsN=(p.actionsN||0)+1;
       if(a.singer!=null){const s=find(st,a.singer).inst;s.exerted=true;log(st,`${s.card.name} sings ${c.name}.`);if(s.card.onSing.length)resolve(st,pi,s.card.onSing,autoTarget(st,pi,s.card.onSing),s)}
       else if(a.singers){a.singers.split(",").forEach(u=>find(st,+u).inst.exerted=true);log(st,`Characters sing ${c.name} together.`)}
       else if(a.shift!=null){payInk(p,c.kw.shift)}else{payInk(p,costOf(st,pi,c));if(p.disc&&p.disc.length)p.disc=p.disc.filter(d=>!(d.type===c.type||d.type==="action"&&c.type==="song"))}
@@ -550,20 +679,20 @@ function act(st,a){
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);break}
     case"quest":{x.exerted=true;const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);
       if(x.card.kw.support){const others=p.play.filter(c=>isChar(c)&&c!==x);if(others.length){const t=(a.support!=null&&others.find(o=>o.uid===a.support))||others.sort((a,b)=>b.card.lore-a.card.lore)[0];t.tStr+=strOf(x);log(st,`Support: ${t.card.name} gets +${strOf(x)} strength.`)}}
-      gain(st,pi,lv);if(st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyQuest){if(y===x&&!h.cls)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.once){if(y.onceT===st.turnNo)continue;y.onceT=st.turnNo}resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),y)}
+      gain(st,pi,lv);for(const h of (p.hooks||[]))if(h.on==='quest'&&st.winner==null)resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),x);if(st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyQuest){if(y===x&&!h.cls)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.once){if(y.onceT===st.turnNo)continue;y.onceT=st.turnNo}resolve(st,pi,h.eff,autoTarget(st,pi,h.eff),y)}
       if(st.winner==null)resolve(st,pi,x.card.onQuest,a.target!=null?a.target:autoTarget(st,pi,x.card.onQuest),x);break}
-    case"challenge":{const d=find(st,a.target).inst;x.exerted=true;
+    case"challenge":{const d=find(st,a.target).inst;x.exerted=true;st._defender=a.target;d.chalT=st.turnNo;
       const as=strOf(x)+(K(x,'challenger')||0)+x.tChal,ds=isLoc(d)?0:strOf(d);
       log(st,`${x.card.name} challenges ${d.card.name}.`);ev(st,{t:"challenge",pi,a:x.uid,d:d.uid});
       if(x.card.onChallenge.length)resolve(st,pi,x.card.onChallenge,autoTarget(st,pi,x.card.onChallenge),x);
       for(const y of p.play)if(y!==x&&y.card.onAllyChallenge.length)resolve(st,pi,y.card.onAllyChallenge,autoTarget(st,pi,y.card.onAllyChallenge),y);
-      st._challenger=x.uid;
+      st._challenger=x.uid;st._defender=a.target;st._chalSrc=pi;
       if(d.card.onChallenged.length)resolve(st,opp(pi),d.card.onChallenged,autoTarget(st,opp(pi),d.card.onChallenged),d);
-      if(st.winner!=null)break;const dIn=find(st,d.uid)?.zone==="play";d.defending=true;const ds2=isLoc(d)?0:strOf(d);d.defending=false;damage(st,d,as);damage(st,x,ds2);
+      if(st.winner!=null)break;const dIn=find(st,d.uid)?.zone==="play";d.defending=true;const ds2=isLoc(d)?0:strOf(d);d.defending=false;damage(st,d,as);if(!x.noChalDmg)damage(st,x,ds2);x.noChalDmg=false;
       st._challenger=null;
       if(dIn&&find(st,d.uid)?.zone!=="play"&&find(st,x.uid)?.zone==="play"&&x.card.onBanishOther.length)resolve(st,pi,x.card.onBanishOther,autoTarget(st,pi,x.card.onBanishOther),x);break}
     case"move":{const l=find(st,a.loc).inst;payInk(p,l.card.move);x.at=l.uid;ev(st,{t:"move",pi,uid:x.uid,loc:l.uid});log(st,`${x.card.name} moves to ${l.card.name}.`);break}
-    case"act":{const ab=x.card.acts[a.i];if(!ab.noExert)x.exerted=true;payInk(p,ab.ink);log(st,`${x.card.name} uses an ability.`);resolve(st,pi,ab.eff,a.target,x);if(ab.sac)banish(st,x);break}
+    case"act":{const ab=actsOf(x)[a.i];if(ab.cost)ab.cost(st,pi,x);if(!ab.noExert)x.exerted=true;payInk(p,ab.ink);log(st,`${x.card.name} uses an ability.`);resolve(st,pi,ab.eff,a.target,x);if(ab.sac)banish(st,x);break}
     case"boost":payInk(p,x.card.kw.boost);x.under.push(p.deck.pop());p.boosted.add(x.uid);log(st,`${x.card.name} boosts (card put under it).`);
       for(const y of [...p.play])if(y.card.onUnder.length)resolve(st,pi,y.card.onUnder,autoTarget(st,pi,y.card.onUnder),y);break;
     case"end":log(st,`${p.name} ends their turn.`);endTurn(st);break;
@@ -593,7 +722,7 @@ function effVal(st,pi,effs,tgt){
       case"self":case"self2":case"readySelf":case"healSelf":case"grantSelf":v+=2;break;
       case"grant":if(x)v+=e.t.helpful?(mine?2:-2):(mine?-3:2);break;
       case"noNext":case"noReady":if(x)v+=mine?-3:3;break;
-      case"ramp":v+=4;break;case"toInk":if(x)v+=mine?-6:instVal(x)*0.9;break;case"moveDmg":v+=e.n*2;break;case"shuffleIn":if(x)v+=mine?-10:instVal(x);break;
+      case"ramp":v+=4;break;case"fn":v+=typeof e.v==="function"?e.v(st,pi,x,mine):(e.v??2);break;case"multi":v+=e.n*effVal(st,pi,[e.inner],null)+e.n*3;break;case"tutor":v+=4;break;case"nameReveal":v+=1;break;case"wheel":v+=(7-st.players[pi].hand.length)*2;break;case"toInk":if(x)v+=mine?-6:instVal(x)*0.9;break;case"moveDmg":v+=e.n*2;break;case"shuffleIn":if(x)v+=mine?-10:instVal(x);break;
       case"reveal":v+=2;break;case"free":v+=8;break;case"freeMove":v+=1;break;case"drain":v+=e.g*6+e.lo*5;break;case"massState":v+=e.to==="exert"&&e.who==="opposing"?6:e.to==="ready"?4:0;break;
       case"massReady":v+=4;break;case"discardHand":v-=st.players[pi].hand.length*3;break;case"selfDiscard":v-=3*e.n;break;case"mill":v-=0.5;break;case"pay":v+=effVal(st,pi,e.eff,null)-e.n*1.5;break;
       case"banishAllX":v+=(e.what.startsWith("opposing")?8:0);break;case"discardToInk":case"handToInk":v+=3;break;case"banishChallenger":v+=5;break;case"teamBuff":v+=e.stat==="lore"?4:2;break;case"teamGrant":v+=2;break;case"readyItem":v+=1;break;case"underToHand":v+=3;break;case"returnSelf":case"inkSelf":v+=3;break;case"discount":v+=1;break;case"rampAll":v+=1;break;

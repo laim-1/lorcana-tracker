@@ -151,8 +151,8 @@ function applyImport(text,replace){const {got,bad}=bParseImport(text);if(!got.le
 function sampleHand(){const cards=bCardsList();if(cards.length<7){toast("Need at least 7 cards");return}
   const arr=cards.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
   const hand=arr.slice(0,7),inkN=hand.filter(c=>c.inkable).length,cost=hand.reduce((a,c)=>a+(c.cost|0),0);
-  sheet(`<h4>Sample opening hand</h4><p class="meta small">${inkN}/7 inkable · total cost ${cost}</p><div class="bgrid">${hand.map(c=>`<button class="bcard" data-a="bview1" data-id="${c.id}"><img src="${esc(c.img)}" alt="${esc(c.full)}"><span class="mcost">${c.cost}</span>${c.inkable?`<span class="inkable" title="Inkable"></span>`:""}</button>`).join("")}</div><button class="wide primary" data-a="bhandagain">Draw again</button>
-  <button class="wide primary" data-a="bhand">Draw again</button><button class="wide" data-a="close">Close</button>`)}
+  sheet(`<h4>Sample opening hand</h4><p class="meta small">${inkN}/7 inkable · total cost ${cost}</p><div class="bgrid">${hand.map(c=>`<button class="bcard" data-a="bview1" data-id="${c.id}"><img src="${esc(c.img)}" alt="${esc(c.full)}"><span class="mcost">${c.cost}</span>${c.inkable?`<span class="inkable" title="Inkable"></span>`:""}</button>`).join("")}</div>
+  <button class="wide primary" data-a="bhandagain">Draw again</button><button class="wide" data-a="close">Close</button>`)}
 function renderBuilder(){
   const b=S.build,inks=bInks(),n=bCount(),q=b.q.toLowerCase(),val=bValidity(),pr=bPriceTotal(),own=ownedMap();
   let list=b.view==="deck"?Object.keys(b.cards).map(id=>byId.get(id)).filter(Boolean):pool.filter(c=>{

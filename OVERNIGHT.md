@@ -333,3 +333,7 @@ hard         93%     63%       -
 - Escape key closes open sheets.
 - Personality 24g table: aggro/quester/control ~38–46% (still balanced).
 - Commit: `c556527` (version `20261013095706`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 33 (~3:00 AM) - fix duplicate Draw again
+- Sample hand sheet had two Draw again buttons; kept one (bhandagain).
+- Commit: `ce1067a` (version `20261013095726`). Live: https://laim-1.github.io/lorcana-tracker/

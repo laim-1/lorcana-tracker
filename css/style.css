@@ -610,3 +610,5 @@ body.enter-anim #app{animation:fadeup .28s ease-out}
 
 /* home actions readable on narrow phones */
 @media (max-width:360px){.hact{font-size:13px;padding:0 6px}.hactions{gap:6px}}
+
+.hero .spark{display:block;margin-top:8px;opacity:.95;filter:drop-shadow(0 0 6px rgba(245,201,85,.35))}

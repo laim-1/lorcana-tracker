@@ -48,6 +48,10 @@ function movers(){let prev={};try{prev=(JSON.parse(localStorage.getItem(PKEY)||"
     const now=c.usd||0,was=p.u||0;if(was==null||now==null)continue;const d=now-was;if(Math.abs(d)<0.05)continue;
     rows.push({c,d,now,was,set:s.name})}
   return rows.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,20)}
+function sparkSvg(hist){const h=(hist||[]).slice().reverse().slice(-14);if(h.length<2)return"";
+  const vals=h.map(x=>+x.v||0),mn=Math.min(...vals),mx=Math.max(...vals),span=Math.max(1,mx-mn);
+  const W=220,H=36,pts=vals.map((v,i)=>{const x=i/(vals.length-1)*W,y=H-((v-mn)/span)*(H-4)-2;return x.toFixed(1)+","+y.toFixed(1)}).join(" ");
+  return`<svg class="spark" viewBox="0 0 ${W} ${H}" width="100%" height="36" aria-hidden="true"><polyline fill="none" stroke="#f5c955" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/></svg>`}
 let homeScroll=0,setScrollMap={};
 function home(){cur=null;chrome(null);quickAdd=false;
  const st=new Map(sets.map(s=>[s.id,setStats(s)])),tot=[...st.values()].reduce((a,x)=>a+x.v,0),owned=Object.keys(col).length;
@@ -59,7 +63,7 @@ function home(){cur=null;chrome(null);quickAdd=false;
  const byIdPrice=(()=>{const m=new Map();for(const s of sets)for(const c of cardsFor(s.id))m.set(c.id,c.usd||0);return m})();
  const wishCost=wish.reduce((t,id)=>t+(byIdPrice.get(id)||0),0);
  const done=list.filter(s=>st.get(s.id).p>=100).length;
- app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div></div><div class="hs">${owned} card${owned==1?"":"s"}<br>${done}/${sets.length} sets done</div></div>
+ app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div>${sparkSvg(hist)}</div><div class="hs">${owned} card${owned==1?"":"s"}<br>${done}/${sets.length} sets done</div></div>
  <div class="hactions">
   <button class="hact" data-go="search">Search all</button>
   <button class="hact" data-go="wish">Wishlist${wish.length?` (${wish.length})`:""}</button>

@@ -223,3 +223,8 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Live verified: version.json `20261013093604` (batch 12) built on Pages.
 - Engine regression: 101 passed.
 - Commit: `a235ace` (version `20261013093751`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 14 (~2:45 AM) - value sparkline + docs
+- Home hero shows a 14-day collection-value sparkline from daily history.
+- CATEGORIES.md updated: humans get simultaneous-trigger ordering picker (#20).
+- Commit: `c536302` (version `20261013093818`). Live: https://laim-1.github.io/lorcana-tracker/

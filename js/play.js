@@ -82,7 +82,7 @@ function renderMenu(){
   <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
   ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button><button class="wide ghostw" data-a="forgetSave">Discard saved game</button>`:""})()}
-  ${!PPm&&!GLm?`<button class="wide" data-a="quick" aria-label="Quick play random starters">Quick play <small>random starters</small></button><button class="wide" data-a="daily" aria-label="Daily challenge ${phoenixDateKey()}">Daily challenge <small>${phoenixDateKey()}${HS.streak?` · streak ${HS.streak}`:""}</small></button>`:""}
+  ${!PPm&&!GLm?`<button class="wide" data-a="quick" aria-label="Quick play random starters">Quick play <small>random starters</small></button><button class="wide" data-a="daily" aria-label="Daily challenge ${phoenixDateKey()}">Daily challenge <small>${phoenixDateKey()}${HS.streak?` · streak ${HS.streak}`:""}${(HS.dailyW||HS.dailyL)?` · ${HS.dailyW}W–${HS.dailyL}L`:""}</small></button>`:""}
   <button class="wide" data-a="tutorial">Tutorial <small>guided first game</small></button>
   <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
@@ -389,7 +389,8 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const turnLab=S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":(S.gold?"GOLDFISH TURN":"AI TURN");
   const meP=st.players[ME()];
   const dryN=my?meP.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)&&!K0(x,"rush")).length:0;
-  const sub=my?(meP.inked?"Ink used":"Ink available")+(dryN?` · ${dryN} drying`:""):(S.gold?"Pass and draw only":"AI is playing");
+  const readyN=my?meP.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
+  const sub=my?(meP.inked?"Ink used":"Ink available")+(readyN?` · ${readyN} ready`:"")+(dryN?` · ${dryN} drying`:""):(S.gold?"Pass and draw only":"AI is playing");
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
   return`<div class="banner ${my?"mine":"theirs"} ${near?"near":""}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
    <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" aria-label="${canEnd?"End turn":"Must challenge before ending"}" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking" aria-label="Opponent thinking"><i></i><i></i><i></i></span>`}</div></div>`}

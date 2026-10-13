@@ -64,11 +64,11 @@ function home(){cur=null;chrome(null);quickAdd=false;
  const wishCost=wish.reduce((t,id)=>t+(byIdPrice.get(id)||0),0);
  const done=list.filter(s=>st.get(s.id).p>=100).length;
  app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div>${sparkSvg(hist)}</div><div class="hs">${owned} card${owned==1?"":"s"}<br>${done}/${sets.length} sets done</div></div>
- <div class="hactions">
-  <button class="hact" data-go="search">Search all</button>
-  <button class="hact" data-go="wish">Wishlist${wish.length?` (${wish.length})`:""}</button>
-  <button class="hact" data-go="hist">Value chart</button>
-  <button class="hact" data-go="more">More</button>
+ <div class="hactions" role="navigation" aria-label="Collection tools">
+  <button class="hact" data-go="search" aria-label="Search all sets">Search all</button>
+  <button class="hact" data-go="wish" aria-label="Open wishlist">Wishlist${wish.length?` (${wish.length})`:""}</button>
+  <button class="hact" data-go="hist" aria-label="Collection value history">Value chart</button>
+  <button class="hact" data-go="more" aria-label="More collection tools">More</button>
  </div>
  ${wish.length?`<div class="wishbar" data-go="wish"><b>Wishlist</b><span>${wish.length} cards · ${money(wishCost)}</span></div>`:""}
  <div class="sortnote">Sorted by ${SET_SORTS[sort.sets].toLowerCase()}</div>`+list.map(s=>{const {got,t,p,v,foils}=st.get(s.id),logo=LOGOS.has(String(s.code));

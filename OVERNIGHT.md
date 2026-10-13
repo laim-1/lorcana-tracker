@@ -258,3 +258,9 @@ hard         93%     63%       -
 ## Batch 18 (~2:50 AM) - sample hand inkable/cost
 - Sample opening hand shows inkable count and total ink cost; inkable drop badge on tiles.
 - Commit: `a6f4dff` (version `20261013094602`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 19 (~2:50 AM) - a11y + undo toast + regression
+- Home tool buttons: aria-labels + navigation role.
+- Undo toast quotes the last log line when available.
+- Regression: ui-batch6/7/8 all passed sequentially.
+- Commit: `013ae18` (version `20261013094640`). Live: https://laim-1.github.io/lorcana-tracker/

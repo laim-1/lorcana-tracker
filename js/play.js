@@ -524,7 +524,7 @@ function describe(a,st){const n=u=>E.find(st,u)?.inst.card.full||"";switch(a.t){
 function clearUndo(){S.undo=null}
 function snapUndo(){if(!S.st||S.st.winner!=null||S.st.pending||(S.st.pq&&S.st.pq.length))return;const fr=E.freezeState(S.st);if(fr&&!fr.error)S.undo=fr}
 function canUndo(){return!!(S.undo&&S.st&&S.st.winner==null&&!S.busy&&S.screen==="board"&&!S.tutLock)}
-function doUndo(){if(!canUndo()){toast("Nothing to undo");return}try{const st=E.thawState(S.undo,pool);S.st=st;S.undo=null;S.sel=null;S.tm=null;S.hint=false;S.pkSel=[];closeSheet();sfx("ui");toast("Undid last action");renderBoard();advanceTut()}catch(e){console.error(e);clearUndo();toast("Undo failed")}}
+function doUndo(){if(!canUndo()){toast("Nothing to undo");return}try{const last=((S.st&&S.st.log)||[]).slice(-1)[0];const st=E.thawState(S.undo,pool);S.st=st;S.undo=null;S.sel=null;S.tm=null;S.hint=false;S.pkSel=[];closeSheet();sfx("ui");toast(last?"Undid: "+String(last).slice(0,48):"Undid last action");renderBoard();advanceTut()}catch(e){console.error(e);clearUndo();toast("Undo failed")}}
 function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();
   if(!S.st.pending&&!(S.st.pq&&S.st.pq.length))snapUndo();
   try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}

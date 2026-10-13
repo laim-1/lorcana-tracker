@@ -798,4 +798,34 @@ t("ai: prefers playing Challenger that enables a clean kill", () => {
   assert.ok(a.t === "play" && a.uid === chal.uid, "prefer Challenger: " + JSON.stringify(a) + " chal=" + chal.uid + " plain=" + plain.uid);
 });
 
+
+t("ai: prefers Singer N over high-lore singer for expensive song", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].inked = true;
+  // Song costs 5; Singer 5 with 1 lore vs cost-5 character with 3 lore
+  const song = hand(st, 0, C({ type: ["Action", "Song"], cost: 5, text: "Draw 2 cards.", inkwell: true, lore: 0, strength: 0, willpower: 0 }));
+  song.card.type = "song";
+  song.card.onPlay = [{ k: "draw", n: 2 }];
+  const singer = put(st, 0, C({ lore: 1, strength: 1, willpower: 3, cost: 2, text: "Singer 5" }));
+  const pricey = put(st, 0, C({ lore: 3, strength: 2, willpower: 4, cost: 5 }));
+  singer.playedOn = -1; pricey.playedOn = -1; // dry
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === song.uid && a.singer === singer.uid,
+    "prefer Singer N: " + JSON.stringify(a) + " singer=" + singer.uid + " pricey=" + pricey.uid);
+});
+
+t("ai: does not ink Singer when hand has a song they can sing", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = false; st.players[0].inkN = 0; st.players[0].inkT = -1;
+  ink(st, 0, 2);
+  st.players[0].inked = false; st.players[0].inkN = 0; st.players[0].inkT = -1;
+  const singer = hand(st, 0, C({ lore: 1, strength: 1, willpower: 2, cost: 2, text: "Singer 4", inkwell: true }));
+  const song = hand(st, 0, C({ type: ["Action", "Song"], cost: 4, text: "Draw 2 cards.", inkwell: false, lore: 0, strength: 0, willpower: 0 }));
+  song.card.type = "song"; song.card.onPlay = [{ k: "draw", n: 2 }];
+  const junk = hand(st, 0, C({ lore: 0, strength: 1, willpower: 1, cost: 1, inkwell: true }));
+  const a = E.aiChoose(st, "hard");
+  assert.ok(!(a.t === "ink" && a.uid === singer.uid), "must not ink Singer: " + JSON.stringify(a));
+  assert.ok(a.t === "ink" && a.uid === junk.uid, "ink junk instead: " + JSON.stringify(a) + " junk=" + junk.uid);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

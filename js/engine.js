@@ -1983,6 +1983,7 @@ function scoreAction(st,a){
         if(c.kw.shift!=null&&p.play.some(y=>isChar(y)&&(namesOf(y).includes(c.name.toLowerCase())||(c.alias||[]).some(a=>namesOf(y).includes(a)))))s-=(H?32:16);
         if(c.kw.bodyguard&&o.play.some(y=>isChar(y)&&strOf(y)>=3))s-=(H?16:6);
         if(c.kw.ward)s-=(H?10:4);
+        if(c.kw.singer!=null){const sv=+c.kw.singer||c.cost;if(p.hand.some(h=>h.uid!==x.uid&&h.card.type==="song"&&h.card.cost<=sv))s-=(H?20:8)}
         // Prefer inking 0–1 lore junk when other inkables exist
         const junk=p.hand.filter(h=>h.uid!==x.uid&&h.card.inkable&&(h.card.lore||0)<=1&&h.card.type==="character");
         if(c.lore>=2&&junk.length)s-=(H?22:10)}
@@ -2005,7 +2006,11 @@ function scoreAction(st,a){
         if(c.kw.challenger){const n=+c.kw.challenger||0;const H=LEVEL==="hard";
           const kills=o.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+n-(K(y,"resist")||0))>=wilOf(y)).length;
           const near=o.play.filter(y=>isChar(y)&&y.exerted&&loreOf(y)>=2).length;
-          s+=(H?6:2)+n*(H?2:1)+(kills?(H?14:5)+kills*4:0)+(near&&n?(H?6:2):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+          s+=(H?6:2)+n*(H?2:1)+(kills?(H?14:5)+kills*4:0)+(near&&n?(H?6:2):0)}
+        if(c.kw.singer!=null){const H=LEVEL==="hard";const sv=+c.kw.singer||c.cost;
+          const songs=p.hand.filter(h=>h.card.type==="song"&&h.card.cost<=sv&&h.card.cost>c.cost);
+          const anySong=p.hand.some(h=>h.card.type==="song");
+          s+=(H?5:1)+(songs.length?(H?14:5)+songs.length*3:0)+(anySong&&!songs.length?(H?4:1):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
         if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
@@ -2021,7 +2026,14 @@ function scoreAction(st,a){
       if(PERS==="control"&&c.type!=="character")s+=10;if(PERS==="aggro"&&c.type==="character")s+=c.str;
       if(a.singer!=null){const sg=find(st,a.singer).inst;const sl=loreOf(sg);const H=LEVEL==="hard";
         s+=c.cost*2-sl*5+(H?12:4); // prefer sing over pay; burn low-lore singers
-        if(sl<=1)s+=(H?10:3);if(CTX.lethal){const qs=legalActions(st).filter(b=>b.t==="quest").map(b=>find(st,b.uid).inst);
+        if(sl<=1)s+=(H?10:3);
+        // Prefer true Singer N over cost-matched singers when lore similar
+        {const sv=singVal(sg),nat=sg.card.kw.singer!=null;if(nat&&sv>=c.cost)s+=(H?10:3);
+          if(nat&&sl<=1)s+=(H?6:2);
+          // Prefer this singer over higher-lore alts of same song
+          const alts=legalActions(st).filter(b=>b.t==="play"&&b.uid===a.uid&&b.singer!=null&&b.singer!==a.singer);
+          for(const b of alts){const ox=find(st,b.singer)?.inst;if(!ox)continue;if(loreOf(ox)>sl)s+=(H?4:1);if(loreOf(ox)<sl){s-=(H?5:2);break}}}
+        if(CTX.lethal){const qs=legalActions(st).filter(b=>b.t==="quest").map(b=>find(st,b.uid).inst);
           const without=p.lore+qs.filter(q=>q.uid!==sg.uid).reduce((t,q)=>t+loreOf(q),0);
           if(without<20&&p.lore+qs.reduce((t,q)=>t+loreOf(q),0)>=20)s-=80} // don't sing away lethal
         if(CTX.threat&&effVal(st,pi,c.onPlay,a.target)>=6)s+=(H?14:6)} // sing removal/draw when threatened
@@ -2207,7 +2219,8 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
       if(canSing||costOf(st,pi,c)<=inkAvail(me))return -22} // hold: play/sing it instead
     if(c.type==="character"){if(c.lore>=3)return -24;if(c.lore>=2)return -14;
       if(c.kw.shift!=null&&me.play.some(y=>isChar(y)&&(namesOf(y).includes(c.name.toLowerCase())||(c.alias||[]).some(a=>namesOf(y).includes(a)))))return -30;
-      if(c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return -12}
+      if(c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return -12;
+      if(c.kw.singer!=null){const sv=+c.kw.singer||c.cost;if(me.hand.some(h=>h.card.type==="song"&&h.card.cost<=sv))return -16}}
     return 0}
   if(a.t==="play"){const c=find(st,a.uid).inst.card;
     if(a.shift!=null){const base=find(st,a.shift)?.inst;let b=16+c.lore*2+(c.lore-(base?loreOf(base):0))*5;
@@ -2221,6 +2234,9 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
     if(c.type==="character"&&c.kw.challenger){const n=+c.kw.challenger||0;
       const kills=op.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+n-(K(y,"resist")||0))>=wilOf(y)).length;
       return 6+n*2+(kills?12+kills*5:0)+(op.play.some(y=>isChar(y)&&y.exerted&&loreOf(y)>=2)?8:0)}
+    if(c.type==="character"&&c.kw.singer!=null){const sv=+c.kw.singer||c.cost;
+      const songs=me.hand.filter(h=>h.card.type==="song"&&h.card.cost<=sv&&h.card.cost>c.cost);
+      return 4+(songs.length?16+songs.length*4:me.hand.some(h=>h.card.type==="song")?6:0)}
     if(c.type==="location")return 8+locPlayValue(c)/4;
     if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;
         if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)b+=8}

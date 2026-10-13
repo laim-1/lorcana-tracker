@@ -575,3 +575,13 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `0a29652` (version `20261013130450`). Live verified Pages built; version.json `20261013130450`.
+
+## Batch 63 (~6:09 AM) - Singer N preference + tip
+- Sing: prefer true Singer N (esp. low-lore) over high-lore cost-matched singers.
+- Play: Singer N valued when hand has songs they uniquely enable.
+- Ink: hold Singer when hand has a song they can sing; hardAdj matches.
+- Tutorial tip for Singer N.
+- ui-static-overnight **48** checks. Engine **126** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `8154edc` (version `20261013130921`). Live verified Pages built; version.json `20261013130921`.

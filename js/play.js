@@ -194,9 +194,17 @@ function builderTools(){sheet(`<h4>Deck tools</h4>
   <button class="wide primary" data-a="bexport">Export Dreamborn list</button>
   <button class="wide" data-a="bimport">Import Dreamborn / text list</button>
   <button class="wide" data-a="bhand">Sample opening hand</button>
+  <button class="wide" data-a="bstarter">Load official starter…</button>
   <button class="wide" data-a="bdup">Duplicate deck</button>
   <button class="wide" data-a="bclear">Clear all cards</button>
   <button class="wide ghostw" data-a="close">Close</button>`)}
+function loadStarterPicker(){sheet(`<h4>Load official starter</h4><p class="meta small">Replaces the current builder list with an official 60-card starter.</p>
+  ${STARTERS.map((p,i)=>`<button class="wide" data-a="bstartergo" data-v="${i}"><b>${esc(p.name)}</b><br><small>${esc(p.title)} · ${esc(p.set)}</small></button>`).join("")}
+  <button class="wide ghostw" data-a="btools">Back</button>`)}
+function applyStarter(i){const p=STARTERS[+i];if(!p)return;const cards=E.deckFromList(pool,p.list)||E.deckFromList(snapPool||[],p.list);if(!cards){toast("Starter cards not loaded yet");return}
+  const map={};for(const c of cards)map[c.id]=(map[c.id]||0)+1;
+  S.build.cards=map;S.build.name=p.name;S.build.notes=(S.build.notes||"")||("Official starter: "+p.title);
+  closeSheet();renderBuilder();toast("Loaded "+p.name)}
 
 function badge(c){return c.status==="partial"?`<span class="sb part">PARTIAL</span>`:c.status==="vanilla"?`<span class="sb van">TEXT OFF</span>`:""}
 function cardSheet(c,extra){
@@ -756,6 +764,8 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
       <button class="wide ghostw" data-a="close">Cancel</button>`);break;
     case"bimportgo":{const el=$("#bimptext");if(!el)break;applyImport(el.value,v==="replace");break}
     case"bhand":sampleHand();break;
+    case"bstarter":loadStarterPicker();break;
+    case"bstartergo":applyStarter(v);break;
     case"bdup":{const b2=S.build;if(!bCount()){toast("Deck is empty");break}
       const all=decks(),d={name:(b2.name||"My deck")+" copy",notes:b2.notes||"",cards:{...b2.cards}};all.push(d);saveDecks(all);
       bInit({...d,idx:all.length-1});toast("Duplicated");closeSheet();renderBuilder();break}

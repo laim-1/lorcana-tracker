@@ -282,3 +282,8 @@ hard         93%     63%       -
 - Tutorial opponent is goldfish (draw/pass only) so guided steps stay predictable.
 - Copy updated; ui-batch6 still passes.
 - Commit: `97dcdb4` (version `20261013094829`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 24 (~2:55 AM) - load official starter into builder
+- Deck tools → Load official starter replaces the builder with any STARTER_DECKS list.
+- Audit 104/104 and coverage 2483/2483 still green.
+- Commit: `abc0291` (version `20261013094853`). Live: https://laim-1.github.io/lorcana-tracker/

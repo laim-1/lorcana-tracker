@@ -259,9 +259,9 @@ function alogHtml(){const rows=(S.alog||[]).slice().reverse();
   return`<div class="alog">${rows.map(r=>`<div class="alogrow ${r.t||""}"><div class="alogimgs">${r.img?`<img src="${esc(r.img)}" alt="">`:""}${r.img2?`<img src="${esc(r.img2)}" alt="">`:""}</div><div class="alogtxt"><small>${esc(r.label||"")}</small>${r.name?`<b>${esc(r.name)}</b>`:""}${r.sub?`<span>${esc(r.sub)}</span>`:""}</div></div>`).join("")}</div>`}
 
 const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard"};
-function startGame(rematch){
+function startGame(rematch,swap){
   let me,op;
-  if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
+  if(rematch&&S.last){me=S.last.me;op=S.last.op;if(swap){const t=me;me=op;op=t;S.deck=S.opp&&S.opp[0]==="s"?S.opp:S.deck;}}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
   S.daily=false;S.tut=null;S.tutLock=false;S.last={me,op};S.oppName=op.name;S.meName=me.name;
   S.pp=S.mode==="pp";S.gold=S.mode==="gold";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;clearUndo();
@@ -449,7 +449,7 @@ function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=
   ${streak?`<p class="streak">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
   <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
   <button class="wide" data-a="alog">Action log</button>
-  <button class="wide primary" data-a="again">Rematch</button><button class="wide" data-a="tomenu">Change decks</button></div></div>`}
+  <button class="wide primary" data-a="again">Rematch</button>${!S.pp&&!S.gold?`<button class="wide" data-a="againSwap">Rematch · swap decks</button>`:""}<button class="wide" data-a="tomenu">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||"",ex:e.classList.contains("ex"),dmg:+(e.querySelector(".dtok")?.textContent||0),hand:e.classList.contains("hc")})});
   for(const id of["lore-0","lore-1","ink-0","ink-1","deck-0","deck-1","disc-0","disc-1","hand-1"]){const e=document.getElementById(id);if(e)m.set(id,{r:e.getBoundingClientRect()})}return m}
@@ -825,7 +825,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
       const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
       sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent</h4><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
-    case"again":startGame(true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
+    case"again":startGame(true);break;case"againSwap":startGame(true,true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }
 }
 window.LorcanaPlay={async open(){ensureRoot();root.hidden=false;document.body.classList.add("playing");render();await loadPool();if(S.screen==="menu"||!S.st&&S.screen!=="builder")S.screen=S.screen==="builder"?"builder":"menu";render();syncMusic()},

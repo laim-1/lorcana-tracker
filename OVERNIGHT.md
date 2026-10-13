@@ -287,3 +287,9 @@ hard         93%     63%       -
 - Deck tools → Load official starter replaces the builder with any STARTER_DECKS list.
 - Audit 104/104 and coverage 2483/2483 still green.
 - Commit: `abc0291` (version `20261013094853`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 25 (~2:55 AM) - rematch swap decks + personality table
+- End screen: "Rematch · swap decks" for AI games (you play the opponent's list).
+- Personality 24g table (normal:aggro/quester/control) ~even (42–46%); styles remain distinct
+  without one dominating.
+- Commit: `4a8c2fc` (version `20261013094945`). Live: https://laim-1.github.io/lorcana-tracker/

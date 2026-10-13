@@ -2147,21 +2147,23 @@ function cloneState(st){const cp=x=>({...x,under:[...x.under],grants:[...(x.gran
     players:st.players.map(p=>({...p,deck:p.deck.map(cp),hand:p.hand.map(cp),ink:p.ink.map(cp),play:p.play.map(cp),discard:p.discard.map(cp),disc:[...(p.disc||[])],boosted:new Set(p.boosted||[])}))}}
 function evalBoard(st,pi){
   if(st.winner!=null)return st.winner===pi?1e6:-1e6;
-  const me=st.players[pi],op=st.players[opp(pi)],PW=PERS==='quester'?{lo:18,ob:0.8,h:2}:PERS==='aggro'?{lo:9,ob:1.5,h:1.5}:PERS==='control'?{lo:10,ob:1.3,h:3.5}:{lo:12,ob:1,h:2};let v=(me.lore-op.lore)*PW.lo+Math.min(me.ink.length,8)*3+me.hand.length*PW.h-op.hand.length*1.5;
+  const me=st.players[pi],op=st.players[opp(pi)],PW=HREP?EW:PERS==='quester'?{lo:18,ob:0.8,h:2}:PERS==='aggro'?{lo:9,ob:1.5,h:1.5}:PERS==='control'?{lo:10,ob:1.3,h:3.5}:{lo:12,ob:1,h:2};const W=HREP?EW:EW0;let v=(me.lore-op.lore)*PW.lo+Math.min(me.ink.length,W.ic)*W.ink+me.hand.length*PW.h-op.hand.length*W.oh;
   const opChars=op.play.filter(isChar);
   for(const x of me.play){if(!isChar(x)){v+=x.card.cost*1.5+(isLoc(x)?locPlayValue(x.card)+(hereChars(st,x).length?4:0):0);continue}
-    let val=instVal(x)*(1-x.damage/Math.max(1,wilOf(x))*0.4);
-    if(x.exerted&&opChars.some(o=>strOf(o)+(K(o,"challenger")||0)>=wilOf(x)-x.damage&&(!K(x,"evasive")||K(o,"evasive"))))val*=0.45; // exposed to a lethal challenge
-    v+=val+loreOf(x)*3+(x.at!=null?3:0)}
-  for(const x of op.play){if(!isChar(x)){v-=x.card.cost*1.5+(isLoc(x)?x.card.lore*6:0);continue}v-=(instVal(x)*(1-x.damage/Math.max(1,wilOf(x))*0.4)+loreOf(x)*5)*PW.ob}
-  if(op.lore+opChars.reduce((a,x)=>a+loreOf(x),0)>=20)v-=400; // they threaten to win next turn
+    let val=instVal(x)*W.mv*(1-x.damage/Math.max(1,wilOf(x))*0.4);
+    if(x.exerted&&opChars.some(o=>strOf(o)+(K(o,"challenger")||0)>=wilOf(x)-x.damage&&(!K(x,"evasive")||K(o,"evasive"))))val*=W.ex; // exposed to a lethal challenge
+    v+=val+loreOf(x)*W.ml+(x.at!=null?W.at:0)}
+  for(const x of op.play){if(!isChar(x)){v-=x.card.cost*1.5+(isLoc(x)?x.card.lore*6:0);continue}v-=(instVal(x)*(1-x.damage/Math.max(1,wilOf(x))*0.4)+loreOf(x)*W.ol)*PW.ob}
+  if(op.lore+opChars.reduce((a,x)=>a+loreOf(x),0)>=20)v-=W.th; // they threaten to win next turn
   return v}
 function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A.map(a=>[a,scoreAction(st,a)]).sort((x,y)=>y[1]-x[1])/*nc:ai-order*/;A=sc.slice(0,topK).map(x=>x[0]);if(!A.some(a=>a.t==="end")){const e=sc.find(x=>x[0].t==="end");if(e)A.push(e[0])}}const pi=st.active,op=st.players[opp(pi)],base=evalBoard(st,pi);let best=null,bs=-Infinity;
   // Rollout: take the candidate, finish our turn greedily, let the opponent play one greedy turn, then evaluate.
   const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}
-    if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
-  for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);LEVEL=L0;v=evalBoard(sim,pi);if(sim.players[pi].lore>sim.players[opp(pi)].lore)v+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)v+=10;if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
+    if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}if(HREP&&XO.d2){n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
+  const ROLL=(a,rep)=>{const sim=cloneState(st);if(HREP){sim.r=rng((st.seed*31+st.turnNo*7919+st.log.length*13+rep*104729)>>>0);if(XO.det)determinize(sim,pi)}LEVEL=HREP&&XO.rl?XO.rl:"normal";try{act(sim,a);roll(sim)}finally{LEVEL=L0}let vs=evalBoard(sim,pi)+(HREP&&XO.clock?raceClock(sim,pi):0);if(sim.players[pi].lore>sim.players[opp(pi)].lore)vs+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)vs+=10;return vs};
+  const RS=A.map(()=>({s:0,n:0}));if(HREP){const t0=Date.now();for(let rep=0;rep<HREP;rep++){for(let i=0;i<A.length;i++){try{RS[i].s+=ROLL(A[i],rep);RS[i].n++}catch(e){}}if((Date.now()-t0)*(rep+2)/(rep+1)>EXPERT_MS)break}}
+  for(const a of A){let v;try{const ai=A.indexOf(a);if(HREP){if(!RS[ai].n)throw 0;v=RS[ai].s/RS[ai].n}else v=ROLL(a,0);if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;if(d&&at&&isChar(d)){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);if(kills&&live)v+=18;else if(kills)v+=6}}
     if(HDEEP&&a.t==="play"&&(a.singer!=null||a.singers)){v+=14;if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)v+=8}
       if(a.singers){const ids=String(a.singers).split(",").map(Number);const lb=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);v+=Math.max(0,6-lb)}}
@@ -2172,7 +2174,9 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&K(d,"ward"))v+=10;if(d&&K(d,"bodyguard"))v+=6}}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
     try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(v>bs){bs=v;best=a}}
   LEVEL=L0;CUR=st;return best}
-let PERS=null,CTX={},HDEEP=false,LITE_OFF=false;
+let PERS=null,CTX={},HDEEP=false,LITE_OFF=false,HREP=0;
+const EW0={lo:12,ob:1,h:2,ic:8,ink:3,oh:1.5,mv:1,ex:0.45,ml:3,at:3,ol:5,th:400};let EW={...EW0};
+function raceClock(sim,pi){if(sim.winner!=null)return 0;const me=sim.players[pi],op=sim.players[opp(pi)];const myL=me.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0),opL=op.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0);const myT=myL?Math.ceil(Math.max(0,20-me.lore)/myL):9,opT=opL?Math.ceil(Math.max(0,20-op.lore)/opL):9;return (opT-myT)*XO.clock}
 // Turn context for the heuristics: can we win by questing now (lethal), can the opponent reach 20 on their next turn (threat)?
 function aiCtx(st){const pi=st.active,p=st.players[pi],o=st.players[opp(pi)];
   const qs=legalActions(st).filter(a=>a.t==="quest").map(a=>find(st,a.uid).inst);const mine=p.lore+qs.reduce((t,x)=>t+loreOf(x),0);
@@ -2185,11 +2189,36 @@ function plyChoose(st,A,lv){const pi=st.active;let best=null,bs=-Infinity;const 
       v=evalBoard(sim,pi)+(a.t==="end"?0:Math.max(0,h)/25)}catch(e){v=-Infinity}
     LEVEL=L0;CUR=st;if(v>bs){bs=v;best=a}}
   return best}
+
+// ---- Expert: determinized Monte Carlo search. Hidden info (opponent hand+deck, own deck order) is resampled per
+// playout so Expert never peeks. Candidates are pruned by the heuristic, then successive halving spends the time
+// budget on the most promising ones. Each playout finishes our turn, plays the opponent's turn and our next turn
+// with a fast greedy policy, then scores the position with evalBoard (wins/losses are clamped terminal values).
+let EXPERT_MS=350,EXPERT_MAX=900,EXPERT_DEPTH=3,XO={k:8,noise:4,det:1,clock:0,hadj:1,rep:6,d2:1,rl:"hard"};
+function determinize(sim,pi){const o=sim.players[opp(pi)],n=o.hand.length,pool=shuffle([...o.hand,...o.deck].sort((a,b)=>a.uid-b.uid),sim.r);o.hand=pool.slice(0,n);o.deck=pool.slice(n);shuffle(sim.players[pi].deck,sim.r)}
+function fastPick(sim){const B=legalActions(sim);if(!B.length)return null;let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x)+(XO.noise?sim.r()*XO.noise:0);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b}
+function expertEval(sim,pi){if(sim.winner!=null)return sim.winner===pi?3000:-3000;const me=sim.players[pi],op=sim.players[opp(pi)];
+  let v=evalBoard(sim,pi);v=Math.max(-2500,Math.min(2500,v));
+  const myL=me.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0),opL=op.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0);
+  const myT=myL?Math.ceil(Math.max(0,20-me.lore)/myL):9,opT=opL?Math.ceil(Math.max(0,20-op.lore)/opL):9;v+=(opT-myT)*XO.clock; // lore race clock
+  return v}
+function expertChoose(st,budget){const pi=st.active,t0=Date.now(),ms=budget||EXPERT_MS;const L0=LEVEL;
+  let A=legalActions(st);if(A.length<=1)return A[0]||null;
+  LEVEL="hard";const sc=A.map(a=>[a,scoreAction(st,a)+(a.t!=="end"?hardAdj(st,a,scoreAction(st,a)):0)]).sort((x,y)=>y[1]-x[1]);
+  let C=sc.slice(0,XO.k).map(x=>x[0]);const e=A.find(a=>a.t==="end");if(e&&!C.includes(e))C.push(e);
+  const stats=C.map(a=>({a,n:0,s:0}));let seed=(st.seed^(st.turnNo*2654435761)^(st.log.length*97))>>>0,total=0;
+  const playout=c=>{const sim=cloneState(st);sim.r=rng(seed++);if(XO.det)determinize(sim,pi);LEVEL="normal";
+    try{act(sim,c.a);let turns=0,cur=sim.active,n=0;while(sim.winner==null&&n++<400){if(sim.active!==cur){cur=sim.active;if(++turns>=EXPERT_DEPTH)break}const x=fastPick(sim);if(!x)break;act(sim,x)}
+      c.s+=expertEval(sim,pi)}catch(err){c.s+=-5000}c.n++;total++};
+  let live=stats;while(live.length>1){const per=Math.max(2,Math.ceil(8/live.length));for(let k=0;k<per;k++)for(const c of live)playout(c);
+    if(Date.now()-t0>ms||total>=EXPERT_MAX){break}if(total>live.length*6){live.sort((x,y)=>y.s/y.n-x.s/x.n);if(live.length>2&&(Date.now()-t0)>ms*0.25*(9-live.length)/8)live=live.slice(0,Math.ceil(live.length/2))}}
+  LEVEL=L0;stats.sort((x,y)=>(y.n?y.s/y.n:-1e9)-(x.n?x.s/x.n:-1e9));return stats[0].a}
 function aiChoose(st,level){
   level=level||"normal";const ci=level.indexOf(":");PERS=ci>0?level.slice(ci+1):null;if(ci>0)level=level.slice(0,ci);
   LEVEL=level;CTX=st.pending||LEVEL==="easy"?{}:aiCtx(st);LEVEL=level;const A=legalActions(st);if(!A.length)return null;let best=null,bs=-Infinity;
   // Hard: rollout every candidate through the opponent's reply and our next turn. Normal: same lookahead on the
   // 4 best heuristic candidates, one opponent turn deep. Easy: noisy heuristic only.
+  if(LEVEL==="expert"||LEVEL==="expmc"){if(!st.pending){LEVEL="hard";CTX=aiCtx(st);HDEEP=true;HREP=level==="expmc"?0:XO.rep;try{const b=level==="expmc"?expertChoose(st):hardChoose(st,A);if(b)return b}finally{HDEEP=false;HREP=0;LEVEL="hard"}}LEVEL="hard";}
   if((LEVEL==="hard"||LEVEL==="hard2")&&!st.pending){HDEEP=true;try{const b=hardChoose(st,A);if(b)return b}finally{HDEEP=false;LEVEL="hard"}}
   if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,2);LEVEL="normal";if(b)return b}
   if(LEVEL==="ply"&&!st.pending){const b=plyChoose(st,A);if(b)return b;LEVEL="normal"}
@@ -2359,6 +2388,6 @@ function thawState(data,pool){if(!data||data.v!==1)throw new Error("bad save");i
   for(const P of data.players){st.players.push({name:P.name,lore:P.lore|0,inked:!!P.inked,inkN:P.inkN|0,deck:P.deck.map(o=>thawInst(o,byId,byFull)),hand:P.hand.map(o=>thawInst(o,byId,byFull)),ink:P.ink.map(o=>thawInst(o,byId,byFull)),play:P.play.map(o=>thawInst(o,byId,byFull)),discard:P.discard.map(o=>thawInst(o,byId,byFull)),disc:[],boosted:new Set()})}
   CUR=st;return st}
 
-const E={STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
+const E={expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
 if(typeof module!=="undefined"&&module.exports)module.exports=E;else root.LorcanaEngine=E;
 })(typeof window!=="undefined"?window:globalThis);

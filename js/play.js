@@ -90,7 +90,7 @@ function renderMenu(){
   ${cus.map((d,i)=>{const m=deckMeta(d);return opt("c"+i,d.name,m.label)}).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
   <h4>${PPm?"Player 2 deck":GLm?"Goldfish deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
-  ${PPm||GLm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
+  ${PPm||GLm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard","expert"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
   <h4>AI style</h4><div class="opts">${Object.entries(STYLES).map(([k,l])=>`<button class="opt ${SET.style===k?"on":""}" data-a="sty" data-v="${k}">${l}</button>`).join("")}</div>`}
   ${GLm?`<p class="meta small">Goldfish never plays cards — it only draws and ends its turn. Practice your opening and combos.</p>`:""}
   <button class="wide" data-a="history">Match history</button>
@@ -232,7 +232,7 @@ const SKEY2="lorcanaPlaySettings.v1";
 const STYLES={balanced:"Balanced",aggro:"Aggressive",quester:"Quester",control:"Control"};
 const AILV=()=>SET.level+(SET.style&&SET.style!=="balanced"?":"+SET.style:"");
 const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,volume:70,music:false,tips:true,style:"balanced"};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
-  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.music=!!r.music;r.tips=r.tips!==false;r.volume=Math.max(0,Math.min(100,Number(r.volume)||70));return r})();
+  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard","expert"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.music=!!r.music;r.tips=r.tips!==false;r.volume=Math.max(0,Math.min(100,Number(r.volume)||70));return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
 function showHistory(){S.histFilter=S.histFilter||"all";const H=histStats();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
@@ -276,7 +276,7 @@ function alogHtml(){const rows=(S.alog||[]).slice().reverse();
   if(!rows.length)return`<p class="meta">No actions yet.</p>`;
   return`<div class="alog">${rows.map(r=>`<div class="alogrow ${r.t||""}"><div class="alogimgs">${r.img?`<img src="${esc(r.img)}" alt="">`:""}${r.img2?`<img src="${esc(r.img2)}" alt="">`:""}</div><div class="alogtxt"><small>${esc(r.label||"")}</small>${r.name?`<b>${esc(r.name)}</b>`:""}${r.sub?`<span>${esc(r.sub)}</span>`:""}</div></div>`).join("")}</div>`}
 
-const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard"};
+const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard",expert:"Expert"};
 function startGame(rematch,swap){
   let me,op;
   if(rematch&&S.last){me=S.last.me;op=S.last.op;if(swap){const t=me;me=op;op=t;S.deck=S.opp&&S.opp[0]==="s"?S.opp:S.deck;}}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
@@ -697,19 +697,29 @@ function tapTile(uid){
   S.sel=uid;renderBoard();zoom(uid,elOf(uid),true);
 }
 function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();advanceTut();if(aiTurn()&&!S.st.pending&&S.st.winner==null)aiLoop()}
+/* Expert searches in a Web Worker (js/ai-worker.js) with a ~1s budget so taps and animations stay smooth. Falls back to
+   the in-page engine if workers are unavailable, the state can't be frozen, or the answer isn't legal any more. */
+let AIW=null,AIWn=0;const AIWq={};
+function aiAsync(st,lv){const fr=E.freezeState(st);const sync=()=>E.aiChoose(st,lv);
+  if(!fr||fr.error||typeof Worker==="undefined")return Promise.resolve(sync());
+  try{if(!AIW){AIW=new Worker("./js/ai-worker.js?v="+V);AIW.onmessage=e=>{const q=AIWq[e.data.id];if(q){delete AIWq[e.data.id];q(e.data)}};AIW.onerror=()=>{AIW=null}}}catch(e){return Promise.resolve(sync())}
+  const id=++AIWn;S.thinking=true;const el=document.getElementById("ai-think");if(el)el.hidden=false;
+  return new Promise(res=>{const done=d=>{S.thinking=false;const el=document.getElementById("ai-think");if(el)el.hidden=true;let a=d&&d.a;if(!a||d.err||!E.isLegal(st,a))a=sync();res(a)};
+    const to=setTimeout(()=>{if(AIWq[id]){delete AIWq[id];done(null)}},6000);AIWq[id]=d=>{clearTimeout(to);done(d)};AIW.postMessage({id,fr,level:lv,ms:900})})}
 function aiLoop(){if(S.busy)return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
     if(st.pending&&st.human[st.pending.pi]){S.busy=false;renderBoard();return} // wait for the player's discard
     if(S.pp||st.active!==1){S.busy=false;renderBoard();return}
-    const a=E.aiChoose(st,AILV());if(!a){S.busy=false;return}
+    const go=a=>{if(!a){S.busy=false;return}if(S.st!==st||S.screen!=="board"){S.busy=false;return}
     if(a.uid!=null){const el=elOf(a.uid);if(el)el.classList.add("aifocus")}
     toast(describe(a,st));
     setTimeout(()=>{clearUndo();try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
+    if(SET.level==="expert"&&!st.pending)return aiAsync(st,AILV()).then(go);go(E.aiChoose(st,AILV()))};
   setTimeout(step,SPEED[SET.speed]*.6)}
 const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (blue DRYING tag) can't quest or challenge until your next turn. Green READY means dry and ready. Rush can challenge the turn they are played.","First to 20 lore wins. The banner shows the lore race and whether ink is still available this turn.","Shift: play a Floodborn onto a matching character for the Shift cost — it keeps damage and drying. Look for purple glow on Shift targets.","Songs can be sung for free by exerting a ready character with cost (or Singer N) ≥ the song cost. Sing Together combines several singers.","Bodyguard: if an opposing Bodyguard is exerted, you must challenge it before other characters. Ward: actions and abilities cannot choose that character — challenge it instead.","Support: when a character with Support quests, choose another character to get +Strength equal to the supporter's Strength this turn — great before a challenge.","Evasive characters can only be challenged by Evasive (or Alert) characters. Use your Evasive/Alert attackers to remove opposing Evasive lore threats.","Challenger characters get +Strength while challenging — use them to clean-kill exerted lore threats you could not otherwise finish.","Singer N lets a character sing songs costing up to N — keep Singer characters when you have expensive songs, and prefer them over high-lore singers.","Vanish: when a Vanish character takes damage from an action or ability (not a challenge), they are banished - chip them with songs and abilities.","Boost: pay the Boost ink cost to put the top card of your deck under that character; many Boost cards get stronger with cards under them.","Rush characters can challenge the turn they are played — drop them to clean-kill an exerted lore threat immediately.","Reckless characters cannot quest and must challenge before you can end your turn — pick the best trade (clean kill on a lore threat when you can).","When a move is illegal you will see a short toast (for example drying, not enough ink, or wrong target). Use the hint button to highlight legal moves."];
 function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}sheet(`<h4>Tip ${i+1} of ${TIPS.length}</h4><p class="tiptext">${TIPS[i]}</p><button class="wide primary" data-a="tip" data-i="${i+1}">${i+1<TIPS.length?"Next":"Got it"}</button><button class="wide ghostw" data-a="tip" data-i="99">Skip tips</button>`)}
 function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on":""}" data-a="set" data-k="${k}" data-v="${v}">${l}</button>`;
-  return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}</div>
+  return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}${pill("level","expert","Expert")}</div>
   <h4>AI style</h4><div class="opts">${Object.entries(STYLES).map(([k,l])=>pill("style",k,l)).join("")}</div>
   <h4>Game speed</h4><div class="opts">${pill("speed","slow","Slow")}${pill("speed","normal","Normal")}${pill("speed","fast","Fast")}</div>
   <p class="meta small">Controls AI thinking pauses and board animations.</p>

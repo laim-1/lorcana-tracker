@@ -917,4 +917,7 @@ t("ai: prefers playing Rush that can clean-kill an exerted lore threat", () => {
   assert.ok(a.t === "play" && a.uid === rush.uid, "prefer Rush: " + JSON.stringify(a) + " rush=" + rush.uid + " plain=" + plain.uid);
 });
 
+t("ai: Expert returns a legal action within its time budget", () => { const st = game(); st.human = [false, false]; put(st, 0, C({ lore: 2 })); put(st, 1, C({ lore: 1 })); ink(st, 0, 3); E.setExpert(300); const t0 = Date.now(); const a = E.aiChoose(st, "expert"); assert.ok(Date.now() - t0 < 1500); assert.ok(E.isLegal(st, a), JSON.stringify(a)); });
+t("ai: Expert never peeks at the opponent's hidden hand", () => { const mk = swap => { const st = game(); st.human = [false, false]; put(st, 0, C({ lore: 2, strength: 3 })); put(st, 1, C({ lore: 2 })).exerted = true; ink(st, 0, 3); const o = st.players[1]; if (swap) { const h = o.hand.splice(0); o.hand.push(...o.deck.splice(0, h.length)); o.deck.push(...h) } return st }; E.setExpert(5000, 0); const a = E.aiChoose(mk(false), "expert"), b = E.aiChoose(mk(true), "expert"); assert.deepEqual(a, b); });
+t("ai: Expert takes lethal", () => { const st = game(); st.human = [false, false]; st.players[0].lore = 18; const q = put(st, 0, C({ lore: 2 })); put(st, 1, C({ strength: 1, willpower: 9 })).exerted = true; const a = E.aiChoose(st, "expert"); assert.equal(a.t, "quest"); assert.equal(a.uid, q.uid); });
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

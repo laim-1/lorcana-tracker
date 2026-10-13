@@ -610,3 +610,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 70%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `bff179b` (version `20261013131811`). Live verified Pages built; version.json `20261013131811`.
+
+## Expert AI (Oct 13, afternoon)
+- New `expert` level: determinized Monte Carlo over every legal action. Hidden info (opponent hand+deck, own deck order) is resampled per rollout, so Expert never peeks (Hard's rollouts do see the real hands). 6 rollouts per candidate through our turn, the opponent's turn, our next turn and their next turn, Hard-heuristic rollout policy, time-capped (350ms in node, 900ms in the browser).
+- Runs in a Web Worker (`js/ai-worker.js`), with a fallback to synchronous play if the state can't be frozen (pending choices) or the answer is no longer legal.
+- Measured with `sh tools/expert-par.sh 240 7 expert hard`: seats and first player swapped, 120 mirror-deck and 120 mixed-deck games across the official starters:
+  - Expert vs Hard: **56.3% [95% CI 49.9-62.4]**. Mirror 57.5% [48.6-66.0], mixed 55.0% [46.1-63.6].
+  - Expert vs Normal: 72.5% (n=80). Expert vs Easy: 95.0% (n=80).
+  - The 95% target against Hard was NOT reached. Hill-climbing the eval weights (`tools/expert-tune.js`), more rollouts, a lore-clock term and full-game playouts all stayed within noise of 48-60%. Draw/deck variance between two competent players appears to be the ceiling for this engine's heuristic policy.
+- Phone check (`tests/ui-expert.py`, Chromium 390x844, 4x CPU throttle): 30 worker decisions, max 240ms (avg 65ms), max main-thread frame gap 75ms.

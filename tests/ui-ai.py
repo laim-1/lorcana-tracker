@@ -27,7 +27,8 @@ with sync_playwright() as p:
               const a=E.__orig(st,'normal');if(!a)return'wait';if(a.t==='end')return'end';E.act(st,a);LorcanaPlay.render();return'acted'}""")
             if r == "over": break
             if r == "end":
-                pg.wait_for_selector("[data-a=end]", timeout=5000); pg.tap("[data-a=end]")
+                pg.wait_for_selector("[data-a=end]", timeout=5000); pg.eval_on_selector("[data-a=end]", "e=>e.click()"); pg.wait_for_timeout(150)
+                if pg.locator("[data-a=endforce]").count(): pg.eval_on_selector("[data-a=endforce]", "e=>e.click()")
             pg.wait_for_timeout(40 if r == "acted" else 120)
         w = pg.evaluate("LorcanaPlay.state().st.winner"); results.append(w); print("game", g, "winner", "AI" if w == 1 else "us" if w == 0 else w, flush=True)
     s = pg.evaluate("window.__ai"); print("AI (Normal) moves over", N, "UI games:", json.dumps(s))

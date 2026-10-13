@@ -98,3 +98,33 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   `ui-batch3.py`, `ui-start.py`, `ui-ai-style.py` passed.
 - Commit: `079b40f` (version `20261013084440`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `079b40f` status built; version.json `20261013084440` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 5 (~2:00 AM) - correctness #18–#25 + save/daily/rules/history
+- #18 Audit expanded: more expect patterns (ready, mill, grant, buff lore, …) plus named popular-card
+  spot checks (Be Our Guest, Fire the Cannons!, Develop Your Brain, Hakuna Matata, Friends on the
+  Other Side, Smash, Control Your Temper!, Stampede, Beast redirect, Sing Together). Assertions
+  75 → 104, all passing (`node tools/audit.js`).
+- #19 Keyword edge-case tests: Bodyguard while drying, Rush+Evasive, Resist vs Challenger, Singer N
+  with Sing Together, Ward targeting.
+- #20 Simultaneous triggers: when 2+ cards fire the same trigger key for a human, CH asks which
+  ability resolves first (rest keep board order). AI keeps board order.
+- #21 Sing Together: legalActions enumerates valid singer sets using `singVal` (Singer N counts);
+  UI multi-select (tap singers until cost met → Sing). Cheapest fallback if >10 ready singers.
+- #22 Damage-redirect (Beast – Selfless Protector): controller chooses when multiple shield
+  characters; AI picks lowest remaining willpower.
+- #23 Location move costs: Move action shows cheapest ink; targeting mode badges each location
+  with its move cost (teal highlight).
+- #24 Shift targets: distinct purple `tgt-shift` glow + clearer banner copy.
+- #25 Both at 20 lore: `checkWin` — if both meet the goal, active player wins; single-player path
+  unchanged.
+- #16 Tracker restores home scroll and per-set scroll when leaving/returning.
+- #17 Card images cached in Cache API (`lorcana-imgs-v1`) after first view; version wipe no longer
+  deletes that cache.
+- #38 Save/resume: `freezeState`/`thawState` with RNG counter + embedded card snaps; only when no
+  pending choice (mid-choice still unsafe like #26). Pause menu Save; menu Resume.
+- #34 Per-deck win rates in match history (deck name stored on each AI/daily result).
+- #46 Victory reward labels from streak (On a roll / Hot streak / Legend streak) on end screen.
+- #47 Daily challenge: Phoenix-date seed picks a fixed starter pair; recorded as mode `daily`.
+- #40 Rules reference sheet from the play menu.
+- Skipped: #26 undo (still needs pending-safe snapshot API beyond freeze), #31/#32 sound, #39 tutorial.
+- Tests: `node tests/engine.test.js` 99 passed; `node tools/audit.js` 104/104.

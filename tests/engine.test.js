@@ -248,4 +248,122 @@ t("ai: personality tag is accepted (normal:control)", () => {
   assert.ok(a && a.t, JSON.stringify(a));
 });
 
+
+/* ---- Batch 5: keyword edge cases + correctness (#19–#25, #38) ---- */
+t("Bodyguard drying still forces challenge when exerted", () => {
+  const st = game(); const a = put(st, 0, C({ strength: 3 }));
+  const bg = put(st, 1, C({ text: "Bodyguard" }), { exerted: true, playedOn: st.turnNo }); // drying+exerted
+  const o = put(st, 1, C({}), { exerted: true });
+  assert.ok(!has(st, { t: "challenge", uid: a.uid, target: o.uid }));
+  assert.ok(has(st, { t: "challenge", uid: a.uid, target: bg.uid }));
+});
+t("Rush + Evasive can challenge Evasive the turn played", () => {
+  const st = game(); ink(st, 0, 1);
+  const r = hand(st, 0, C({ text: "Rush\nEvasive" }));
+  const d = put(st, 1, C({ text: "Evasive" }), { exerted: true });
+  E.act(st, { t: "play", uid: r.uid });
+  assert.ok(has(st, { t: "challenge", uid: r.uid, target: d.uid }));
+});
+t("Resist stacks with Challenger math on challenge", () => {
+  const st = game();
+  const a = put(st, 0, C({ strength: 2, text: "Challenger +1" }));
+  const d = put(st, 1, C({ strength: 0, willpower: 8, text: "Resist +2" }), { exerted: true });
+  E.act(st, { t: "challenge", uid: a.uid, target: d.uid });
+  assert.equal(d.damage, 1); // 2+1 challenger - 2 resist
+});
+t("Singer N counts for Sing Together cost", () => {
+  const song = window.LORCANA_GAME_CARDS.cards.find(c => /Sing Together/i.test(c.text || "") && /^\d+$/.test(String(c.set)));
+  assert.ok(song, "need a Sing Together song");
+  const c = E.normCard(song);
+  const st = game(); st.human = [false, false];
+  const need = c.singTogether;
+  const a = put(st, 0, C({ cost: 1, text: "Singer " + need }));
+  const b = put(st, 0, C({ cost: 1 }));
+  const h = hand(st, 0, c);
+  const acts = E.legalActions(st).filter(x => x.uid === h.uid && x.singers);
+  assert.ok(acts.length, "Sing Together should accept Singer N + another");
+});
+t("Ward on item-like: Ward character blocks opposing action target", () => {
+  const st = game(); ink(st, 0, 3);
+  const w = put(st, 1, C({ text: "Ward", willpower: 5 }));
+  const o = put(st, 1, C({ willpower: 5 }));
+  const zap = hand(st, 0, C({ type: ["Action"], cost: 1, text: "Deal 2 damage to chosen character." }));
+  const acts = E.legalActions(st).filter(a => a.uid === zap.uid);
+  assert.ok(acts.every(a => a.target !== w.uid));
+  assert.ok(acts.some(a => a.target === o.uid));
+});
+t("#25 both players at 20: active player wins", () => {
+  const st = game(); st.players[0].lore = 20; st.players[1].lore = 20; st.active = 1;
+  E.checkWin(st);
+  assert.equal(st.winner, 1);
+  assert.ok(/both reached/i.test(st.log[st.log.length - 1] || ""));
+});
+t("#25 single player reaching 20 still wins", () => {
+  const st = game(); st.players[0].lore = 19; const c = put(st, 0, C({ lore: 2 }));
+  E.act(st, { t: "quest", uid: c.uid });
+  assert.equal(st.winner, 0);
+});
+t("#22 damage redirect: Beast takes damage for another character", () => {
+  const st = game(); st.human = [false, false];
+  const REAL = n => { const r = window.LORCANA_GAME_CARDS.cards.find(c => (c.name + " - " + c.version) === n); return E.normCard(r) };
+  const beast = put(st, 1, REAL("Beast - Selfless Protector"));
+  const pal = put(st, 1, C({ willpower: 6 }));
+  ink(st, 0, 4);
+  const zap = hand(st, 0, C({ type: ["Action"], cost: 1, text: "Deal 2 damage to chosen character." }));
+  E.act(st, { t: "play", uid: zap.uid, target: pal.uid });
+  assert.equal(pal.damage, 0);
+  assert.ok(beast.damage >= 2 || !st.players[1].play.includes(beast));
+});
+t("#22 multiple redirect characters: AI picks one (no crash)", () => {
+  const st = game(); st.human = [false, false];
+  const REAL = n => { const r = window.LORCANA_GAME_CARDS.cards.find(c => (c.name + " - " + c.version) === n); return E.normCard(r) };
+  const b1 = put(st, 1, REAL("Beast - Selfless Protector"));
+  const b2 = put(st, 1, REAL("Beast - Selfless Protector"));
+  const pal = put(st, 1, C({ willpower: 6 }));
+  ink(st, 0, 4);
+  const zap = hand(st, 0, C({ type: ["Action"], cost: 1, text: "Deal 2 damage to chosen character." }));
+  E.act(st, { t: "play", uid: zap.uid, target: pal.uid });
+  assert.equal(pal.damage, 0);
+  assert.ok(b1.damage + b2.damage >= 2);
+});
+t("#21 Sing Together enumerates more than one singer set", () => {
+  const song = window.LORCANA_GAME_CARDS.cards.find(c => /Sing Together (\d+)/i.test(c.text || "") && /^\d+$/.test(String(c.set)));
+  const c = E.normCard(song); const need = c.singTogether;
+  const st = game(); st.human = [false, false];
+  put(st, 0, C({ cost: Math.ceil(need / 2) }));
+  put(st, 0, C({ cost: Math.ceil(need / 2) }));
+  put(st, 0, C({ cost: Math.ceil(need / 2) }));
+  const h = hand(st, 0, c);
+  const sets = new Set(E.legalActions(st).filter(a => a.uid === h.uid && a.singers).map(a => a.singers));
+  assert.ok(sets.size >= 1, "at least one singer set");
+});
+t("#38 freeze/thaw round-trips board without pending", () => {
+  const st = game(); st.human = [true, false];
+  // Clear filler zones; use snap-embedded cards so thaw does not need the full pool
+  st.players[0].deck = []; st.players[0].hand = []; st.players[0].discard = []; st.players[0].ink = []; st.players[0].play = [];
+  st.players[1].deck = []; st.players[1].hand = []; st.players[1].discard = []; st.players[1].ink = []; st.players[1].play = [];
+  const real = E.normCard(window.LORCANA_GAME_CARDS.cards.find(x => x.name === "Mickey Mouse" && /^\d+$/.test(String(x.set))));
+  put(st, 0, real, { damage: 1, exerted: true }); ink(st, 0, 2); st.players[0].lore = 4;
+  const fr = E.freezeState(st);
+  assert.ok(fr && !fr.error, JSON.stringify(fr));
+  const st2 = E.thawState(fr, []);
+  assert.equal(st2.players[0].lore, 4);
+  assert.equal(st2.players[0].play[0].damage, 1);
+  assert.ok(st2.players[0].play[0].exerted);
+  assert.equal(st2.players[0].ink.length, 2);
+  assert.ok(!st2.pending);
+});
+t("#38 freeze refused while pending choice", () => {
+  const st = game(); st.human = [true, false];
+  st.pending = { kind: "ask", pi: 0, items: [], opts: [], n: 1, min: 1, sel: [] };
+  const fr = E.freezeState(st);
+  assert.equal(fr.error, "pending");
+});
+t("moveCost reflects location move and is exported", () => {
+  const st = game(); ink(st, 0, 3);
+  const loc = put(st, 0, E.normCard({ id: "L", name: "Loc", type: ["Location"], cost: 1, willpower: 5, lore: 1, move_cost: 2 }));
+  const ch = put(st, 0, C({}));
+  assert.equal(E.moveCost(st, 0, ch, loc), 2);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

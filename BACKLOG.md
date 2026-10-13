@@ -15,16 +15,16 @@
 13. [x] Sticky headers never cover content
 14. [x] Pinch-zoom disabled on game board
 15. [x] Prevent double-taps from firing twice
-16. Restore scroll position when leaving a set
-17. Offline images cached after first view
-18. Audit 50 more popular cards vs printed text
-19. Check every keyword in edge cases
-20. Order of simultaneous triggers picker
-21. Sing Together: let player pick singers
-22. Damage-redirect characters choose correctly
-23. Location move costs shown clearly
-24. Shift target highlight clarity
-25. End-of-game when both reach 20 handled
+16. [x] Restore scroll position when leaving a set
+17. [x] Offline images cached after first view
+18. [x] Audit 50 more popular cards vs printed text
+19. [x] Check every keyword in edge cases
+20. [x] Order of simultaneous triggers picker
+21. [x] Sing Together: let player pick singers
+22. [x] Damage-redirect characters choose correctly
+23. [x] Location move costs shown clearly
+24. [x] Shift target highlight clarity
+25. [x] End-of-game when both reach 20 handled
 ## Game features
 26. Undo last action before confirming
 27. [x] Action log with card images
@@ -34,20 +34,20 @@
 31. Sound effects pack with volume slider
 32. Background music toggle
 33. [x] Match history and win/loss stats
-34. Per-deck win rates
+34. [x] Per-deck win rates
 35. [x] AI personalities (aggressive, quester, control)
 36. [x] Hard AI uses locations better
 37. [x] Practice mode vs goldfish (no AI)
-38. Save and resume a game in progress
+38. [x] Save and resume a game in progress
 39. Tutorial game with guided steps
-40. Rules reference page
+40. [x] Rules reference page
 41. [x] Lore race indicator showing who's ahead
 42. [x] Card count of inkable cards in hand
 43. [x] Show opponent's last played card
 44. [x] Confirm End Turn if actions remain
 45. [x] Concede confirmation polish
-46. Victory rewards and streak counter
-47. Daily challenge with a fixed deck
+46. [x] Victory rewards and streak counter
+47. [x] Daily challenge with a fixed deck
 ## Deck builder
 48. Import/export deck codes (Dreamborn/Inkable format)
 49. Cost curve chart

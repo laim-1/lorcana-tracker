@@ -77,6 +77,9 @@ function renderMenu(){
   root.innerHTML=`<div class="phead">`+bar(title)+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
   <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
+  ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button>`:""})()}
+  ${!PPm&&!GLm?`<button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
+  <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
@@ -138,9 +141,14 @@ const SPEED={slow:1500,normal:950,fast:450};
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HKEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function saveHist(a){try{localStorage.setItem(HKEY,JSON.stringify(a.slice(0,80)))}catch(e){}}
 function recordMatch(st){if(!st||st._recorded)return;st._recorded=true;const w=st.winner,meWon=S.pp?null:(w===0),oppName=S.pp?(S.names||["P1","P2"])[1]:(S.oppName||"AI");
-  const row={t:Date.now(),mode:S.pp?"pp":(S.mode==="gold"?"gold":"ai"),won:meWon,winner:w,turns:st.turnNo,lore:[st.players[0].lore,st.players[1].lore],
-    me:S.meName||"You",opp:oppName,level:S.pp||S.mode==="gold"?null:SET.level,style:S.pp||S.mode==="gold"?null:SET.style,
-    streak:0};const h=loadHist();if(!S.pp&&S.mode!=="gold"){const last=h[0];row.streak=meWon?(last&&last.won?((last.streak||0)+1):1):0}h.unshift(row);saveHist(h);S.lastResult=row}
+  const row={t:Date.now(),mode:S.pp?"pp":(S.mode==="gold"?"gold":(S.daily?"daily":"ai")),won:meWon,winner:w,turns:st.turnNo,lore:[st.players[0].lore,st.players[1].lore],
+    me:S.meName||"You",opp:oppName,deckId:S.deck||null,deckName:S.meName||null,level:S.pp||S.mode==="gold"?null:SET.level,style:S.pp||S.mode==="gold"?null:SET.style,
+    streak:0,reward:null};const h=loadHist();if(!S.pp&&S.mode!=="gold"){const last=h[0];row.streak=meWon?(last&&last.won?((last.streak||0)+1):1):0;
+    // #46 victory rewards from streak
+    if(meWon){const s=row.streak;row.reward=s>=10?"Legend streak x"+s:s>=5?"Hot streak x"+s:s>=3?"On a roll x"+s:s>=2?"Win streak x"+s:"Victory"}}
+  h.unshift(row);saveHist(h);S.lastResult=row}
+function deckRates(){const m={};for(const r of loadHist().filter(x=>x.mode==="ai"||x.mode==="daily")){const k=r.deckName||r.deckId||"Unknown";if(!m[k])m[k]={w:0,l:0,name:k};if(r.won)m[k].w++;else m[k].l++}
+  return Object.values(m).sort((a,b)=>(b.w+b.l)-(a.w+a.l))}
 function histStats(){const h=loadHist().filter(x=>x.mode==="ai");let w=0,l=0,st=0;for(const x of h){if(x.won)w++;else l++}for(const x of h){if(x.won)st=x.streak||st;else break}return{w,l,n:h.length,streak:st,rows:loadHist()}}
 /* #27 Action log with card images */ function pushLog(ev){if(!ev)return;S.alog=S.alog||[];const imgOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.img:""};
   const nameOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.full:(ev.name||"")};
@@ -163,7 +171,7 @@ function startGame(rematch){
   let me,op;
   if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
-  S.last={me,op};S.oppName=op.name;S.meName=me.name;
+  S.daily=false;S.last={me,op};S.oppName=op.name;S.meName=me.name;
   S.pp=S.mode==="pp";S.gold=S.mode==="gold";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;
   const oppHuman=S.pp,oppLabel=S.pp?S.names:S.gold?["You","Goldfish"]:["You","AI"];
   S.st=E.newGame({decks:[me.cards,op.cards],names:S.pp?S.names:oppLabel,seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,oppHuman]});
@@ -192,11 +200,16 @@ const myTurn=()=>S.st&&S.st.active===ME()&&S.st.winner==null&&!S.st.pending;
 function legalFor(uid){return myTurn()?E.legalActions(S.st).filter(a=>a.uid===uid):[]}
 function canAct(x){return legalFor(x.uid).some(a=>a.t!=="ink")}
 function cardTile(x,pos,size){const pi=SEAT(pos);const c=x.card,st=S.st,tm=S.tm;
-  const isT=tm&&tm.targets.has(x.uid),sel=S.sel===x.uid,glow=pi===ME()&&!tm&&myTurn()&&canAct(x);
+  const isT=tm&&(tm.mode==="singT"?tm.eligible.has(x.uid):tm.targets.has(x.uid));
+  const picked=tm&&tm.mode==="singT"&&tm.sel.has(x.uid);
+  const sel=S.sel===x.uid,glow=pi===ME()&&!tm&&myTurn()&&canAct(x);
   const hint=S.hint&&glow;const drying=c.type==="character"&&!E.dry(st,x)&&!K0(x,"rush");
-  return`<button class="ct ${size} ${x.exerted?"ex":""} ${sel?"sel":""} ${isT?"tgt":""} ${glow?"glow":""} ${hint?"hint":""} ${tm&&!isT?"dim":""}" data-a="tile" data-uid="${x.uid}">
+  const kind=tm&&isT?(tm.kind||tm.key||""):"";
+  const moveBadge=(tm&&tm.key==="loc"&&isT&&tm.moveOf)?`<span class="mcostb">${tm.moveOf.get(x.uid)??"?"} ink</span>`:"";
+  const singMark=picked?`<span class="singmark">SING</span>`:"";
+  return`<button class="ct ${size} ${x.exerted?"ex":""} ${sel?"sel":""} ${isT?"tgt":""} ${kind==="shift"||tm&&tm.key==="shift"?"tgt-shift":""} ${kind==="loc"||tm&&tm.key==="loc"?"tgt-move":""} ${picked?"tgt-sing":""} ${glow?"glow":""} ${hint?"hint":""} ${tm&&!isT?"dim":""}" data-a="tile" data-uid="${x.uid}">
    <span class="art"><img src="${esc(c.img)}" alt="${esc(c.full)}" loading="lazy"></span>
-   ${x.damage?`<span class="dtok">${x.damage}</span>`:""}${drying&&pi===st.active?`<span class="dry">DRYING</span>`:""}
+   ${x.damage?`<span class="dtok">${x.damage}</span>`:""}${drying&&pi===st.active?`<span class="dry">DRYING</span>`:""}${moveBadge}${singMark}
    ${c.type==="character"?`<span class="stats"><b>${E.strOf(x)}</b><i>${c.wil-x.damage}</i></span>`:c.type==="location"?`<span class="stats"><i>${c.wil-x.damage}</i></span>`:""}
    ${x.at?`<span class="atl">AT ${esc((E.find(st,x.at)?.inst.card.name||"").slice(0,10).toUpperCase())}</span>`:""}${x.under&&x.under.length?`<span class="und">+${x.under.length}</span>`:""}</button>`}
 const K0=(x,k)=>E.K?E.K(x,k):x.card.kw[k];
@@ -249,7 +262,10 @@ function fitBoard(again){const gb=root.querySelector(".gb");if(!gb)return;
       c.style.zIndex=c.classList.contains("sel")?50:(c.classList.contains("hint")?40:i+1)})}}
 addEventListener("resize",()=>{if(S.screen==="board")fitBoard()});
 function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner over2">GAME OVER</div>`;
-  if(S.tm)return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`;
+  if(S.tm){if(S.tm.mode==="singT"){const sum=[...S.tm.sel].reduce((a,u)=>{const f=E.find(st,u);return a+(f&&E.singVal?E.singVal(f.inst):(f?f.inst.card.cost:0))},0);
+    const ok=S.tm.sel.size>=2&&sum>=S.tm.need;
+    return`<div class="banner tm"><span>${esc(S.tm.label)} · ${sum}/${S.tm.need} · ${S.tm.sel.size} singers</span>${ok?`<button class="bbtn pri" data-a="singtok">Sing</button>`:""}<button class="bbtn" data-a="cancel">Cancel</button></div>`}
+    return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`}
   const my=st.active===ME();const acts=my&&!st.pending?E.legalActions(st):[];const canEnd=acts.some(a=>a.t==="end");
   const ml=st.players[ME()].lore,ol=st.players[OP()].lore,race=ml===ol?"Tied "+ml+"–"+ol:ml>ol?(S.pp?esc(PN(ME())):"You")+" ahead "+ml+"–"+ol:(S.pp?esc(PN(OP())):"AI")+" ahead "+ol+"–"+ml;
   const hintBtn=my&&!S.tm?`<button class="hintbtn ${S.hint?"on":""}" data-a="hint" aria-label="${S.hint?"Hide hints":"Show legal moves"}" title="Legal moves">${ICO.hint}</button>`:"";
@@ -267,7 +283,10 @@ function actionBar(){
   if(g.challenge)h+=btn("challenge","Challenge","red");
   if(g.shift)h+=btn("shift",`Shift <small>${f.inst.card.kw.shift} ink</small>`);
   if(g.sing)h+=btn("sing","Sing");if(g.singT)h+=btn("singT","Sing together");
-  if(g.act)h+=btn("act","Ability");if(g.move)h+=btn("move","Move");if(g.boost)h+=btn("boost",`Boost <small>${f.inst.card.kw.boost}</small>`);
+  if(g.act)h+=btn("act","Ability");
+  if(g.move){const costs=g.move.map(a=>{const l=E.find(S.st,a.loc)?.inst;return l?E.moveCost(S.st,ME(),f.inst,l):9});const lo=Math.min(...costs);
+    h+=btn("move",`Move <small>${lo} ink</small>`)}
+  if(g.boost)h+=btn("boost",`Boost <small>${f.inst.card.kw.boost}</small>`);
   if(g.ink)h+=btn("ink","Ink it","ink");
   h+=`<button class="ab ghost" data-a="zoom" data-uid="${S.sel}">Details</button>`;
   return`<div class="abar">${h}</div>`}
@@ -331,7 +350,7 @@ function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=
   const title=S.pp?esc(PN(st.winner))+" wins":S.gold?(st.winner===0?"Practice complete":"Goldfish wins"):(w?"Victory":"Defeat");
   const cine=w?"VICTORY":"DEFEAT";
   return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
-  ${streak?`<p class="streak">Win streak <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
+  ${streak?`<p class="streak">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
   <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
   <button class="wide" data-a="alog">Action log</button>
   <button class="wide primary" data-a="again">Rematch</button><button class="wide" data-a="tomenu">Change decks</button></div></div>`}
@@ -406,8 +425,21 @@ function goldLoop(){if(S.busy||!S.st||S.screen!=="board")return;S.busy=true;
 function startTargeting(list,key,label){
   if(list.length===1&&(list[0][key]==null)){doAct(list[0]);return}
   const withT=list.filter(a=>a[key]!=null);if(!withT.length){doAct(list[0]);return}
-  S.tm={list:withT,key,label,targets:new Set(withT.map(a=>a[key])),none:list.find(a=>a[key]==null)};renderBoard();
+  const tm={list:withT,key,kind:key,label,targets:new Set(withT.map(a=>a[key])),none:list.find(a=>a[key]==null)};
+  // #23: show ink cost to move onto each location
+  if(key==="loc"&&S.sel!=null){const ch=E.find(S.st,S.sel)?.inst;tm.moveOf=new Map();
+    for(const a of withT){const l=E.find(S.st,a.loc)?.inst;if(ch&&l)tm.moveOf.set(a.loc,E.moveCost(S.st,ME(),ch,l))}}
+  // #24: shift targets get distinct highlight via kind
+  if(key==="shift")tm.label=(label||"Shift")+" — purple glow marks legal Shift targets";
+  S.tm=tm;renderBoard();
   if(S.tm.none)toast("No legal target? Tap Cancel and play it without one.");
+}
+function startSingTogether(acts,c){
+  const need=c.singTogether,uids=new Set();
+  for(const a of acts)if(a.singers)a.singers.split(",").forEach(u=>uids.add(+u));
+  if(uids.size<2){toast("Need at least 2 ready characters to Sing Together");return}
+  S.tm={mode:"singT",uid:S.sel,need,sel:new Set(),eligible:uids,label:`Sing Together ${need}: tap singers`,acts};
+  renderBoard();
 }
 function choose(title,opts){ // opts: [{label,fn,cls}]
   sheet(`<h4>${esc(title)}</h4>${opts.map((o,i)=>`<button class="wide ${o.cls||""}" data-a="chs" data-i="${i}">${esc(o.label)}</button>`).join("")}<button class="wide ghostw" data-a="close">Cancel</button>`);S.chs=opts}
@@ -417,7 +449,7 @@ function runGroup(k){const acts=groupActs(legalFor(S.sel))[k];if(!acts)return;co
   if(k==="move")return startTargeting(acts,"loc",`Choose a location for ${c.name}`);
   if(k==="shift")return startTargeting(acts,"shift",`Choose which ${c.name} to shift onto`);
   if(k==="sing")return startTargeting(acts,"singer",`Choose a character to sing ${c.name}`);
-  if(k==="singT")return doAct(acts[0]);
+  if(k==="singT"){const f0=E.find(S.st,S.sel);return startSingTogether(acts,f0.inst.card)}
   if(k==="act"){const idx=[...new Set(acts.map(a=>a.i))];if(idx.length>1)return choose("Which ability?",idx.map(i=>({label:(E.actsOf(f.inst)[i].ink?E.actsOf(f.inst)[i].ink+" ink: ":"")+"Ability "+(i+1),fn:()=>effectFlow(acts.filter(a=>a.i===i),c)})));return effectFlow(acts,c)}
   if(k==="quest"){if(c.kw.support&&S.st.players[ME()].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).length){const base=acts[0];
       return startTargeting(S.st.players[ME()].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).map(x=>({...base,support:x.uid})),"support",`Support: choose a character to get +${E.strOf(f.inst)} strength`)}
@@ -458,7 +490,10 @@ function zoomOld(uid){const f=E.find(S.st,uid);if(!f)return;const x=f.inst;
   sheet(cardSheet(x.card,f.zone==="play"?`<div class="meta">${x.damage?x.damage+" damage · ":""}${x.exerted?"Exerted":"Ready"}${f.zone==="play"&&x.card.type==="character"?` · ${E.strOf(x)} STR now`:""}</div>`:"")+`<button class="wide" data-a="close">Close</button>`)}
 function tapTile(uid){
   const st=S.st;
-  if(S.tm){if(S.tm.targets.has(uid)){const a=S.tm.list.find(x=>x[S.tm.key]===uid);doAct(a)}else toast("Tap a glowing card, or Cancel");return}
+  if(S.tm){
+    if(S.tm.mode==="singT"){if(!S.tm.eligible.has(uid)){toast("Tap a glowing singer, or Cancel");return}
+      if(S.tm.sel.has(uid))S.tm.sel.delete(uid);else S.tm.sel.add(uid);renderBoard();return}
+    if(S.tm.targets.has(uid)){const a=S.tm.list.find(x=>x[S.tm.key]===uid);doAct(a)}else toast("Tap a glowing card, or Cancel");return}
   const f=E.find(st,uid);if(!f)return;
   if(f.pi!==ME()||!myTurn()){zoom(uid);return}
   S.sel=uid;renderBoard();zoom(uid,elOf(uid),true);
@@ -483,7 +518,41 @@ function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on
   <h4>Effects</h4><div class="opts"><button class="opt ${window.FX&&!FX.low?"on":""}" data-a="fxlow" data-v="0">Full</button><button class="opt ${window.FX&&FX.low?"on":""}" data-a="fxlow" data-v="1">Low power</button></div>
   <h4>Sound</h4><div class="opts">${pill("sound",false,"Off")}${pill("sound",true,"On")}</div>
   <h4>Tips</h4><div class="opts"><button class="opt" data-a="tipsagain">Show tips again</button></div>`}
-function pauseMenu(){S.paused=true;sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
+function pauseMenu(){S.paused=true;const canSave=S.st&&S.st.winner==null&&!S.st.pending&&!(S.st.pq&&S.st.pq.length)&&S.st.phase==="main";
+  sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
+const SAVEKEY="lorcanaSave.v1";
+function saveGameNow(){if(!S.st)return toast("No game");const fr=E.freezeState(S.st);if(!fr)return toast("Can't save a finished game");if(fr.error)return toast("Finish the current choice before saving");
+  const meta={savedAt:Date.now(),mode:S.mode||"ai",pp:!!S.pp,gold:!!S.gold,daily:!!S.daily,deck:S.deck,meName:S.meName,oppName:S.oppName,level:SET.level,style:SET.style,names:S.names,last:S.last?{me:{name:S.last.me.name},op:{name:S.last.op.name}}:null};
+  try{localStorage.setItem(SAVEKEY,JSON.stringify({meta,state:fr}));toast("Game saved");closeSheet();S.paused=false}catch(e){toast("Save failed (storage full?)")}}
+function loadSavedMeta(){try{const o=JSON.parse(localStorage.getItem(SAVEKEY)||"null");return o&&o.meta&&o.state?o:null}catch(e){return null}}
+function resumeSaved(){const o=loadSavedMeta();if(!o){toast("No saved game");return}
+  try{const st=E.thawState(o.state,pool);S.st=st;S.pp=!!o.meta.pp;S.gold=!!o.meta.gold;S.daily=!!o.meta.daily;S.mode=o.meta.mode||"ai";S.deck=o.meta.deck;S.meName=o.meta.meName;S.oppName=o.meta.oppName;S.names=o.meta.names||["Player 1","Player 2"];
+    if(o.meta.level)SET.level=o.meta.level;if(o.meta.style)SET.style=o.meta.style;S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.tipShown=true;S.paused=false;S.screen="board";renderBoard();
+    if(aiTurn())aiLoop();toast("Game resumed")}catch(e){console.error(e);toast("Could not resume save")}}
+function clearSave(){try{localStorage.removeItem(SAVEKEY)}catch(e){}}
+/* #47 Daily challenge: fixed seed from Phoenix date + fixed starter pair */
+function phoenixDateKey(){const fmt=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Phoenix",year:"numeric",month:"2-digit",day:"2-digit"});return fmt.format(new Date())}
+function dailySeed(key){let h=2166136261>>>0;for(let i=0;i<key.length;i++){h^=key.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function startDaily(){if(!pool||!pool.length){toast("Cards still loading");return}
+  const key=phoenixDateKey(),seed=dailySeed(key),i=seed%STARTERS.length,j=(seed>>>8)%STARTERS.length;
+  const me=deckFromSel("s"+i),op=deckFromSel("s"+((j===i?(j+1)%STARTERS.length:j)));
+  if(!me.cards||!op.cards){toast("Daily decks not ready");return}
+  S.daily=true;S.mode="ai";S.pp=false;S.gold=false;S.deck="s"+i;S.last={me,op};S.meName=me.name+" (Daily)";S.oppName=op.name;
+  S.names=["You","AI"];S.shown=null;S.mullSeat=0;
+  S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:seed,first:seed%2,human:[true,false]});
+  E.mulligan(S.st,1,E.aiMulligan(S.st,1));
+  S.mullSel=new Set();S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.screen="coin";render();
+}
+/* #40 Rules reference */
+function rulesHtml(){return`<h4>Rules reference</h4><div class="rules">
+<h5>Goal</h5><p>Be the first to reach <b>20 lore</b>. If both players reach the goal at the same time, the <b>active player</b> wins.</p>
+<h5>Turn flow</h5><p>Ready (exerted cards become ready) → Set (clear temporary effects) → Draw (except first player's first turn) → Main (ink, play, quest, challenge, move, abilities) → End.</p>
+<h5>Inking</h5><p>Once per turn, put an inkable card from your hand facedown into your inkwell. Ready ink pays costs.</p>
+<h5>Quest &amp; Challenge</h5><p>Exert a ready, dry character to quest for its lore. Challenge an exerted character or a location: both deal Strength damage (Resist reduces it). Bodyguard must be challenged first. Evasive can only be challenged by Evasive. Rush may challenge the turn it is played.</p>
+<h5>Sing &amp; Sing Together</h5><p>Exert a character with cost (or Singer N) ≥ a song's cost to sing it for free. <b>Sing Together</b> lets multiple ready characters combine their sing values — tap them until you meet the number, then confirm.</p>
+<h5>Shift</h5><p>Play a Floodborn onto another character with the same name (or matching Shift text) paying the Shift cost. It keeps damage, exerted state, and drying.</p>
+<h5>Locations</h5><p>Pay the shown move cost to move a character onto a location. Locations can be challenged.</p>
+</div><button class="wide" data-a="close">Close</button>`}
 /* events */
 function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");q.focus();q.setSelectionRange(pos,pos)}if(e.target.id==="bname")S.build.name=e.target.value}
 function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();return}
@@ -497,6 +566,10 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
   switch(a){
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
     case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
+    case"daily":startDaily();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;
+    case"savegame":saveGameNow();break;case"singtok":{if(!S.tm||S.tm.mode!=="singT")break;const set=[...S.tm.sel].join(",");
+      const acts=E.legalActions(S.st).filter(a=>a.t==="play"&&a.uid===S.tm.uid&&a.singers===set);if(!acts.length){toast("Those singers don't meet Sing Together "+S.tm.need);break}
+      doAct(acts[0]);break}
     case"builder":{const sel=String(S.deck||"");if(sel[0]==="c"&&decks()[+sel.slice(1)]){const d=decks()[+sel.slice(1)];bInit({...d,idx:+sel.slice(1)})}else bInit();S.screen="builder";render();break}
     case"bview":S.build.view=v;renderBuilder();break;case"bink":S.build.ink=v;S.build.limit=60;renderBuilder();break;case"btype":S.build.type=v;S.build.limit=60;renderBuilder();break;
     case"bmore":S.build.limit+=60;renderBuilder();break;case"bclear":if(confirm("Remove all cards from this deck?")){S.build.cards={};renderBuilder()}break;
@@ -549,8 +622,9 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"alog":sheet(`<h4>Action log</h4>${alogHtml()}<button class="wide" data-a="close">Close</button>`);break;
     case"history":{const H=histStats();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
       const rows=H.rows.map(r=>{const res=r.mode==="pp"?(r.winner===0?"P1 win":"P2 win"):(r.mode==="gold"?(r.winner===0?"Practice clear":"Practice end"):(r.won?"Win":"Loss"));
-        return`<div class="histrow ${r.won?"win":(r.mode==="ai"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}</small></div>`}).join("")||`<p class="meta">No matches yet. Play a game!</p>`;
-      sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
+        return`<div class="histrow ${r.won?"win":(r.mode==="ai"||r.mode==="daily"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.deckName?" · "+r.deckName:""}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}${r.reward?" · "+r.reward:""}</small></div>`}).join("")||`<p class="meta">No matches yet. Play a game!</p>`;
+      const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
+      sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent</h4><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"again":startGame(true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }

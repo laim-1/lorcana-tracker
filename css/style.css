@@ -521,3 +521,17 @@ header + main#app{padding-top:12px}
 .streak{font-size:16px;font-weight:800;color:#f5c955;margin:0 0 8px}.streak b{font-size:22px}
 /* Loading state for game data */
 #play .empty{padding:28px 16px}
+
+/* Batch 5: shift / move / sing-together target clarity */
+.ct.tgt-shift img{box-shadow:0 0 0 3px #b57bff,0 0 18px #b57bff;animation:pulseShift 1s infinite}
+.ct.tgt-move img{box-shadow:0 0 0 3px #4fd1c5,0 0 16px #4fd1c5;animation:pulseMove 1s infinite}
+.ct.tgt-sing img{box-shadow:0 0 0 3px #f5c955,0 0 18px #f5c955}
+@keyframes pulseShift{50%{box-shadow:0 0 0 4px #d4a0ff,0 0 24px #b57bff}}
+@keyframes pulseMove{50%{box-shadow:0 0 0 4px #7eeae0,0 0 22px #4fd1c5}}
+.ct .mcostb{position:absolute;left:4px;bottom:4px;z-index:5;background:#0d2f2c;color:#7eeae0;font-weight:900;font-size:11px;padding:3px 6px;border-radius:8px;border:2px solid #4fd1c5;pointer-events:none}
+.ct .singmark{position:absolute;left:50%;top:6px;transform:translateX(-50%);z-index:5;background:#5a3d00;color:#f5c955;font-weight:900;font-size:10px;padding:2px 7px;border-radius:8px;border:2px solid #f5c955;pointer-events:none;letter-spacing:.04em}
+.banner.tm .bbtn.pri{background:linear-gradient(180deg,#f5c955,#c9a227);color:#1a1230;border-color:#ffe08a;font-weight:900;min-height:44px;min-width:88px}
+.rules{max-height:55vh;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.rules h5{margin:14px 0 4px;font-size:15px;font-weight:900;color:#f5c955}
+.rules p{margin:0 0 6px;font-size:14px;line-height:1.4;font-weight:600;color:#e8e0ff}
+.histlist .histrow b{font-size:14px}

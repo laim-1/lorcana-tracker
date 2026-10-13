@@ -198,3 +198,10 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - All BACKLOG.md items 1–75 marked [x] and live.
 - Commit: `accd199` (version `20261013093341`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: (pushing)
+
+## Batch 10 (~2:40 AM) - sheet sticky Close + ui-batch8 harden
+- Sheet CSS: flex column + sticky last `.wide` button so Close/Done stays on-screen
+  for long Missing / wishlist / history lists (fixed off-viewport tap bug).
+- `.histlist` / `.logfull` max-height scroll inside sheets.
+- Hardened `tests/ui-batch8.py` (hash navigation, case-insensitive title, evaluate click).
+- Commit: `4d01e25` (version `20261013093429`). Live: https://laim-1.github.io/lorcana-tracker/

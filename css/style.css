@@ -592,3 +592,18 @@ code{font-size:12px;color:#f5c955}
 body.enter-anim #app{animation:fadeup .28s ease-out}
 @keyframes fadeup{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:none}}
 .histrow .opt.sm{margin-top:6px}
+
+/* sheet sticky close: keep last wide button reachable on long lists */
+.sheet{display:flex;flex-direction:column;overflow:hidden}
+#sheet-body{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+#sheet-body > .wide:last-of-type,
+#sheet-body > button.wide:last-child{
+  position:sticky;bottom:0;z-index:3;margin-top:12px;
+  box-shadow:0 -10px 18px rgba(10,6,30,.55);
+  background:#3a2d7a;border-color:#f5c955;
+}
+
+/* histlist scroll inside sheets */
+.sheet .histlist{max-height:48vh;overflow:auto;-webkit-overflow-scrolling:touch;margin:8px 0 12px}
+.sheet .logfull{max-height:48vh;overflow:auto}
+.sheet .vchart{max-width:100%}

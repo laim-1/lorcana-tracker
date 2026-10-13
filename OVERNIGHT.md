@@ -400,3 +400,12 @@ hard         93%     63%       -
 - End-turn confirm sheet lists quest/challenge explicitly and notes ink still available + drying count.
 - Aria-labels on End turn / Keep playing.
 - Static overnight +1 check (21 passed).
+
+### Full ladder after batches 40–43 (30g, 0 stalled)
+```
+row vs col | easy | normal | hard
+easy       |  -   |  10%   |  17%
+normal     | 87%  |   -    |  50%
+hard       | 97%  |  63%   |   -
+```
+Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Normal; Normal ~75%+ vs Easy).

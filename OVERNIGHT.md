@@ -314,3 +314,11 @@ hard         93%     63%       -
 - Deck tools: Rename deck (prompt).
 - README refreshed with tracker + play feature summary.
 - Commit: `a4cc3af` (version `20261013095359`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 30 (~3:00 AM) - AI ladder recheck + history export + a11y
+- Hard vs Normal (40g): Hard 63%, Normal 35% (target ~60%+ held).
+- Match history: Export history text (TSV to clipboard).
+- Toast: role=status aria-live=polite.
+- Nearly-complete set buttons CSS cleaned up.
+- ui-batch6/7/8 all passed.
+- Commit: `6786898` (version `20261013095518`). Live: https://laim-1.github.io/lorcana-tracker/

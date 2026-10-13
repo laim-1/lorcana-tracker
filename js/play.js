@@ -238,7 +238,7 @@ function showHistory(){S.histFilter=S.histFilter||"all";const H=histStats();cons
     return`<div class="histrow ${r.won?"win":(r.mode==="ai"||r.mode==="daily"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.deckName?" · "+r.deckName:""}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}${r.reward?" · "+r.reward:""}</small></div>`}).join("")||`<p class="meta">No matches in this filter.</p>`;
   const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
   const chips=[["all","All"],["ai","AI"],["pp","Pass & play"],["gold","Practice"],["daily","Daily"]].map(([k,l])=>`<button class="opt ${f===k?"on":""}" data-a="histf" data-v="${k}">${l}</button>`).join("");
-  sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="opts">${chips}</div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent (${shown.length})</h4><div class="histlist">${rows}</div><button class="wide" data-a="histclear">Clear history</button><button class="wide" data-a="close">Close</button>`)}
+  sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="opts">${chips}</div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent (${shown.length})</h4><div class="histlist">${rows}</div><button class="wide" data-a="histexp">Export history text</button><button class="wide" data-a="histclear">Clear history</button><button class="wide" data-a="close">Close</button>`)}
 /* #33 Match history */ const HKEY="lorcanaMatchHistory.v1";
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HKEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function saveHist(a){try{localStorage.setItem(HKEY,JSON.stringify(a.slice(0,80)))}catch(e){}}
@@ -409,7 +409,7 @@ function renderBoard(){
    ${zone(0)}${hud(0)}
    <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const acts=myTurn()&&!S.tm?legalFor(h.uid):[];const pl=acts.some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;const hint=S.hint&&acts.length>0;
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${hint?"hint":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
-   ${lastPlayHtml()}<div id="toast" class="toast"></div></div>
+   ${lastPlayHtml()}<div id="toast" role="status" aria-live="polite" class="toast"></div></div>
    ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}${S.tut&&st.winner==null?tutHtml():""}`;
   fitBoard();if(st.winner!=null){noteEvents(st.events||[]);clearFx();st.events=[];recordMatch(st);closeSheet();if(S.tut){S.tut=null}}else animate(rects);if(window.FX)FX.mode("board");tickLore();
   if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0||S.gold)&&window.FX)setTimeout(FX.celebrate,300);sfx("win")}if(st.winner==null)S.celebrated=false;
@@ -838,6 +838,10 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"alog":sheet(`<h4>Action log</h4>${alogHtml()}<button class="wide" data-a="close">Close</button>`);break;
     case"history":showHistory();break
     case"histf":S.histFilter=v;showHistory();break
+    case"histexp":{const rows=loadHist();const t=rows.map(r=>{const res=r.mode==="pp"?(r.winner===0?"P1":"P2"):(r.won?"W":"L");
+      return[new Date(r.t).toISOString().slice(0,16),r.mode,res,(r.me||"You")+" vs "+(r.opp||"?"),(r.lore||[]).join("-"),r.turns||"?",r.deckName||"",r.level||""].join("\t")}).join("\n");
+      const head="when\tmode\tresult\tmatchup\tlore\tturns\tdeck\tlevel\n";
+      try{navigator.clipboard.writeText(head+t);toast("History copied")}catch(e){sheet(`<h4>Match history export</h4><textarea class="pin bimp" rows="12" readonly>${esc(head+t)}</textarea><button class="wide" data-a="close">Close</button>`)}break}
     case"histclear":if(confirm("Clear all match history on this device?")){saveHist([]);toast("History cleared")}showHistory();break
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"sumcopy":{const st=S.st,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];

@@ -245,3 +245,12 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   lethal quest bonus, post-rollout lore-ahead / threat-cut bonuses.
 - Remeasure 48g Hard vs Normal: **63%** (0 stalls). Engine 102 passed.
 - Commit: `f8a65a0` (version `20261013094451`). Live: https://laim-1.github.io/lorcana-tracker/
+
+### AI ladder after Hard polish (40g)
+```
+row vs col, 40 games each (45s, 0 stalled)
+            easy  normal    hard
+easy           -      5%      8%
+normal       83%       -     35%
+hard         93%     63%       -
+```

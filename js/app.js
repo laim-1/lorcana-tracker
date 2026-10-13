@@ -100,11 +100,15 @@ async function wishSheet(){openSheet(`<h4>Wishlist</h4><p class="meta">Loading p
   await Promise.all(sets.map(s=>loadCards(s.id)));
   const rows=wish.map(id=>{for(const s of sets){const c=cardsFor(s.id).find(x=>x.id===id);if(c)return{c,s}}return null}).filter(Boolean);
   const tot=rows.reduce((t,r)=>t+(r.c.usd||0),0);
+  const text=rows.map(r=>`1 ${r.c.name}${r.c.version?" - "+r.c.version:""}`).join("\n");
   openSheet(`<h4>Wishlist</h4><div class="histsum"><b>${rows.length} cards</b><span>${money(tot)} total</span></div>
   ${rows.length?`<div class="histlist">${rows.map(r=>`<div class="histrow"><b>${esc(r.c.name)}</b><span>${money(r.c.usd)}</span><small>${esc(r.c.version||"")} · ${esc(r.s.name)}</small>
    <button class="opt sm" data-rm="${r.c.id}">Remove</button></div>`).join("")}</div>`:`<p class="meta">Tap a card art, then Add to wishlist.</p>`}
+  ${rows.length?`<button class="wide" id="wexp">Export as deck list</button>`:""}
   <button class="wide" id="done">Close</button>`,()=>{
    $("#sheet-body").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{wish=wish.filter(x=>x!==b.dataset.rm);saveWish();wishSheet()});
+   const we=$("#wexp");if(we)we.onclick=()=>{openSheet(`<h4>Wishlist export</h4><textarea class="pin bimp" id="wtxt" rows="10" readonly>${esc(text)}</textarea><button class="wide primary" id="wcopy">Copy</button><button class="wide" id="done">Close</button>`,()=>{
+     $("#wcopy").onclick=()=>{const el=$("#wtxt");el.select();try{navigator.clipboard.writeText(el.value)}catch(e){}alert("Copied")};$("#done").onclick=closeSheet})};
    $("#done").onclick=closeSheet})}
 async function dupesSheet(){openSheet(`<h4>Duplicates / trade list</h4><p class="meta">Loading…</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet});
   await Promise.all(sets.map(s=>loadCards(s.id)));

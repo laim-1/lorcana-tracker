@@ -228,3 +228,9 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Home hero shows a 14-day collection-value sparkline from daily history.
 - CATEGORIES.md updated: humans get simultaneous-trigger ordering picker (#20).
 - Commit: `c536302` (version `20261013093818`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 15 (~2:50 AM) - wishlist export + undo RNG test
+- Wishlist sheet can export Dreamborn-style text and copy it.
+- Engine test: freeze/thaw restores RNG counter after ink (undo safety).
+- Tests: engine 102 passed.
+- Commit: `9686bf7` (version `20261013094016`). Live: https://laim-1.github.io/lorcana-tracker/

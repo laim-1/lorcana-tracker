@@ -393,4 +393,25 @@ t("#26 freeze refused with pending cannot undo mid-choice snapshot", () => {
   assert.equal(E.freezeState(st).error, "pending");
 });
 
+
+t("#26 undo snap survives pending-creating action", () => {
+  const st = game(); st.human = [true, false]; st.phase = "main"; st.active = 0;
+  st.players[0].deck = []; st.players[0].hand = []; st.players[0].discard = []; st.players[0].ink = []; st.players[0].play = [];
+  st.players[1].deck = []; st.players[1].hand = []; st.players[1].discard = []; st.players[1].ink = []; st.players[1].play = [];
+  // Use a simple inkable card; ink does not create pending — snapshot/thaw still round-trips RNG counter
+  const inkable = E.normCard(window.LORCANA_GAME_CARDS.cards.find(x => x.inkwell && x.name && /^\d+$/.test(String(x.set))));
+  ink(st, 0, 2);
+  const h = {uid:st.uid++, card:inkable, owner:0, damage:0, exerted:false, playedOn:0, turnPlayed:0, under:[], grants:[]};
+  st.players[0].hand.push(h);
+  const r0 = st.r.state();
+  const snap = E.freezeState(st);
+  E.act(st, {t:"ink", uid:h.uid});
+  assert.ok(st.players[0].inked);
+  const st2 = E.thawState(snap, []);
+  assert.equal(st2.r.state(), r0);
+  assert.ok(!st2.players[0].inked);
+  assert.equal(st2.players[0].ink.length, 2);
+  assert.equal(st2.players[0].hand.length, 1);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

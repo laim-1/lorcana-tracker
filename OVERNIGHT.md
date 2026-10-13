@@ -66,3 +66,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Tests: `node tests/engine.test.js` 86 passed; new `tests/ui-batch3.py` (375×667 + 390×844)
   for layout peek/dtok/hint/last-play/concede/game-speed; `ui-ai-style.py` + `ui-start.py` passed.
 - Commit: `c2d869d` (version `20261013083143`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `aa074b4` status built; version.json `20261013083143` on https://laim-1.github.io/lorcana-tracker/.

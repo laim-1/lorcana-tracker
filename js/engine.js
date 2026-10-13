@@ -2047,11 +2047,14 @@ function scoreAction(st,a){
         if(CTX.threat&&v<8)s-=(H?12:4)}
       if(H&&v>=12)s+=8;return s}
     case"challenge":{const d=find(st,a.target).inst,as=strOf(x)+(K(x,'challenger')||0);
-      const kills=d.damage+Math.max(0,as-(K(d,'resist')||0))>=wilOf(d),dies=!isLoc(d)&&x.damage+Math.max(0,strOf(d)-(K(x,'resist')||0))>=wilOf(x);
+      const dmg=Math.max(0,as-(K(d,'resist')||0)); // effective damage after Resist
+      const kills=d.damage+dmg>=wilOf(d),dies=!isLoc(d)&&x.damage+Math.max(0,strOf(d)-(K(x,'resist')||0))>=wilOf(x);
       // Value: removing a defender (plus its lore threat, more when the opponent is close to 20), or chip damage;
       // minus our attacker if it dies and the lore we give up by not questing.
       const dl=isLoc(d)?d.card.lore:loreOf(d),race=o.lore>=14?dl*6:0;
-      let v=(kills?instVal(d)+dl*5+race+(isLoc(d)?d.card.lore*3:0):(dies?0:Math.min(as,wilOf(d)-d.damage)*0.8+(d.damage+as>=wilOf(d)-2?dl:0)))-(dies?instVal(x)*0.9:0)-(K(x,'reckless')?0:loreOf(x)*3);
+      let v=(kills?instVal(d)+dl*5+race+(isLoc(d)?d.card.lore*3:0):(dies||dmg<=0?-8:Math.min(dmg,wilOf(d)-d.damage)*0.8+(d.damage+dmg>=wilOf(d)-2?dl:0)))-(dies?instVal(x)*0.9:0)-(K(x,'reckless')?0:loreOf(x)*3);
+      // Resist sinks: avoid 0-damage challenges unless Reckless-forced
+      if(!kills&&dmg<=0&&!K(x,'reckless'))v=-20;
       if(kills&&!dies)v+=(LEVEL==="hard"?12:5); // clean kill (Hard weights more)
       if(kills&&dies){const ivd=instVal(d),ivx=instVal(x);if(ivd>ivx*1.1)v+=(LEVEL==="hard"?10:4);else if(ivd<ivx*0.85)v-=(LEVEL==="hard"?16:8)}
       // Ward: challenge is often the only removal — value clean kills more

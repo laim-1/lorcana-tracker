@@ -540,3 +540,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Tutorial tip for Evasive/Alert challenge rules.
 - ui-static-overnight **43** checks. Engine **120** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `491e8c4` (version `20261013123347`). Live verified Pages built; version.json `20261013123347`.
+
+## Batch 59 (~5:37 AM) - Resist chip scoring + near-20 banner
+- Challenge scoring uses effective damage after Resist; avoid 0-damage chips into high Resist.
+- Banner subline notes when you / AI / both are near 20 lore.
+- ui-static-overnight **44** checks. Engine **121** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.

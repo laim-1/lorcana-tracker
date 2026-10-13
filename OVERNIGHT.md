@@ -293,3 +293,7 @@ hard         93%     63%       -
 - Personality 24g table (normal:aggro/quester/control) ~even (42–46%); styles remain distinct
   without one dominating.
 - Commit: `4a8c2fc` (version `20261013094945`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 26 (~2:55 AM) - clear wishlist
+- Wishlist sheet: Clear wishlist confirmation.
+- Commit: `e0f93ff` (version `20261013094959`). Live: https://laim-1.github.io/lorcana-tracker/

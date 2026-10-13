@@ -304,3 +304,8 @@ hard         93%     63%       -
 - Tracker More → Nearly complete sets (50%+ owned, jump to set).
 - Engine tests: 102 passed.
 - Commit: `899d281` (version `20261013095235`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 28 (~3:00 AM) - quick play + history filters
+- Play menu: Quick play (random starter vs random starter).
+- Match history: filter chips (All / AI / Pass & play / Practice / Daily) + Clear history.
+- Commit: `a4f5d58` (version `20261013095322`). Live: https://laim-1.github.io/lorcana-tracker/

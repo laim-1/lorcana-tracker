@@ -82,7 +82,7 @@ function renderMenu(){
   <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
   ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button>`:""})()}
-  ${!PPm&&!GLm?`<button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
+  ${!PPm&&!GLm?`<button class="wide" data-a="quick">Quick play <small>random starters</small></button><button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
   <button class="wide" data-a="tutorial">Tutorial <small>guided first game</small></button>
   <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
@@ -230,6 +230,14 @@ const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,volume:70,mus
   if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.music=!!r.music;r.tips=r.tips!==false;r.volume=Math.max(0,Math.min(100,Number(r.volume)||70));return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
+function showHistory(){S.histFilter=S.histFilter||"all";const H=histStats();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
+  const f=S.histFilter,filt=r=>f==="all"||(f==="ai"&&(r.mode==="ai"||r.mode==="daily"))||r.mode===f;
+  const shown=H.rows.filter(filt);
+  const rows=shown.map(r=>{const res=r.mode==="pp"?(r.winner===0?"P1 win":"P2 win"):(r.mode==="gold"?(r.winner===0?"Practice clear":"Practice end"):(r.won?"Win":"Loss"));
+    return`<div class="histrow ${r.won?"win":(r.mode==="ai"||r.mode==="daily"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.deckName?" · "+r.deckName:""}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}${r.reward?" · "+r.reward:""}</small></div>`}).join("")||`<p class="meta">No matches in this filter.</p>`;
+  const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
+  const chips=[["all","All"],["ai","AI"],["pp","Pass & play"],["gold","Practice"],["daily","Daily"]].map(([k,l])=>`<button class="opt ${f===k?"on":""}" data-a="histf" data-v="${k}">${l}</button>`).join("");
+  sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="opts">${chips}</div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent (${shown.length})</h4><div class="histlist">${rows}</div><button class="wide" data-a="histclear">Clear history</button><button class="wide" data-a="close">Close</button>`)}
 /* #33 Match history */ const HKEY="lorcanaMatchHistory.v1";
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HKEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function saveHist(a){try{localStorage.setItem(HKEY,JSON.stringify(a.slice(0,80)))}catch(e){}}
@@ -739,7 +747,8 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
 
   switch(a){
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
-    case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
+    case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"quick":{S.mode="ai";S.deck="s"+Math.floor(Math.random()*STARTERS.length);S.opp="s"+Math.floor(Math.random()*STARTERS.length);startGame();break}
+    case"start":startGame();break;
     case"daily":startDaily();break;case"tutorial":startTutorial();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;
     case"undo":doUndo();break;case"tutnext":if(S.tut){S.tut.i=Math.min(S.tut.i+1,TUT_STEPS.length-1);renderBoard()}break;
     case"tutdone":case"tutskip":S.tut=null;if(S.screen==="board")renderBoard();toast(a==="tutskip"?"Tutorial skipped":"Tutorial complete");break;
@@ -825,11 +834,9 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"endforce":S.skipEndConfirm=true;closeSheet();doAct({t:"end"});break;
     case"log":sheet(`<h4>Game log</h4><div class="logfull">${S.st.log.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join("")}</div><button class="wide" data-a="close">Close</button>`);break;
     case"alog":sheet(`<h4>Action log</h4>${alogHtml()}<button class="wide" data-a="close">Close</button>`);break;
-    case"history":{const H=histStats();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
-      const rows=H.rows.map(r=>{const res=r.mode==="pp"?(r.winner===0?"P1 win":"P2 win"):(r.mode==="gold"?(r.winner===0?"Practice clear":"Practice end"):(r.won?"Win":"Loss"));
-        return`<div class="histrow ${r.won?"win":(r.mode==="ai"||r.mode==="daily"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.deckName?" · "+r.deckName:""}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}${r.reward?" · "+r.reward:""}</small></div>`}).join("")||`<p class="meta">No matches yet. Play a game!</p>`;
-      const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
-      sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent</h4><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
+    case"history":showHistory();break
+    case"histf":S.histFilter=v;showHistory();break
+    case"histclear":if(confirm("Clear all match history on this device?")){saveHist([]);toast("History cleared")}showHistory();break
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"sumcopy":{const st=S.st,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
       const lines=[(S.pp?PN(st.winner)+" wins":(st.winner===0?"Victory":"Defeat"))+" · Turn "+st.turnNo,

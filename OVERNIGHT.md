@@ -556,3 +556,13 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Tutorial tip for Reckless (must challenge, cannot quest).
 - ui-static-overnight **45** checks. Engine **122** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `4878f82` (version `20261013123941`). Live verified Pages built; version.json `20261013123941`.
+
+## Batch 61 (~6:00 AM) - hand-aware draw scoring + banner hand count
+- `effVal` draw: empty/thin hand scores higher (bonus at ≤2 / ≤4 cards; Hard extra when ≤3).
+- Banner subline shows "N in hand" on your turn.
+- ui-static-overnight **46** checks. Engine **123** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `9e212e6` (version `20261013130058`). Live verified Pages built; version.json `20261013130058`.

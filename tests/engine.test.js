@@ -771,4 +771,19 @@ t("ai: Reckless prefers clean-killing high-lore over low-lore", () => {
   assert.ok(a.t === "challenge" && a.target === hi.uid, "Reckless hits high lore: " + JSON.stringify(a));
 });
 
+
+t("ai: values draw songs more when hand is empty", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 3);
+  // Thin hand after plays: custom draw-3 song vs weak body
+  const song = hand(st, 0, C({ type: ["Action", "Song"], cost: 2, text: "Draw 3 cards.", inkwell: true, lore: 0, strength: 0, willpower: 0 }));
+  song.card.type = "song";
+  song.card.onPlay = [{ k: "draw", n: 3 }];
+  const junk = hand(st, 0, C({ lore: 1, strength: 1, willpower: 2, cost: 3 }));
+  // Only these two in hand — draw should beat a 1-lore dryer
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === song.uid, "prefer draw song with thin hand: " + JSON.stringify(a) + " song=" + song.uid + " junk=" + junk.uid);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

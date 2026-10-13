@@ -1935,7 +1935,8 @@ function effVal(st,pi,effs,tgt){
   for(const e of effs||[]){
     const mine=T&&T.pi===pi,x=T&&T.inst;
     switch(e.k){
-      case"draw":v+=e.n*4;break;case"drawAll":v+=1;break;case"gainLore":v+=e.n*6;break;case"oppLose":v+=e.n*5;break;
+      case"draw":{const hand=st.players[pi].hand.length;v+=e.n*(4+(hand<=2?5:hand<=4?2:0)+(LEVEL==="hard"&&hand<=3?3:0));break}
+      case"drawAll":v+=1;break;case"gainLore":v+=e.n*6;break;case"oppLose":v+=e.n*5;break;
       case"dmgAllOpp":v+=st.players[opp(pi)].play.filter(isChar).length*e.n*2;break;
       case"dmg":if(x)v+=mine?-20:(x.damage+Math.max(0,e.n-(K(x,'resist')||0))>=wilOf(x)?instVal(x):e.n);break;
       case"banish":case"bounce":if(x)v+=mine?-30:instVal(x)*(e.k==="bounce"?0.7:1);break;

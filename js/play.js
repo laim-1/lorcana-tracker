@@ -391,7 +391,8 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const dryN=my?meP.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)&&!K0(x,"rush")).length:0;
   const readyN=my?meP.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
   const nearLab=near?(ml>=18&&ol>=18?" · both near 20":ml>=18?" · you near 20":" · AI near 20"):"";
-  const sub=my?(meP.inked?"Ink used":"Ink available")+(readyN?` · ${readyN} ready`:"")+(dryN?` · ${dryN} drying`:"")+(S.hint?" · hints on":"")+nearLab:(S.gold?"Pass and draw only":"AI is playing")+nearLab;
+  const handN=my?meP.hand.length:0;
+  const sub=my?(meP.inked?"Ink used":"Ink available")+(handN!=null?` · ${handN} in hand`:"")+(readyN?` · ${readyN} ready`:"")+(dryN?` · ${dryN} drying`:"")+(S.hint?" · hints on":"")+nearLab:(S.gold?"Pass and draw only":"AI is playing")+nearLab;
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
   return`<div class="banner ${my?"mine":"theirs"} ${near?"near":""}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
    <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" aria-label="${canEnd?"End turn":"Must challenge before ending"}" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking" aria-label="Opponent thinking"><i></i><i></i><i></i></span>`}</div></div>`}

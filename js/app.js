@@ -65,8 +65,8 @@ function home(){cur=null;chrome(null);quickAdd=false;
  const hist=loadHist();
  const byIdPrice=(()=>{const m=new Map();for(const s of sets)for(const c of cardsFor(s.id))m.set(c.id,c.usd||0);return m})();
  const wishCost=wish.reduce((t,id)=>t+(byIdPrice.get(id)||0),0);
- const done=list.filter(s=>st.get(s.id).p>=100).length;
- app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div>${sparkSvg(hist)}</div><div class="hs">${owned} card${owned==1?"":"s"}<br>${done}/${sets.length} sets done</div></div>
+ const done=list.filter(s=>st.get(s.id).p>=100).length;const foilsTotal=[...st.values()].reduce((a,x)=>a+(x.foils||0),0);
+ app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div>${sparkSvg(hist)}</div><div class="hs">${owned} card${owned==1?"":"s"}${foilsTotal?` · ${foilsTotal} foil`:""}<br>${done}/${sets.length} sets done</div></div>
  <div class="hactions" role="navigation" aria-label="Collection tools">
   <button class="hact" data-go="search" aria-label="Search all sets">Search all</button>
   <button class="hact" data-go="wish" aria-label="Open wishlist">Wishlist${wish.length?` (${wish.length})`:""}</button>

@@ -345,3 +345,8 @@ hard         93%     63%       -
 ## Batch 35 (~3:05 AM) - pause meta (turn/seed)
 - Pause menu shows turn number, RNG seed, and matchup names (handy for bug reports).
 - Commit: `9318a53` (version `20261013095800`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 36 (~3:00 AM) - foil hero + full AI ladder
+- Home hero shows total foil copies owned.
+- AI ladder 30g: easy 7%/10% vs N/H; normal 80%/37% vs E/H; hard 93%/63% vs E/N.
+- Commit: `44806ec` (version `20261013095954`). Live: https://laim-1.github.io/lorcana-tracker/

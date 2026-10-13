@@ -1,3 +1,12 @@
+/* Native long-press/drag suppression (iOS Safari callout "Copy image", text selection, drag ghosts). */
+(function(){const isField=t=>t&&t.closest&&t.closest("input,textarea,select,[contenteditable=true]");
+  document.addEventListener("contextmenu",e=>{if(!isField(e.target))e.preventDefault()},{capture:true});
+  document.addEventListener("dragstart",e=>{if(e.target&&e.target.tagName==="IMG")e.preventDefault()},{capture:true});
+  document.addEventListener("selectstart",e=>{if(!isField(e.target))e.preventDefault()},{capture:true});
+  const fix=root=>{if(root.tagName==="IMG")root.draggable=false;if(root.querySelectorAll)for(const i of root.querySelectorAll("img"))i.draggable=false};
+  const mo=new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1)fix(n)});
+  const go=()=>{fix(document.body);mo.observe(document.body,{childList:true,subtree:true})};
+  if(document.body)go();else document.addEventListener("DOMContentLoaded",go)})();
 /* Visual effects: animated inky background + particles. One RAF loop, capped particle count,
    pauses when hidden, honours prefers-reduced-motion and a low-power setting. */
 (function(){

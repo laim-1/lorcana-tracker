@@ -396,3 +396,15 @@ h1{font-size:15px}
 .startbar .wide{margin:0}
 #play:not(.onboard){overflow-y:auto;-webkit-overflow-scrolling:touch}
 .startbar.top{position:sticky;top:0;bottom:auto;z-index:6;margin:0;padding:8px 14px;background:linear-gradient(180deg,rgba(14,11,36,.96) 70%,rgba(14,11,36,0))}
+
+/* fix: scrolled char rows start at the left; wrapped rows never centre-overflow out of reach */
+.zone .row.chars.scroll{justify-content:flex-start;overflow-x:auto}.zone .row.chars.wrap{align-content:flex-start}
+.phead{position:sticky;top:0;z-index:6}.phead>.pbar,.phead>.startbar.top{position:relative;top:auto}
+.dopt{text-align:left}
+/* No native long-press callouts, text selection, image drag or tap flash (our own long-press zoom handles holds). */
+html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+*{-webkit-touch-callout:none}
+input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img{-webkit-user-drag:none;user-drag:none;-webkit-user-select:none;user-select:none;pointer-events:auto}
+.opt.on,.li.on{color:#fff3d0}
+#fx-fg{z-index:16}

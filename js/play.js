@@ -12,7 +12,7 @@ function ensureRoot(){if(root)return;root=document.createElement("div");root.id=
   root.addEventListener("click",onClick);root.addEventListener("input",onInput);
   let lpT=null;root.addEventListener("pointerdown",e=>{const t=e.target.closest("[data-a=tile],[data-zuid],[data-a=bview1],[data-a=mtog]");if(!t)return;lpT=setTimeout(()=>{S.lp=true;longZoom(t)},450)});
   ["pointerup","pointercancel","pointerleave","pointermove"].forEach(n=>root.addEventListener(n,e=>{if(n==="pointermove"&&e.movementX*e.movementX+e.movementY*e.movementY<16)return;clearTimeout(lpT)}));
-  root.addEventListener("contextmenu",e=>{if(e.target.closest("[data-a=tile]"))e.preventDefault()})}
+  root.addEventListener("contextmenu",e=>e.preventDefault())}
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 async function loadPool(){
   if(pool)return;if(!window.LORCANA_GAME_CARDS)await loadScript("./data/game-cards.js?v="+V);
@@ -40,7 +40,7 @@ function deckFromSel(sel){if(typeof sel!=="string"||!/^(s\d+|own|c\d+)$/.test(se
 }
 /* ---------- rendering ---------- */
 function bar(title,right=""){return`<div class="pbar"><button class="pbtn ghost" data-a="quit">${S.screen==="menu"?"Close":"Back"}</button><div class="ptitle">${esc(title)}</div>${right}</div>`}
-function render(){if(root)root.classList.toggle("onboard",S.screen==="board");clearFx();if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
+function render(){if(root){root.classList.toggle("onboard",S.screen==="board");if(S._lastScreen!==S.screen){root.scrollTop=0;S._lastScreen=S.screen}}clearFx();if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
   if(!pool){root.innerHTML=bar("Play")+`<p class="empty">Loading all cards...</p>`;return}
   ({menu:renderMenu,builder:renderBuilder,mull:renderMull,board:renderBoard,coin:renderCoin}[S.screen])();
 }
@@ -48,7 +48,7 @@ function renderMenu(){
   const own=deckFromSel("own"),cus=decks();
   if(!/^(s\d+|own|c\d+)$/.test(String(S.deck))||(S.deck[0]==="c"&&!cus[+S.deck.slice(1)])||(S.deck[0]==="s"&&!STARTERS[+S.deck.slice(1)]))S.deck="s0";
   const opt=(id,name,sub,dis)=>`<button class="dopt ${S.deck===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
-  root.innerHTML=bar("Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div><div class="pbody">
+  root.innerHTML=`<div class="phead">`+bar("Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
   <h4>Your deck</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
@@ -150,11 +150,15 @@ function zone(pi){const p=S.st.players[pi],ch=p.play.filter(x=>x.card.type==="ch
   return`<div class="zone z${pi}">${pi===0&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}
    <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||`<span class="rowlbl">${pi===0?"Your characters":"Opponent characters"}</span>`}</div>
    ${pi===1&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}</div>`}
-function fitBoard(){const gb=root.querySelector(".gb");if(!gb)return;
-  for(const r of gb.querySelectorAll(".row.chars")){const tiles=[...r.children].filter(x=>x.classList.contains("ct"));if(!tiles.length)continue;
+function fitBoard(again){const gb=root.querySelector(".gb");if(!gb)return;
+  const rowsC=[...gb.querySelectorAll(".row.chars")];rowsC.forEach(r=>{r.style.setProperty("--ch","40px");r.classList.remove("wrap")});void gb.offsetHeight; // measure free space, not current content
+  if(!again)requestAnimationFrame(()=>fitBoard(true));
+  for(const r of rowsC){const tiles=[...r.children].filter(x=>x.classList.contains("ct"));if(!tiles.length)continue;
     const H=r.clientHeight-16,W=r.parentNode.clientWidth-20,g=8,n=tiles.length,exr=tiles.filter(t=>t.classList.contains("ex")).length/n,u=.716+(1-.716)*exr;
     let best=0,rows=1;for(let k=1;k<=3;k++){const per=Math.ceil(n/k),h=Math.min((H-g*(k-1))/k,(W-g*(per-1))/(per*u+.15),165);if(h>best+6){best=h;rows=k}}
-    best=Math.max(best,70);r.style.setProperty("--ch",Math.floor(best)+"px");r.classList.toggle("wrap",rows>1);r.classList.toggle("scroll",false)}
+    // Too tight to wrap legibly: one full-height row that scrolls sideways (wrapping rows would clip above the zone).
+    let sc=false;if(best<70||rows>1&&rows*best+g*(rows-1)>H+1){const h1=Math.min(H,165);if(h1>=best||best<70){best=Math.max(56,h1);rows=1;sc=n*(best*u+g)>W+1}}
+    r.style.setProperty("--ch",Math.floor(best)+"px");r.classList.toggle("wrap",rows>1);r.classList.toggle("scroll",sc)}
   for(const s of gb.querySelectorAll(".strip"))s.style.setProperty("--ch","56px");
   const hd=gb.querySelector(".hand2");if(hd){hd.classList.toggle("big",hd.children.length>=8);const cs=[...hd.children],n=cs.length,W=hd.clientWidth-40,w=cs[0]?cs[0].offsetWidth:78;
     let ov=n>1?Math.max(0,(n*w-W)/(n-1)):0;ov=Math.min(ov,w-(n>=8?36:44));hd.style.setProperty("--ov",(-ov)+"px");hd.classList.toggle("scroll",n*w-(n-1)*ov>W+1);

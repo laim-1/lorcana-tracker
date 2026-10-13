@@ -234,3 +234,7 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Engine test: freeze/thaw restores RNG counter after ink (undo safety).
 - Tests: engine 102 passed.
 - Commit: `9686bf7` (version `20261013094016`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 16 (~2:45 AM) - foil counts on set tiles
+- Set list shows owned foil count (`12/204 · 3F`) beside progress.
+- Commit: `c021bd5` (version `20261013094035`). Live: https://laim-1.github.io/lorcana-tracker/

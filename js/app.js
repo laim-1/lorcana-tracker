@@ -35,7 +35,7 @@ const srcLabel=()=>source=="live"?"Live TCGplayer prices via Lorcast":"Snapshot 
 const saveSort=()=>localStorage.setItem(SKEY,JSON.stringify(sort));
 function chrome(set){const hid=(q,v)=>{const e=$(q);if(e)e.hidden=v};hid("#back",!set);hid("#tools",!set);hid("#menu-btn",!!set);
  hid("#play-btn",!!set);const ti=$("#title");if(ti){ti.textContent=set?set.name:"LIAM'S LORCANA";ti.classList.toggle("small",!!set)}}
-function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length;return{got,t,p:t?got/t*100:0,v:value(cs)}}
+function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length,foils=cs.filter(c=>col[c.id]&&col[c.id].f>0).length;return{got,t,p:t?got/t*100:0,v:value(cs),foils}}
 function badgeFor(p){if(p>=100)return`<span class="setbadge done">Complete</span>`;if(p>=75)return`<span class="setbadge hot">Almost</span>`;if(p>=50)return`<span class="setbadge mid">Halfway</span>`;return""}
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HVAL)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function recordValue(tot){const day=new Date().toISOString().slice(0,10);const h=loadHist();if(h[0]&&h[0].d===day){h[0].v=tot;h[0].n=Object.keys(col).length}else h.unshift({d:day,v:tot,n:Object.keys(col).length});
@@ -71,10 +71,10 @@ function home(){cur=null;chrome(null);quickAdd=false;
   <button class="hact" data-go="more">More</button>
  </div>
  ${wish.length?`<div class="wishbar" data-go="wish"><b>Wishlist</b><span>${wish.length} cards · ${money(wishCost)}</span></div>`:""}
- <div class="sortnote">Sorted by ${SET_SORTS[sort.sets].toLowerCase()}</div>`+list.map(s=>{const {got,t,p,v}=st.get(s.id),logo=LOGOS.has(String(s.code));
+ <div class="sortnote">Sorted by ${SET_SORTS[sort.sets].toLowerCase()}</div>`+list.map(s=>{const {got,t,p,v,foils}=st.get(s.id),logo=LOGOS.has(String(s.code));
   return `<button class="set" data-id="${s.id}">${logo?`<img class="logo" src="./assets/sets/${esc(s.code)}.png?v=${V}" alt="${esc(s.name)}" loading="lazy">`:`<div class="logo txt"><span>${esc(s.name)}</span></div>`}
   <div class="sbody"><div class="bar"><div style="width:${p}%"></div></div>
-  <div class="prog"><span>${got}/${t}</span>${badgeFor(p)}<span class="gold">${money(v)}</span></div></div></button>`}).join("");
+  <div class="prog"><span>${got}/${t}${foils?` · ${foils}F`:""}</span>${badgeFor(p)}<span class="gold">${money(v)}</span></div></div></button>`}).join("");
  app.querySelectorAll(".set").forEach(e=>e.onclick=()=>location.hash="set/"+e.dataset.id);
  app.querySelectorAll("[data-go]").forEach(e=>e.onclick=()=>homeGo(e.dataset.go));
  app.querySelectorAll("img.logo").forEach(i=>i.onerror=()=>{i.outerHTML=`<div class="logo txt"><span>${esc(i.alt)}</span></div>`});

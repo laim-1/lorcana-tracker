@@ -572,9 +572,18 @@ function illegalWhy(a,e){const msg=(e&&e.message)||"";
   if(a&&a.t==="play")return "Cannot play that card right now (cost, ink, or timing)";
   if(a&&a.t==="move")return "Cannot move there (ink cost or location)";
   return "That move is not allowed"}
-function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();
+function playerConfirm(a,st){const n=u=>{const f=E.find(st,u);return f?f.inst.card.name:""};
+  if(a.t==="quest"){const x=E.find(st,a.uid)?.inst;return x?`Quest +${E.loreOf(x)} lore with ${n(a.uid)}`:""}
+  if(a.t==="challenge"){const at=E.find(st,a.uid)?.inst,d=E.find(st,a.target)?.inst;if(!at||!d)return"";
+    const dmg=Math.max(0,E.strOf(at)+(E.K(at,"challenger")||0)-(E.K(d,"resist")||0));
+    return `Challenge ${n(a.target)} (${dmg} dmg) with ${n(a.uid)}`}
+  if(a.t==="ink")return `Inked ${n(a.uid)}`;
+  if(a.t==="move")return `Moved ${n(a.uid)} to ${n(a.loc)}`;
+  if(a.t==="play"&&a.shift!=null)return `Shifted ${n(a.uid)} onto ${n(a.shift)}`;
+  return ""}
+function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;const conf=playerConfirm(a,S.st);S.sel=null;S.tm=null;S.hint=false;closeSheet();
   if(!S.st.pending&&!(S.st.pq&&S.st.pq.length))snapUndo();
-  try{E.act(S.st,a)}catch(e){console.error(e);toast(illegalWhy(a,e))}
+  try{E.act(S.st,a);if(conf)toast(conf)}catch(e){console.error(e);toast(illegalWhy(a,e))}
   renderBoard();advanceTut();if(aiTurn()&&S.st.winner==null)aiLoop();else if(goldTurn())goldLoop()}
 function goldLoop(){if(S.busy||!S.st||S.screen!=="board")return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||!S.gold||st.winner!=null||st.active!==1){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
@@ -609,7 +618,7 @@ function choose(title,opts){ // opts: [{label,fn,cls}]
   sheet(`<h4>${esc(title)}</h4>${opts.map((o,i)=>`<button class="wide ${o.cls||""}" data-a="chs" data-i="${i}">${esc(o.label)}</button>`).join("")}<button class="wide ghostw" data-a="close">Cancel</button>`);S.chs=opts}
 function runGroup(k){const acts=groupActs(legalFor(S.sel))[k];if(!acts)return;const f=E.find(S.st,S.sel),c=f.inst.card;
   if(k==="ink"||k==="boost")return doAct(acts[0]);
-  if(k==="challenge")return startTargeting(acts,"target",`Choose a character or location to challenge with ${c.name}`);
+  if(k==="challenge"){const at=f.inst,as=E.strOf(at)+(E.K(at,"challenger")||0);return startTargeting(acts,"target",`Challenge with ${c.name} (${as} STR) — tap a glowing target`);}
   if(k==="move")return startTargeting(acts,"loc",`Choose a location for ${c.name}`);
   if(k==="shift")return startTargeting(acts,"shift",`Choose which ${c.name} to shift onto`);
   if(k==="sing")return startTargeting(acts,"singer",`Choose a character to sing ${c.name}`);

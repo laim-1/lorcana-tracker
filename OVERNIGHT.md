@@ -388,3 +388,10 @@ hard         93%     63%       -
 - CSS: `.hscore`, `.streak.broke`, `.rematchdecks`.
 - ui-static-overnight extended (19 checks): illegalWhy, hscore, rematchdecks, tips, drying banner.
 - Engine still 102 from batch 40; static overnight passed.
+
+## Batch 42 (~3:43 AM) - quest/challenge confirm polish + AI leak test
+- `playerConfirm()` toasts on successful quest (+lore), challenge (dmg preview), ink, move, shift.
+- Challenge targeting banner shows attacker STR.
+- Engine test: Hard still takes lethal quest after a Normal `aiChoose` (LEVEL leak regression).
+- ui-static-overnight: playerConfirm check (20 passed).
+- Engine **103** passed.

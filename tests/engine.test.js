@@ -414,4 +414,18 @@ t("#26 undo snap survives pending-creating action", () => {
   assert.equal(st2.players[0].hand.length, 1);
 });
 
+
+t("ai: hardChoose restores LEVEL after Normal shortlist (no Hard leak)", () => {
+  const st = game(); st.human = [false, false];
+  ink(st, 0, 4); put(st, 0, C({ lore: 2, strength: 3, willpower: 5, cost: 3 }));
+  put(st, 1, C({ lore: 1, strength: 1, willpower: 2, cost: 2 })).exerted = true;
+  const a = E.aiChoose(st, "normal");
+  assert.ok(a && a.t, "normal chose " + JSON.stringify(a));
+  st.players[0].lore = 18;
+  put(st, 0, C({ lore: 2, strength: 9, willpower: 9 }));
+  const v = put(st, 1, C({ strength: 1, willpower: 1, lore: 3 })); v.exerted = true;
+  const h = E.aiChoose(st, "hard");
+  assert.equal(h.t, "quest", "hard after normal: " + JSON.stringify(h));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

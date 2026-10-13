@@ -594,3 +594,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `5efd928` (version `20261013131228`). Live verified Pages built; version.json `20261013131228`.
+
+## Batch 65 (~6:15 AM) - Mulligan keep Singer/Shift + Support play
+- Mulligan: keep Singer N + songs they unlock; keep Shift card + matching cheap base.
+- Play: Support valued when board has mates and exerted opposing threats.
+- ui-static-overnight **50** checks. Engine **131** passed.
+- Hard vs Normal (40g): **Hard 70%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `d2f4e11` (version `20261013131516`). Live verified Pages built; version.json `20261013131516`.

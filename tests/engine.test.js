@@ -855,4 +855,55 @@ t("ai: Hard prefers Boost when under-payoff exists", () => {
   assert.ok(a.t === "boost" && a.uid === booster.uid, "boost under-payoff: " + JSON.stringify(a));
 });
 
+
+t("ai: mulligan keeps Singer when hand has a song they unlock", () => {
+  const st = E.newGame({ decks: [filler(), filler()], seed: 42 });
+  const cards = [
+    C({ cost: 2, lore: 1, inkwell: true, text: "Singer 5" }),
+    C({ type: ["Action", "Song"], cost: 5, text: "Draw 2 cards.", inkwell: false, lore: 0, strength: 0, willpower: 0 }),
+    C({ cost: 7, lore: 3, inkwell: false }),
+    C({ cost: 6, lore: 2, inkwell: true }),
+    C({ cost: 5, lore: 1, inkwell: false }),
+    C({ cost: 4, lore: 1, inkwell: false }),
+    C({ cost: 5, lore: 2, inkwell: true }),
+  ];
+  cards[1].type = "song";
+  st.players[0].hand = cards.map((c, i) => ({ uid: 700 + i, card: c, owner: 0, damage: 0, exerted: false, playedOn: 0, turnPlayed: 0, under: [], grants: [] }));
+  const dump = E.aiMulligan(st, 0);
+  assert.ok(!dump.includes(700), "keep Singer: " + JSON.stringify(dump));
+  assert.ok(!dump.includes(701), "keep song unlocked by Singer: " + JSON.stringify(dump));
+  assert.ok(dump.includes(702), "still dump 7-cost");
+});
+
+t("ai: mulligan keeps Shift card and matching cheap base", () => {
+  const st = E.newGame({ decks: [filler(), filler()], seed: 42 });
+  const base = C({ name: "Mickey Mouse", cost: 2, lore: 1, inkwell: true });
+  const flood = C({ name: "Mickey Mouse", cost: 5, lore: 2, inkwell: true, text: "Shift 3" });
+  const cards = [
+    base, flood,
+    C({ cost: 7, lore: 3, inkwell: false }),
+    C({ cost: 6, lore: 2, inkwell: true }),
+    C({ cost: 5, lore: 1, inkwell: false }),
+    C({ cost: 4, lore: 1, inkwell: false }),
+    C({ cost: 5, lore: 2, inkwell: true }),
+  ];
+  st.players[0].hand = cards.map((c, i) => ({ uid: 600 + i, card: c, owner: 0, damage: 0, exerted: false, playedOn: 0, turnPlayed: 0, under: [], grants: [] }));
+  assert.ok(flood.kw.shift != null, "shift parsed " + flood.kw.shift);
+  const dump = E.aiMulligan(st, 0);
+  assert.ok(!dump.includes(600), "keep Shift base: " + JSON.stringify(dump));
+  assert.ok(!dump.includes(601), "keep Shift card: " + JSON.stringify(dump));
+  assert.ok(dump.includes(602), "still dump 7-cost");
+});
+
+t("ai: prefers playing Support when board has mates and exerted threats", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true; ink(st, 0, 4);
+  put(st, 0, C({ lore: 1, strength: 3, willpower: 4, cost: 3 }));
+  const threat = put(st, 1, C({ lore: 2, strength: 1, willpower: 3 })); threat.exerted = true;
+  const support = hand(st, 0, C({ lore: 1, strength: 2, willpower: 3, cost: 3, text: "Support" }));
+  const plain = hand(st, 0, C({ lore: 1, strength: 2, willpower: 4, cost: 3 }));
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === support.uid, "prefer Support: " + JSON.stringify(a) + " support=" + support.uid + " plain=" + plain.uid);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

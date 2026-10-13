@@ -2010,7 +2010,9 @@ function scoreAction(st,a){
         if(c.kw.singer!=null){const H=LEVEL==="hard";const sv=+c.kw.singer||c.cost;
           const songs=p.hand.filter(h=>h.card.type==="song"&&h.card.cost<=sv&&h.card.cost>c.cost);
           const anySong=p.hand.some(h=>h.card.type==="song");
-          s+=(H?5:1)+(songs.length?(H?14:5)+songs.length*3:0)+(anySong&&!songs.length?(H?4:1):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+          s+=(H?5:1)+(songs.length?(H?14:5)+songs.length*3:0)+(anySong&&!songs.length?(H?4:1):0)}
+        if(c.kw.support){const H=LEVEL==="hard";const mates=p.play.filter(y=>isChar(y)).length;const threats=o.play.filter(y=>isChar(y)&&y.exerted).length;
+          s+=(H?6:2)+(mates?(H?10:3):0)+(threats&&mates?(H?8:2):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
         if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
@@ -2242,6 +2244,7 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
     if(c.type==="character"&&c.kw.singer!=null){const sv=+c.kw.singer||c.cost;
       const songs=me.hand.filter(h=>h.card.type==="song"&&h.card.cost<=sv&&h.card.cost>c.cost);
       return 4+(songs.length?16+songs.length*4:me.hand.some(h=>h.card.type==="song")?6:0)}
+    if(c.type==="character"&&c.kw.support){const mates=me.play.filter(y=>isChar(y)).length;return 5+(mates?12:0)+(op.play.some(y=>isChar(y)&&y.exerted)?8:0)}
     if(c.type==="location")return 8+locPlayValue(c)/4;
     if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;
         if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)b+=8}
@@ -2262,11 +2265,18 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
   return 0}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;const inkN=h.filter(c=>c.card.inkable).length;
   const cheapInk=h.filter(c=>c.card.inkable&&c.card.cost<=3).length;
-  // Always dump 7+ bricks. Keep curve when we already have cheap ink; otherwise dump expensive/non-inkable.
-  const always=h.filter(c=>c.card.cost>=7).map(c=>c.uid);
+  // Keep enablers: Singer N that unlocks a song in hand; Shift card + matching cheap base
+  const keep=new Set();
+  for(const c of h){if(c.card.kw.singer!=null){const sv=+c.card.kw.singer||c.card.cost;if(h.some(x=>x.card.type==="song"&&x.card.cost<=sv))keep.add(c.uid)}}
+  for(const c of h){if(c.card.type==="song"){const singers=h.filter(x=>x.card.kw.singer!=null&&(+x.card.kw.singer||x.card.cost)>=c.card.cost);if(singers.length){keep.add(c.uid);for(const s of singers)keep.add(s.uid)}}}
+  for(const c of h){if(c.card.kw.shift==null)continue;const bases=h.filter(b=>b.uid!==c.uid&&b.card.type==="character"&&(namesOf(b).includes(c.card.name.toLowerCase())||(c.card.alias||[]).some(a=>namesOf(b).includes(a))));
+    if(bases.length){keep.add(c.uid);for(const b of bases)if(b.card.cost<=4)keep.add(b.uid)}}
+  // Always dump 7+ bricks (unless kept as Shift). Keep curve when we already have cheap ink; otherwise dump expensive/non-inkable.
+  const always=h.filter(c=>c.card.cost>=7&&!keep.has(c.uid)).map(c=>c.uid);
   if(cheap>=3&&inkN>=2&&cheapInk>=1)return always;
-  if(cheap>=2&&inkN>=3)return always.concat(h.filter(c=>c.card.cost>=6&&!always.includes(c.uid)).map(c=>c.uid));
+  if(cheap>=2&&inkN>=3)return always.concat(h.filter(c=>c.card.cost>=6&&!always.includes(c.uid)&&!keep.has(c.uid)).map(c=>c.uid));
   const dump=h.filter(c=>{
+    if(keep.has(c.uid))return false;
     const cost=c.card.cost,inkable=!!c.card.inkable;
     if(cost>=7)return true;
     if(cost>=6&&(inkN<3||cheap<2))return true;

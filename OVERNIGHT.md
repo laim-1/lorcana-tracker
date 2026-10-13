@@ -42,3 +42,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Tests: `node tests/engine.test.js` 86 passed; `tests/ui-ai-style.py` passed (style picker,
   bar labels, lore race, inkable chip, end-turn confirm).
 - Commit: `6a9f264` (version 20261013082155). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `d61c59c` status built; version.json `20261013082155` on https://laim-1.github.io/lorcana-tracker/. (Interim build of `6a9f264` errored once; follow-up commit rebuilt successfully.)

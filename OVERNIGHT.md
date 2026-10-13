@@ -43,3 +43,26 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   bar labels, lore race, inkable chip, end-turn confirm).
 - Commit: `6a9f264` (version 20261013082155). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `d61c59c` status built; version.json `20261013082155` on https://laim-1.github.io/lorcana-tracker/. (Interim build of `6a9f264` errored once; follow-up commit rebuilt successfully.)
+
+## Batch 3 (~1:31 AM) - busy board, hand fan, exert dmg, hint, last-play
+- #2 Small-screen busy board: `fitBoard` toggles `.crowded` / `.packed` when many characters
+  are in play, shrinking the hand/HUD so character rows keep usable tile sizes (min tap ~60px;
+  prefer wrap until too tight, then sideways scroll). Strip items shrink when packed.
+- #3 Hand fan 8+: every card keeps a >=44px peek/hit strip (`minPeek` 44–50 by hand size);
+  stronger fan arc; horizontal scroll when needed. Measured minPeek 45 on 375×667 with 10 cards
+  (was 36).
+- #5 Exerted + damage: damage badge pinned inside the square exerted tile at top-right
+  (`top:2px; right:2px`), screen-upright and readable; stats/dry/at labels adjusted so they
+  stay in the empty bands around the rotated art. Ready-card badges also inset to avoid zone clip.
+- #28 Hint button (banner "i"): toggles highlight of legal hand/board cards + toast summarizing
+  legal action kinds; clears on act or second tap.
+- #43 Opponent last-played chip: brief floating card after opponent `play` events (~4s).
+- #45 Concede: in-app confirm sheet instead of native `confirm()`.
+- #30 Game speed: settings label clarified (already drove AI pauses + animation scale).
+- #9 Safe-area: board honors left/right insets; banner text ellipsizes instead of overlapping.
+- #26 Undo: **skipped** — engine RNG is a closure and pending choice graphs share live card
+  refs; a one-step undo without a dedicated snapshot/restore API would desync draws and mid-
+  effect choices. Needs an engine-level freeze (rng state + deep pending) before it is safe.
+- Tests: `node tests/engine.test.js` 86 passed; new `tests/ui-batch3.py` (375×667 + 390×844)
+  for layout peek/dtok/hint/last-play/concede/game-speed; `ui-ai-style.py` + `ui-start.py` passed.
+- Commit: `67bf55e` (version `20261013083143`). Live: https://laim-1.github.io/lorcana-tracker/

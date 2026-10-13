@@ -415,3 +415,60 @@ img{-webkit-user-drag:none;user-drag:none;-webkit-user-select:none;user-select:n
 /* target-mode banner: Cancel never clips; prompt wraps to max 2 lines */
 .banner.tm{gap:10px}.banner.tm>span{flex:1 1 auto;min-width:0;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .banner.tm .bbtn{flex:0 0 auto;white-space:nowrap;min-width:88px;min-height:44px;padding:0 16px}
+
+/* ================= Overnight batch 3: busy board, hand fan, exert dmg, hint, last-play ================= */
+/* #2 Busy board: give character rows more room; shrink hand when crowded */
+.gb.crowded .hand2{min-height:108px;padding-top:10px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.gb.crowded .hc{flex-basis:64px;height:90px}
+.gb.crowded .hand2.big{min-height:100px}
+.gb.crowded .hud{min-height:44px;margin:2px 8px;padding:2px 6px}
+.gb.crowded .banner{min-height:44px;margin:2px 8px!important}
+.gb.packed .hand2{min-height:96px}
+.gb.packed .hc{flex-basis:58px;height:82px}
+.gb.packed .hand2.big{min-height:92px}
+@media (max-height:720px){
+  .gb .hand2{min-height:110px}
+  .gb.crowded .hand2{min-height:96px}
+  .gb.packed .hand2{min-height:88px}
+  .zone .row.chars{padding:6px 8px}
+}
+/* Keep character tiles usable; badges stay inside the row padding */
+.zone .row.chars{padding:10px 12px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.zone .row.chars::-webkit-scrollbar{display:none}
+.zone .row.chars.wrap{overflow-x:hidden;overflow-y:auto}
+.ct.lg,.ct.sm{min-width:40px}
+/* #5 Exerted: pin damage badge + stats in the empty bands of the square tile (screen-upright) */
+.ct.ex .dtok{top:2px;right:2px;left:auto;bottom:auto;min-width:24px;height:24px;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.55);z-index:4}
+.ct.ex .stats{bottom:2px;left:0;right:0}
+.ct.ex .dry{top:2px;left:2px;right:auto;transform:none;font-size:8px;padding:1px 4px}
+.ct.ex .atl{top:auto;bottom:28px}
+.ct.sm.ex .dtok{min-width:18px;height:18px;font-size:10px;top:1px;right:1px}
+/* Ready cards: keep dtok from hanging outside the zone (clip) */
+.ct:not(.ex) .dtok{top:2px;right:2px}
+.ct:not(.ex) .stats{bottom:2px}
+/* #3 Hand fan: ensure peek strip for taps; stronger arc when big */
+.hand2{touch-action:pan-x;scroll-snap-type:x proximity}
+.hc{scroll-snap-align:start;touch-action:manipulation}
+.hand2.big .hc{flex-basis:62px;height:88px}
+.hc.hint,.ct.hint{outline:3px solid #4fd18b;outline-offset:2px;z-index:6!important}
+.hc.hint img,.ct.hint img{box-shadow:0 0 0 3px #4fd18b,0 0 16px #4fd18b}
+.gb.hinting .hc:not(.hint):not(.sel),.gb.hinting .ct:not(.hint):not(.sel):not(.tgt){opacity:.42}
+.hintbtn{min-width:44px;min-height:44px;width:44px;height:44px;padding:0;border-radius:12px;border:2px solid rgba(245,201,85,.55);background:rgba(40,30,92,.9);color:#f5c955;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.hintbtn.on{background:#4fd18b;border-color:#4fd18b;color:#14112a}
+.hintbtn svg{width:22px;height:22px}
+.banner .bacts{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+/* #43 Opponent last-played chip */
+.lastplay{position:absolute;left:50%;top:58px;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;border-radius:14px;background:rgba(16,12,40,.94);border:2px solid #ff9f43;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:lpIn .25s ease-out}
+.lastplay img{width:36px;height:50px;object-fit:cover;border-radius:6px;border:1px solid rgba(245,201,85,.5)}
+.lastplay b{font-size:13px;font-weight:900;color:#fff3c4;max-width:160px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2}
+.lastplay small{display:block;font-size:10px;font-weight:800;color:#ff9f43;letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px}
+.lastplay.out{animation:lpOut .35s ease-in forwards}
+@keyframes lpIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes lpOut{to{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+/* #45 Concede confirm sheet */
+.conwarn{color:#ffd0d8;font-weight:800;font-size:15px;line-height:1.35;margin:0 0 14px}
+/* #9 Safe-area: ensure board edges clear notches */
+.gb{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.banner{max-width:100%;overflow:hidden}
+.banner>div{min-width:0;overflow:hidden}
+.banner>div small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

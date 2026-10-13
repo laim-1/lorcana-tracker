@@ -1,14 +1,14 @@
 # Overnight backlog (work top to bottom, mark [x] when live)
 ## Fixes
 1. [x] Card picker sheet layout on all phone sizes
-2. Small-screen busy board card sizes
-3. Hand fan with 8+ cards easier to tap
+2. [x] Small-screen busy board card sizes
+3. [x] Hand fan with 8+ cards easier to tap
 4. [x] Show AI difficulty again in opponent bar
-5. Exerted cards rotate cleanly with damage badges
+5. [x] Exerted cards rotate cleanly with damage badges
 6. Zoom view never covers action buttons
 7. Fix any leftover animation copies
 8. Make turn banner never overlap cards
-9. Safe-area padding on notched phones
+9. [x] Safe-area padding on notched phones
 10. Faster first load of the game data
 11. Long-press zoom timing feels right
 12. [x] Picker magnifier button always visible
@@ -28,9 +28,9 @@
 ## Game features
 26. Undo last action before confirming
 27. Action log with card images
-28. Hint button showing legal moves
+28. [x] Hint button showing legal moves
 29. [x] Pass-and-play 2-player mode
-30. Game speed settings for animations
+30. [x] Game speed settings for animations
 31. Sound effects pack with volume slider
 32. Background music toggle
 33. Match history and win/loss stats
@@ -43,9 +43,9 @@
 40. Rules reference page
 41. [x] Lore race indicator showing who's ahead
 42. [x] Card count of inkable cards in hand
-43. Show opponent's last played card
+43. [x] Show opponent's last played card
 44. [x] Confirm End Turn if actions remain
-45. Concede confirmation polish
+45. [x] Concede confirmation polish
 46. Victory rewards and streak counter
 47. Daily challenge with a fixed deck
 ## Deck builder

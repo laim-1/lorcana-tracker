@@ -309,3 +309,8 @@ hard         93%     63%       -
 - Play menu: Quick play (random starter vs random starter).
 - Match history: filter chips (All / AI / Pass & play / Practice / Daily) + Clear history.
 - Commit: `a4f5d58` (version `20261013095322`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 29 (~3:00 AM) - rename deck + README
+- Deck tools: Rename deck (prompt).
+- README refreshed with tracker + play feature summary.
+- Commit: `a4cc3af` (version `20261013095359`). Live: https://laim-1.github.io/lorcana-tracker/

@@ -195,6 +195,7 @@ function builderTools(){sheet(`<h4>Deck tools</h4>
   <button class="wide" data-a="bimport">Import Dreamborn / text list</button>
   <button class="wide" data-a="bhand">Sample opening hand</button>
   <button class="wide" data-a="bstarter">Load official starter…</button>
+  <button class="wide" data-a="brename">Rename deck</button>
   <button class="wide" data-a="bdup">Duplicate deck</button>
   <button class="wide" data-a="bdel">Delete this saved deck</button>
   <button class="wide" data-a="bclear">Clear all cards</button>
@@ -776,6 +777,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"bhand":sampleHand();break;
     case"bstarter":loadStarterPicker();break;
     case"bstartergo":applyStarter(v);break;
+    case"brename":{const n=prompt("Deck name",S.build.name||"My deck");if(n==null)break;S.build.name=String(n).trim().slice(0,60)||"My deck";closeSheet();renderBuilder();toast("Renamed");break}
     case"bdup":{const b2=S.build;if(!bCount()){toast("Deck is empty");break}
       const all=decks(),d={name:(b2.name||"My deck")+" copy",notes:b2.notes||"",cards:{...b2.cards}};all.push(d);saveDecks(all);
       bInit({...d,idx:all.length-1});toast("Duplicated");closeSheet();renderBuilder();break}

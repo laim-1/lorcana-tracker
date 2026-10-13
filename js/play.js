@@ -82,7 +82,7 @@ function renderMenu(){
   <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
   ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button><button class="wide ghostw" data-a="forgetSave">Discard saved game</button>`:""})()}
-  ${!PPm&&!GLm?`<button class="wide" data-a="quick">Quick play <small>random starters</small></button><button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
+  ${!PPm&&!GLm?`<button class="wide" data-a="quick" aria-label="Quick play random starters">Quick play <small>random starters</small></button><button class="wide" data-a="daily" aria-label="Daily challenge ${phoenixDateKey()}">Daily challenge <small>${phoenixDateKey()}${HS.streak?` · streak ${HS.streak}`:""}</small></button>`:""}
   <button class="wide" data-a="tutorial">Tutorial <small>guided first game</small></button>
   <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
@@ -379,10 +379,12 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const hintBtn=my&&!S.tm?`<button class="hintbtn ${S.hint?"on":""}" data-a="hint" aria-label="${S.hint?"Hide hints":"Show legal moves"}" title="Legal moves">${ICO.hint}</button>`:"";
   const undoBtn=canUndo()?`<button class="hintbtn" data-a="undo" aria-label="Undo last action" title="Undo">${ICO.undo}</button>`:"";
   const turnLab=S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":(S.gold?"GOLDFISH TURN":"AI TURN");
-  const sub=my?(st.players[ME()].inked?"Ink used":"Ink available"):(S.gold?"Pass and draw only":"AI is playing");
+  const meP=st.players[ME()];
+  const dryN=my?meP.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)&&!K0(x,"rush")).length:0;
+  const sub=my?(meP.inked?"Ink used":"Ink available")+(dryN?` · ${dryN} drying`:""):(S.gold?"Pass and draw only":"AI is playing");
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
   return`<div class="banner ${my?"mine":"theirs"} ${near?"near":""}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
-   <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
+   <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" aria-label="${canEnd?"End turn":"Must challenge before ending"}" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking" aria-label="Opponent thinking"><i></i><i></i><i></i></span>`}</div></div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);
   const g=groupActs(acts);const btn=(k,l,cls="")=>`<button class="ab ${cls}" data-a="grp" data-k="${k}">${l}</button>`;
@@ -453,17 +455,23 @@ function pickerSheet(){const st=S.st,P=st.pending,p=st.players[ME()];if(!P)retur
     <button class="pkbar" data-a="pkmin">${S.pkMin?"Show choice":"Hide to see the board"}</button>
     ${thumb}${head?`<div class="pksrc">${esc(head)}</div>`:""}<div class="pkq">${esc(prompt.charAt(0).toUpperCase()+prompt.slice(1))}</div>${sub?`<div class="pksub">${esc(sub)}</div>`:""}
     <div class="${lab?"pkopts":"pkgrid"}">${items.join("")}</div>${btn}</div>`}
-function handoff(seat,what){return`<div class="handoff"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2><p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p><button class="wide primary" data-a="handoff" data-v="${seat}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
+function handoff(seat,what){const st=S.st,l0=st?st.players[0].lore:0,l1=st?st.players[1].lore:0,tn=st?st.turnNo:"";
+  return`<div class="handoff" role="dialog" aria-label="Pass the phone"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2>
+  <p class="hscore" aria-live="polite">${esc(PN(0))} ${l0} – ${l1} ${esc(PN(1))}${tn?` · Turn ${tn}`:""}</p>
+  <p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p>
+  <button class="wide primary" data-a="handoff" data-v="${seat}" aria-label="Show cards for ${esc(PN(seat))}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
 function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
   if(!st._recorded)recordMatch(st);const R=S.lastResult||{},streak=(!S.pp&&!S.gold&&R.won)?(R.streak||0):0;
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
   const title=S.pp?esc(PN(st.winner))+" wins":S.gold?(st.winner===0?"Practice complete":"Goldfish wins"):(w?"Victory":"Defeat");
   const cine=w?"VICTORY":"DEFEAT";
-  return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
-  ${streak?`<p class="streak">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
+  const deckLine=!S.pp&&S.last?`<p class="meta rematchdecks">${esc(S.last.me&&S.last.me.name||"You")} vs ${esc(S.last.op&&S.last.op.name||"Opponent")}${S.daily?" · Daily":""}${SET.level&&!S.pp&&!S.gold?" · "+String(SET.level).toUpperCase():""}</p>`:"";
+  const streakBlock=streak?`<p class="streak" role="status">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:(!S.pp&&!S.gold&&!w?`<p class="streak broke" role="status">Streak ended</p>`:"");
+  return`<div class="modal end ${w?"won":"lost"}" role="dialog" aria-label="${esc(title)}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
+  ${streakBlock}${deckLine}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
   <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
-  <button class="wide" data-a="alog">Action log</button><button class="wide" data-a="sumcopy">Copy match summary</button>
-  <button class="wide primary" data-a="again">Rematch</button>${!S.pp&&!S.gold?`<button class="wide" data-a="againSwap">Rematch · swap decks</button>`:""}<button class="wide" data-a="tomenu">Change decks</button></div></div>`}
+  <button class="wide" data-a="alog" aria-label="Open action log">Action log</button><button class="wide" data-a="sumcopy" aria-label="Copy match summary">Copy match summary</button>
+  <button class="wide primary" data-a="again" aria-label="Rematch same decks">Rematch</button>${!S.pp&&!S.gold?`<button class="wide" data-a="againSwap" aria-label="Rematch with decks swapped">Rematch · swap decks</button>`:""}<button class="wide" data-a="tomenu" aria-label="Change decks">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||"",ex:e.classList.contains("ex"),dmg:+(e.querySelector(".dtok")?.textContent||0),hand:e.classList.contains("hc")})});
   for(const id of["lore-0","lore-1","ink-0","ink-1","deck-0","deck-1","disc-0","disc-1","hand-1"]){const e=document.getElementById(id);if(e)m.set(id,{r:e.getBoundingClientRect()})}return m}
@@ -553,9 +561,20 @@ function clearUndo(){S.undo=null}
 function snapUndo(){if(!S.st||S.st.winner!=null||S.st.pending||(S.st.pq&&S.st.pq.length))return;const fr=E.freezeState(S.st);if(fr&&!fr.error)S.undo=fr}
 function canUndo(){return!!(S.undo&&S.st&&S.st.winner==null&&!S.busy&&S.screen==="board"&&!S.tutLock)}
 function doUndo(){if(!canUndo()){toast("Nothing to undo");return}try{const last=((S.st&&S.st.log)||[]).slice(-1)[0];const st=E.thawState(S.undo,pool);S.st=st;S.undo=null;S.sel=null;S.tm=null;S.hint=false;S.pkSel=[];closeSheet();sfx("ui");toast(last?"Undid: "+String(last).slice(0,48):"Undid last action");renderBoard();advanceTut()}catch(e){console.error(e);clearUndo();toast("Undo failed")}}
+function illegalWhy(a,e){const msg=(e&&e.message)||"";
+  if(/ink|inkwell/i.test(msg))return "Not enough ink for that";
+  if(/dry|drying/i.test(msg))return "That character is still drying";
+  if(/exert/i.test(msg))return "That character is exerted";
+  if(/target/i.test(msg))return "That target is not legal";
+  if(a&&a.t==="ink")return "You already inked this turn, or that card is not inkable";
+  if(a&&a.t==="quest")return "Cannot quest with that character right now";
+  if(a&&a.t==="challenge")return "That challenge is not legal";
+  if(a&&a.t==="play")return "Cannot play that card right now (cost, ink, or timing)";
+  if(a&&a.t==="move")return "Cannot move there (ink cost or location)";
+  return "That move is not allowed"}
 function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();
   if(!S.st.pending&&!(S.st.pq&&S.st.pq.length))snapUndo();
-  try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}
+  try{E.act(S.st,a)}catch(e){console.error(e);toast(illegalWhy(a,e))}
   renderBoard();advanceTut();if(aiTurn()&&S.st.winner==null)aiLoop();else if(goldTurn())goldLoop()}
 function goldLoop(){if(S.busy||!S.st||S.screen!=="board")return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||!S.gold||st.winner!=null||st.active!==1){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
@@ -653,7 +672,7 @@ function aiLoop(){if(S.busy)return;S.busy=true;
     toast(describe(a,st));
     setTimeout(()=>{clearUndo();try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
   setTimeout(step,SPEED[SET.speed]*.6)}
-const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (just played) can't quest or challenge until your next turn. First to 20 lore wins. Hold a card or tap Details to read it."];
+const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (just played) can't quest or challenge until your next turn. Rush characters can challenge the turn they are played.","First to 20 lore wins. The banner shows the lore race and whether ink is still available this turn.","Shift: play a Floodborn onto a matching character for the Shift cost — it keeps damage and drying. Look for purple glow on Shift targets.","Songs can be sung for free by exerting a ready character with cost (or Singer N) ≥ the song cost. Sing Together combines several singers.","When a move is illegal you will see a short toast (for example drying, not enough ink, or wrong target). Use the hint button to highlight legal moves."];
 function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}sheet(`<h4>Tip ${i+1} of ${TIPS.length}</h4><p class="tiptext">${TIPS[i]}</p><button class="wide primary" data-a="tip" data-i="${i+1}">${i+1<TIPS.length?"Next":"Got it"}</button><button class="wide ghostw" data-a="tip" data-i="99">Skip tips</button>`)}
 function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on":""}" data-a="set" data-k="${k}" data-v="${v}">${l}</button>`;
   return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}</div>

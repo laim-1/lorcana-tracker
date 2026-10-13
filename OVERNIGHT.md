@@ -376,3 +376,15 @@ hard         93%     63%       -
 - ai-stats Normal 20g: actions+songs 0.9/game, non-char games 17/20, favTake 0.88.
 - Engine 102 passed; ui-static-overnight 14 passed.
 - Commit: pending. Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 41 (~3:40 AM) - game polish: tips, feedback, handoff, rematch, a11y
+- Tutorial tips expanded (8 tips): Rush, lore race banner, Shift, songs/Sing Together, illegal-move toasts + hint button.
+- `illegalWhy()`: clearer toasts for ink/drying/exerted/target/play/quest/challenge/move failures.
+- Banner subline: "Ink available/used · N drying" on your turn.
+- Pass-and-play handoff: lore scoreline + turn; dialog aria-label; button aria-label.
+- End screen: deck matchup line, "Streak ended" on loss, aria-labels on rematch/log/summary buttons.
+- Daily challenge button shows current win streak; Quick play aria-label.
+- End turn button aria-label; opponent thinking aria-label.
+- CSS: `.hscore`, `.streak.broke`, `.rematchdecks`.
+- ui-static-overnight extended (19 checks): illegalWhy, hscore, rematchdecks, tips, drying banner.
+- Engine still 102 from batch 40; static overnight passed.

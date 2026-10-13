@@ -20,6 +20,11 @@ checks = [
     ("finishCost", "finishCost" in app),
     ("remain sort", "Closest to done" in app),
     ("foilsTotal", "foilsTotal" in app),
+    ("illegalWhy", "illegalWhy" in play),
+    ("handoff score", "hscore" in play),
+    ("rematchdecks", "rematchdecks" in play),
+    ("expanded tips", "Sing Together" in play and play.count("const TIPS=")==1),
+    ("drying banner", "drying" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

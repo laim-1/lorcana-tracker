@@ -117,10 +117,11 @@ function priceMap(){const m=new Map();try{const Snp=window.LORCANA_SNAPSHOT;if(!
   if(Array.isArray(bag))bag.forEach(add);else for(const arr of Object.values(bag))if(Array.isArray(arr))arr.forEach(add);
 }catch(e){}return m}
 function bPriceTotal(){const pm=priceMap();let t=0,miss=0;for(const[id,n]of Object.entries(S.build.cards)){const u=pm.get(id);if(u==null){miss+=n;continue}t+=u*n}return{t,miss}}
-function bCurveHtml(){const cards=bCardsList(),bins=[0,0,0,0,0,0,0,0]; // 0..6, 7+
+function bCurveHtml(){const cards=bCardsList(),bins=[0,0,0,0,0,0,0,0],b=S.build; // 0..6, 7+
   for(const c of cards){const k=Math.min(7,Math.max(0,c.cost|0));bins[k]++}
   const mx=Math.max(1,...bins);
-  return`<div class="curve" aria-label="Cost curve">${bins.map((n,i)=>`<div class="cbar"><i style="height:${Math.round(100*n/mx)}%"></i><b>${i===7?"7+":i}</b><small>${n}</small></div>`).join("")}</div>`}
+  return`<div class="curve" aria-label="Cost curve">${bins.map((n,i)=>{const v=i===7?"7+":String(i);const on=String(b.cost)===v;
+    return`<button type="button" class="cbar ${on?"on":""}" data-a="bcost" data-v="${v}" aria-label="Filter cost ${v}"><i style="height:${Math.round(100*n/mx)}%"></i><b>${v}</b><small>${n}</small></button>`}).join("")}</div>`}
 function bSplitHtml(){const cards=bCardsList(),ink={},typ={};
   for(const c of cards){(c.inks||[]).forEach(i=>ink[i]=(ink[i]||0)+1);const t=c.type||"?";typ[t]=(typ[t]||0)+1}
   const inkRow=Object.entries(ink).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="pill">${esc(k)} ${v}</span>`).join("")||`<span class="meta">No cards</span>`;
@@ -741,7 +742,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"bclear":if(confirm("Remove all cards from this deck?")){S.build.cards={};closeSheet();renderBuilder()}break;
     case"btools":builderTools();break;
     case"bowned":S.build.ownedOnly=!S.build.ownedOnly;S.build.limit=60;renderBuilder();break;
-    case"bcost":S.build.cost=v;S.build.limit=60;renderBuilder();break;
+    case"bcost":S.build.cost=String(S.build.cost)===String(v)?"":v;S.build.view="deck";S.build.limit=60;renderBuilder();break;
     case"bset":S.build.set=v;S.build.limit=60;renderBuilder();break;
     case"bsort":S.build.sort=v;renderBuilder();break;
     case"bexport":{const t=bExportText();sheet(`<h4>Export (Dreamborn)</h4><p class="meta small">Copy this list into Dreamborn, Pixelborn, or a friend.</p><textarea class="pin bimp" id="bexptext" rows="12" readonly>${esc(t)}</textarea>

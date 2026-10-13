@@ -273,3 +273,7 @@ hard         93%     63%       -
 - Banner pulses when either player is at 18+ lore (respects reduced-motion / low FX).
 - HTML meta description for share/SEO.
 - Commit: `4595a63` (version `20261013094730`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 22 (~2:50 AM) - tap cost curve to filter
+- Cost curve bars are buttons; tap filters This deck by that cost (tap again clears).
+- Commit: `7eb45d9` (version `20261013094750`). Live: https://laim-1.github.io/lorcana-tracker/

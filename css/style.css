@@ -618,3 +618,7 @@ body.enter-anim #app{animation:fadeup .28s ease-out}
 
 .lowfx .banner.near{animation:none}
 @media (prefers-reduced-motion: reduce){.banner.near{animation:none}}
+
+button.cbar{appearance:none;background:transparent;border:0;color:inherit;padding:0;cursor:pointer;min-height:44px}
+button.cbar.on i{background:linear-gradient(180deg,#4fd18b,#1d8a8a);box-shadow:0 0 10px rgba(79,209,139,.5)}
+button.cbar.on b{color:#4fd18b}

@@ -649,4 +649,23 @@ t("ai: prefers Bodyguard enter exerted when protecting lore", () => {
   assert.ok(a.t === "play" && a.uid === bg.uid && a.exerted, "enter exerted: " + JSON.stringify(a));
 });
 
+
+t("ai: does not use ability that exerts lethal quester", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  st.players[0].lore = 18;
+  ink(st, 0, 2);
+  const q = put(st, 0, C({ lore: 2, strength: 2, willpower: 5, cost: 3, text: "Exert — Draw a card." }));
+  q.playedOn = st.turnNo - 1;
+  // Ensure an activated ability exists
+  if (!q.card.acts || !q.card.acts.length) {
+    q.card.acts = [{ ink: 0, eff: [{ k: "draw", n: 1 }] }];
+  }
+  const acts = E.legalActions(st).filter(a => a.t === "act" && a.uid === q.uid);
+  const quests = E.legalActions(st).filter(a => a.t === "quest" && a.uid === q.uid);
+  assert.ok(quests.length, "can quest for lethal");
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "quest", "quest lethal, not act: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

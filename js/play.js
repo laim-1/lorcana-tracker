@@ -469,7 +469,8 @@ function handoff(seat,what){const st=S.st,l0=st?st.players[0].lore:0,l1=st?st.pl
   const dryN=P?P.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)).length:0;
   const readyN=P?P.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
   const inkN=P?E.inkAvail(P):0;const inkT=P?P.ink.length:0;
-  const boardBits=[inkT?`${inkN}/${inkT} ink ready`:null,readyN?`${readyN} ready`:null,dryN?`${dryN} drying`:null].filter(Boolean).join(" · ");
+  const handN=P?P.hand.length:0;const inkableN=P?P.hand.filter(h=>h.card.inkable).length:0;
+  const boardBits=[inkT?`${inkN}/${inkT} ink ready`:null,handN?`${handN} in hand${inkableN?` · ${inkableN} inkable`:""}`:`hand empty`,readyN?`${readyN} ready`:null,dryN?`${dryN} drying`:null].filter(Boolean).join(" · ");
   const d0=(S.last&&S.last.me&&S.last.me.name)||S.meName||"";const d1=(S.last&&S.last.op&&S.last.op.name)||S.oppName||"";
   const deckBits=d0&&d1?`<p class="hdecks" aria-live="polite">${esc(PN(0))}: ${esc(d0)} · ${esc(PN(1))}: ${esc(d1)}</p>`:"";
   return`<div class="handoff" role="dialog" aria-label="Pass the phone"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2>

@@ -497,3 +497,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Banner subline shows "hints on" while hint mode is active.
 - ui-static-overnight **37** checks. Engine **115** passed.
 - Hard vs Normal (40g): **Hard 70%**, Normal 30%. Normal vs Easy (24g): **Normal 75%**.
+
+- Commit: `ffb715b` (version `20261013121712`). Live verified Pages built; version.json `20261013121712`.
+
+## Batch 54 (~5:20 AM) - act vs lethal, item curve, handoff hand
+- Activated abilities: never burn a lethal quester; when ahead, skip weak acts on lore-2+ characters.
+- Item plays: Hard boost when ink-poor / hand-poor / first item.
+- Pass-and-play handoff: hand count + inkable count on board line.
+- ui-static-overnight **38** checks. Engine **116** passed.
+- Hard vs Normal (40g): **Hard 75%**, Normal 33%. Normal vs Easy (24g): **Normal 83%**.

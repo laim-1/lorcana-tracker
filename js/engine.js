@@ -1994,6 +1994,8 @@ function scoreAction(st,a){
         exertBonus=others||threats?(H?18:6)+others*4+threats*3:-8}else if(a.exerted)exertBonus=p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6;
       let s=100+c.cost*4+effVal(st,pi,effs,a.target)+exertBonus-(a.decline?3:0);
       if(c.type==="character")s+=c.lore*3;if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+      if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
+        if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
       if(a.shift!=null){const base=find(st,a.shift)?.inst;const loreGain=c.lore-(base?loreOf(base):0);const sc=base?shiftCost(st,pi,c,base):c.cost;const H=LEVEL==="hard";
         s+=14+loreGain*8+(base&&base.damage?5:0)+(H?10:2);
@@ -2030,7 +2032,14 @@ function scoreAction(st,a){
         if(c.type==="song"&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&(b.singer!=null||b.singers)))s-=20}
       if((c.type==="action"||c.type==="song")&&effVal(st,pi,c.onPlay,a.target)<=0)s=-1;
       return s}
-    case"act":{const ab=actsOf(x)[a.i],v=effVal(st,pi,ab.eff,a.target);return v<=0?-1:60+v-(isChar(x)?x.card.lore*4:0)-ab.ink}
+    case"act":{const ab=actsOf(x)[a.i],v=effVal(st,pi,ab.eff,a.target);if(v<=0)return -1;
+      let s=60+v-(isChar(x)?loreOf(x)*4:0)-ab.ink;const H=LEVEL==="hard";
+      // Don't burn a lethal / race quester on a weak ability
+      if(isChar(x)&&!x.exerted&&dry(st,x)&&loreOf(x)>0){
+        if(CTX.lethal)s-=90;
+        if(!CTX.threat&&p.lore>=o.lore&&loreOf(x)>=2&&v<10)s-=(H?22:8);
+        if(CTX.threat&&v<8)s-=(H?12:4)}
+      if(H&&v>=12)s+=8;return s}
     case"challenge":{const d=find(st,a.target).inst,as=strOf(x)+(K(x,'challenger')||0);
       const kills=d.damage+Math.max(0,as-(K(d,'resist')||0))>=wilOf(d),dies=!isLoc(d)&&x.damage+Math.max(0,strOf(d)-(K(x,'resist')||0))>=wilOf(x);
       // Value: removing a defender (plus its lore threat, more when the opponent is close to 20), or chip damage;
@@ -2190,6 +2199,10 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
   if(a.t==="move"){const l=find(st,a.loc).inst;let b=8+locBenefit(l)/3;
     if(l.card.statics.some(z=>z.here&&z.stat==="lore"))b+=12+(me.lore<=op.lore?8:0);
     if(!hereChars(st,l).length&&locBenefit(l)>=12)b+=7;return b}
+  if(a.t==="act"){const at=find(st,a.uid)?.inst;if(!at)return 0;
+    if(CTX.lethal&&isChar(at)&&!at.exerted&&dry(st,at)&&loreOf(at)>0)return -40;
+    if(isChar(at)&&loreOf(at)>=2&&!CTX.threat&&me.lore>=op.lore)return -10;
+    return 4}
   return 0}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;const inkN=h.filter(c=>c.card.inkable).length;
   const cheapInk=h.filter(c=>c.card.inkable&&c.card.cost<=3).length;

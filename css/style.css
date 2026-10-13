@@ -622,3 +622,8 @@ body.enter-anim #app{animation:fadeup .28s ease-out}
 button.cbar{appearance:none;background:transparent;border:0;color:inherit;padding:0;cursor:pointer;min-height:44px}
 button.cbar.on i{background:linear-gradient(180deg,#4fd18b,#1d8a8a);box-shadow:0 0 10px rgba(79,209,139,.5)}
 button.cbar.on b{color:#4fd18b}
+
+button.histrow{display:block;width:100%;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:inherit;font:inherit;margin:0 0 8px;min-height:44px}
+button.histrow b{display:block}
+button.histrow span{float:right;font-weight:700}
+button.histrow small{display:block;opacity:.75;margin-top:4px;clear:both}

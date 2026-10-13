@@ -80,15 +80,22 @@ function home(){cur=null;chrome(null);quickAdd=false;
  app.querySelectorAll("img.logo").forEach(i=>i.onerror=()=>{i.outerHTML=`<div class="logo txt"><span>${esc(i.alt)}</span></div>`});
  requestAnimationFrame(()=>{scrollTo(0,homeScroll||0)});watchImages(app);maybeBackupRemind()}
 function homeGo(k){if(k==="search")globalSearch();else if(k==="wish")wishSheet();else if(k==="hist")histSheet();else if(k==="more")moreSheet()}
+function nearSheet(){const rows=sets.map(s=>{const st=setStats(s);return{s,st}}).filter(x=>x.st.p>=50&&x.st.p<100).sort((a,b)=>b.st.p-a.st.p||(a.st.t-a.st.got)-(b.st.t-b.st.got));
+  openSheet(`<h4>Nearly complete sets</h4><p class="meta small">Sets you own at least half of.</p>
+  ${rows.length?`<div class="histlist">${rows.map(r=>`<button class="histrow wideish" data-sid="${r.s.id}"><b>${esc(r.s.name)}</b><span>${r.st.got}/${r.st.t} · ${r.st.p}%</span><small>${r.st.t-r.st.got} missing · ${money(r.st.v)}</small></button>`).join("")}</div>`:`<p class="meta">No sets at 50%+ yet.</p>`}
+  <button class="wide" id="done">Close</button>`,()=>{
+   $("#sheet-body").querySelectorAll("[data-sid]").forEach(b=>b.onclick=()=>{closeSheet();location.hash="set/"+b.dataset.sid});
+   $("#done").onclick=closeSheet})}
 function moreSheet(){openSheet(`<h4>Collection tools</h4>
  <button class="wide" id="m-movers">Biggest price movers</button>
  <button class="wide" id="m-dupes">Duplicates / trade list</button>
  <button class="wide" id="m-share">Share summary image</button>
  <button class="wide" id="m-wish">Wishlist</button>
  <button class="wide" id="m-hist">Value history chart</button>
+ <button class="wide" id="m-near">Nearly complete sets</button>
  <button class="wide ghostw" id="m-close">Close</button>`,()=>{
   $("#m-movers").onclick=moversSheet;$("#m-dupes").onclick=dupesSheet;$("#m-share").onclick=shareSummary;
-  $("#m-wish").onclick=wishSheet;$("#m-hist").onclick=histSheet;$("#m-close").onclick=closeSheet})}
+  $("#m-wish").onclick=wishSheet;$("#m-hist").onclick=histSheet;$("#m-near").onclick=nearSheet;$("#m-close").onclick=closeSheet})}
 function histSheet(){const h=loadHist().slice().reverse();const mx=Math.max(1,...h.map(x=>x.v||0));
   const bars=h.length?`<div class="vchart">${h.map(x=>`<div class="vbar" title="${esc(x.d)} ${money(x.v)}"><i style="height:${Math.round(100*(x.v||0)/mx)}%"></i><small>${esc(x.d.slice(5))}</small></div>`).join("")}</div>`:`<p class="meta">Play with your collection a few days to build history.</p>`;
   openSheet(`<h4>Collection value history</h4>${bars}<p class="meta small">One snapshot per day while you open the app.</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet})}

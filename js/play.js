@@ -196,6 +196,7 @@ function builderTools(){sheet(`<h4>Deck tools</h4>
   <button class="wide" data-a="bhand">Sample opening hand</button>
   <button class="wide" data-a="bstarter">Load official starter…</button>
   <button class="wide" data-a="bdup">Duplicate deck</button>
+  <button class="wide" data-a="bdel">Delete this saved deck</button>
   <button class="wide" data-a="bclear">Clear all cards</button>
   <button class="wide ghostw" data-a="close">Close</button>`)}
 function loadStarterPicker(){sheet(`<h4>Load official starter</h4><p class="meta small">Replaces the current builder list with an official 60-card starter.</p>
@@ -448,7 +449,7 @@ function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=
   return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
   ${streak?`<p class="streak">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
   <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
-  <button class="wide" data-a="alog">Action log</button>
+  <button class="wide" data-a="alog">Action log</button><button class="wide" data-a="sumcopy">Copy match summary</button>
   <button class="wide primary" data-a="again">Rematch</button>${!S.pp&&!S.gold?`<button class="wide" data-a="againSwap">Rematch · swap decks</button>`:""}<button class="wide" data-a="tomenu">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||"",ex:e.classList.contains("ex"),dmg:+(e.querySelector(".dtok")?.textContent||0),hand:e.classList.contains("hc")})});
@@ -769,6 +770,11 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"bdup":{const b2=S.build;if(!bCount()){toast("Deck is empty");break}
       const all=decks(),d={name:(b2.name||"My deck")+" copy",notes:b2.notes||"",cards:{...b2.cards}};all.push(d);saveDecks(all);
       bInit({...d,idx:all.length-1});toast("Duplicated");closeSheet();renderBuilder();break}
+    case"bdel":{const b2=S.build;if(b2.idx==null){toast("Save the deck first");break}
+      if(!confirm("Delete \""+(b2.name||"My deck")+"\" permanently?"))break;
+      const all=decks();all.splice(b2.idx,1);saveDecks(all);
+      if(S.deck==="c"+b2.idx)S.deck="s0";
+      toast("Deck deleted");closeSheet();S.screen="menu";render();break}
     case"bview1":builderSheet(b.dataset.id,b);break;
     case"badd":badd(b.dataset.id,+b.dataset.d);break;
     case"bsave":{const b2=S.build,n=bCount(),inks=bInks();if(n<60||inks.length>2){if(!confirm(`This deck has ${n} cards${inks.length>2?" and too many inks":""}. Save it anyway as a draft?`))return}
@@ -825,6 +831,13 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
       const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
       sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent</h4><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
+    case"sumcopy":{const st=S.st,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
+      const lines=[(S.pp?PN(st.winner)+" wins":(st.winner===0?"Victory":"Defeat"))+" · Turn "+st.turnNo,
+        PN(0)+": "+st.players[0].lore+" lore · played "+(s0.play||0)+" · quests "+(s0.quest||0)+" · challenges "+(s0.challenge||0),
+        PN(1)+": "+st.players[1].lore+" lore · played "+(s1.play||0)+" · quests "+(s1.quest||0)+" · challenges "+(s1.challenge||0),
+        (S.meName||"")+" vs "+(S.oppName||"AI")];
+      const t=lines.filter(Boolean).join("\n");
+      try{navigator.clipboard.writeText(t);toast("Match summary copied")}catch(e){sheet(`<h4>Match summary</h4><textarea class="pin bimp" rows="6" readonly>${esc(t)}</textarea><button class="wide" data-a="close">Close</button>`)}break}
     case"again":startGame(true);break;case"againSwap":startGame(true,true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }
 }

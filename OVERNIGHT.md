@@ -297,3 +297,10 @@ hard         93%     63%       -
 ## Batch 26 (~2:55 AM) - clear wishlist
 - Wishlist sheet: Clear wishlist confirmation.
 - Commit: `e0f93ff` (version `20261013094959`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 27 (~2:55 AM) - match summary + delete deck + nearly complete
+- End screen: Copy match summary (lore/quests/challenges) to clipboard.
+- Deck tools: Delete this saved deck (with confirm).
+- Tracker More → Nearly complete sets (50%+ owned, jump to set).
+- Engine tests: 102 passed.
+- Commit: `899d281` (version `20261013095235`). Live: https://laim-1.github.io/lorcana-tracker/

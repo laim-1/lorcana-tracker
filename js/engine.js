@@ -1981,13 +1981,33 @@ function scoreAction(st,a){
       if((c.type==="song"||c.type==="action")&&effVal(st,pi,c.onPlay,null)<=0)s+=12;
       return s}
     case"play":{const c=x.card,effs=a.mode!=null?c.onPlay.find(e=>e.k==="modal").opts[a.mode]:c.onPlay;let s=100+c.cost*4+effVal(st,pi,effs,a.target)+(a.exerted?(p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6):0)-(a.decline?3:0);
-      if(c.type==="character")s+=c.lore*3;if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}if(a.shift!=null){const base=find(st,a.shift)?.inst;s+=12+(c.lore-(base?loreOf(base):0))*6+(base&&base.damage?4:0)+(LEVEL==="hard"?6:0)}
+      if(c.type==="character")s+=c.lore*3;if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+      // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
+      if(a.shift!=null){const base=find(st,a.shift)?.inst;const loreGain=c.lore-(base?loreOf(base):0);const sc=base?shiftCost(st,pi,c,base):c.cost;const H=LEVEL==="hard";
+        s+=14+loreGain*8+(base&&base.damage?5:0)+(H?10:2);
+        if(base&&dry(st,base)&&!base.exerted&&c.lore>0)s+=(H?14:4); // keep dry → quest after Shift
+        if(sc+2<=costOf(st,pi,c))s+=(H?10:3); // ink saved for other plays
+        if(p.play.filter(isChar).length<=1)s-=6; // need bodies: full play may be better elsewhere
+        // Prefer this Shift over full-cost play of same card when both legal
+        if(loreGain>=0&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&b.shift==null))s+=(H?12:4)}
+      else if(c.type==="character"&&c.kw.shift!=null&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&b.shift!=null)){
+        s-=(LEVEL==="hard"?20:8)} // full-cost when Shift exists: usually worse
       if(PERS==="control"&&c.type!=="character")s+=10;if(PERS==="aggro"&&c.type==="character")s+=c.str;
-      if(a.singer!=null){const sg=find(st,a.singer).inst;s+=c.cost*2-sg.card.lore*5+(LEVEL==="hard"?8:4)} // prefer sing over pay
-      if(a.singers){const ids=String(a.singers).split(",").map(Number);const loreBurn=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);s+=c.cost*2-loreBurn*3+(LEVEL==="hard"?6:2)}
+      if(a.singer!=null){const sg=find(st,a.singer).inst;const sl=loreOf(sg);const H=LEVEL==="hard";
+        s+=c.cost*2-sl*5+(H?12:4); // prefer sing over pay; burn low-lore singers
+        if(sl<=1)s+=(H?10:3);if(CTX.lethal){const qs=legalActions(st).filter(b=>b.t==="quest").map(b=>find(st,b.uid).inst);
+          const without=p.lore+qs.filter(q=>q.uid!==sg.uid).reduce((t,q)=>t+loreOf(q),0);
+          if(without<20&&p.lore+qs.reduce((t,q)=>t+loreOf(q),0)>=20)s-=80} // don't sing away lethal
+        if(CTX.threat&&effVal(st,pi,c.onPlay,a.target)>=6)s+=(H?14:6)} // sing removal/draw when threatened
+      if(a.singers){const ids=String(a.singers).split(",").map(Number);const loreBurn=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);s+=c.cost*2-loreBurn*3+(LEVEL==="hard"?10:2);
+        if(CTX.lethal){const qs=legalActions(st).filter(b=>b.t==="quest");const qset=new Set(qs.map(b=>b.uid));
+          const burnLore=ids.filter(u=>qset.has(u)).reduce((t,u)=>t+loreOf(find(st,u).inst),0);
+          if(burnLore&&p.lore+qs.reduce((t,b)=>t+loreOf(find(st,b.uid).inst),0)-burnLore<20&&p.lore+qs.reduce((t,b)=>t+loreOf(find(st,b.uid).inst),0)>=20)s-=80}}
       if((c.type==="song"||c.type==="action")&&!a.singer&&!a.singers){ // paying ink: hold for better songs, boost strong songs
         const ev=effVal(st,pi,c.onPlay,a.target);if(ev>=8)s+=10+(CTX.threat?8:0);
-        const ready=inkAvail(p),need=costOf(st,pi,c);if(need>=ready&&ready>0&&ev>0)s+=6} // spend last ink on a good song
+        const ready=inkAvail(p),need=costOf(st,pi,c);if(need>=ready&&ready>0&&ev>0)s+=6; // spend last ink on a good song
+        // Prefer paying only when no singer; otherwise singing scored above
+        if(c.type==="song"&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&(b.singer!=null||b.singers)))s-=20}
       if((c.type==="action"||c.type==="song")&&effVal(st,pi,c.onPlay,a.target)<=0)s=-1;
       return s}
     case"act":{const ab=actsOf(x)[a.i],v=effVal(st,pi,ab.eff,a.target);return v<=0?-1:60+v-(isChar(x)?x.card.lore*4:0)-ab.ink}
@@ -2013,9 +2033,15 @@ function scoreAction(st,a){
     case"quest":return 50+loreOf(x)*6+(p.lore+loreOf(x)>=20?500:0)+(CTX.lethal?900:0)+(PERS==="quester"?12:PERS==="aggro"?-5:0);
     case"move":{if(!LEVEL||LEVEL==="easy")return -1;const l=find(st,a.loc).inst,mc=moveCost(st,pi,x,l),ben=locBenefit(l);
       // Prefer parking high-lore / fragile characters on protective or lore-buffing locations.
-      let s=ben+(loreOf(x)>=2?6:0)+(wilOf(x)<=4?4:0)-mc*3+(LEVEL==="hard"?8:0);
+      const loreHere=l.card.statics.some(z=>z.here&&z.stat==="lore");
+      const protect=l.card.statics.some(z=>z.here&&z.block==="challenged");
+      const empty=!hereChars(st,l).length;const H=LEVEL==="hard";
+      let s=ben+(loreOf(x)>=2?8:0)+(wilOf(x)<=4?5:0)-mc*3+(H?12:LEVEL==="normal"?3:0);
+      if(loreHere)s+=(H?12:4)+(p.lore+2<=o.lore?(H?10:3):0)+(loreOf(x)>=2?(H?8:2):0); // race onto lore buffs
+      if(protect&&(wilOf(x)<=5||x.damage))s+=(H?10:3);
+      if(empty&&ben>=12)s+=(H?8:2); // claim valuable empty location
       if(x.at!=null){const cur=find(st,x.at);const curB=cur?locBenefit(cur.inst):0;if(ben<=curB+2)return -1;s-=4} // switching only when clearly better
-      if(PERS==="control")s+=4;if(PERS==="quester"&&l.card.statics.some(z=>z.here&&z.stat==="lore"))s+=8;
+      if(PERS==="control")s+=4;if(PERS==="quester"&&loreHere)s+=10;
       return s>0?16+s:-1}case"boost":return x.card.statics.some(s=>s.cond==="under")||x.card.onQuest.length?45:-1;
     case"end":return 0;
   }
@@ -2043,7 +2069,9 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
     if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
   for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);LEVEL=L0;v=evalBoard(sim,pi);if(sim.players[pi].lore>sim.players[opp(pi)].lore)v+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)v+=10;if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;if(d&&at&&isChar(d)){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);if(kills&&live)v+=18;else if(kills)v+=6}}
-    if(HDEEP&&a.t==="play"&&(a.singer!=null||a.singers))v+=8}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
+    if(HDEEP&&a.t==="play"&&(a.singer!=null||a.singers)){v+=14;if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)v+=8}}
+    if(HDEEP&&a.t==="play"&&a.shift!=null){const base=find(st,a.shift)?.inst;if(base&&dry(st,base)&&!base.exerted)v+=16;const c=find(st,a.uid)?.inst?.card;if(c&&base&&c.lore>loreOf(base))v+=10}
+    if(HDEEP&&a.t==="move"){const l=find(st,a.loc)?.inst;if(l&&l.card.statics.some(z=>z.here&&z.stat==="lore"))v+=14;if(l&&!hereChars(st,l).length&&locBenefit(l)>=12)v+=6}}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
     try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(v>bs){bs=v;best=a}}
   LEVEL=L0;CUR=st;return best}
 let PERS=null,CTX={},HDEEP=false,LITE_OFF=false;
@@ -2065,9 +2093,9 @@ function aiChoose(st,level){
   // Hard: rollout every candidate through the opponent's reply and our next turn. Normal: same lookahead on the
   // 4 best heuristic candidates, one opponent turn deep. Easy: noisy heuristic only.
   if((LEVEL==="hard"||LEVEL==="hard2")&&!st.pending){HDEEP=true;try{const b=hardChoose(st,A);if(b)return b}finally{HDEEP=false;LEVEL="hard"}}
-  if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,3);LEVEL="normal";if(b)return b}
+  if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,2);LEVEL="normal";if(b)return b}
   if(LEVEL==="ply"&&!st.pending){const b=plyChoose(st,A);if(b)return b;LEVEL="normal"}
-  const noise=LEVEL==="easy"?90:LEVEL==="normal"?14:0,r=st.r||Math.random;
+  const noise=LEVEL==="easy"?90:LEVEL==="normal"?16:0,r=st.r||Math.random;
   for(const a of A){let s=scoreAction(st,a);if(LEVEL==="hard")s+=hardAdj(st,a,s);
     if(LEVEL==="easy"&&(a.t==="challenge"&&r()<0.35||a.t==="ink"&&r()<0.3))s=-1;if(s>=0&&noise)s+=r()*noise;if(s>bs){bs=s;best=a}}
   if(bs<0&&A.some(a=>a.t==="end"))return{t:"end"};
@@ -2094,15 +2122,38 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
       const canSing=c.type==="song"&&me.play.some(y=>isChar(y)&&!y.exerted&&dry(st,y)&&!blocked(y,"sing")&&singVal(y)>=c.cost);
       if(canSing||costOf(st,pi,c)<=inkAvail(me))return -22} // hold: play/sing it instead
     return 0}
-  if(a.t==="play"){const c=find(st,a.uid).inst.card;if(a.shift!=null)return 10+c.lore*2;if(c.type==="character"&&c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return 6;
+  if(a.t==="play"){const c=find(st,a.uid).inst.card;
+    if(a.shift!=null){const base=find(st,a.shift)?.inst;let b=16+c.lore*2+(c.lore-(base?loreOf(base):0))*5;
+      if(base&&dry(st,base)&&!base.exerted)b+=14;return b}
+    if(c.type==="character"&&c.kw.shift!=null&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&b.shift!=null))return -18;
+    if(c.type==="character"&&c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return 8;
+    if(c.type==="character"&&c.kw.ward)return 4;
     if(c.type==="location")return 8+locPlayValue(c)/4;
-    if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers)b+=10;return b+(me.ink.length>=c.cost?2:0)}
+    if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;
+        if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)b+=8}}
+      return b+(me.ink.length>=c.cost?2:0)}
     if(c.type!=="character"&&me.ink.length>=c.cost)return 4}
-  if(a.t==="move"){const l=find(st,a.loc).inst;return 6+locBenefit(l)/3}
+  if(a.t==="move"){const l=find(st,a.loc).inst;let b=8+locBenefit(l)/3;
+    if(l.card.statics.some(z=>z.here&&z.stat==="lore"))b+=12+(me.lore<=op.lore?8:0);
+    if(!hereChars(st,l).length&&locBenefit(l)>=12)b+=7;return b}
   return 0}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;const inkN=h.filter(c=>c.card.inkable).length;
-  if(cheap>=3&&inkN>=2)return[];
-  return h.filter(c=>c.card.cost>=5||(inkN<2&&c.card.cost>=4&&!c.card.inkable)).map(c=>c.uid)}
+  const cheapInk=h.filter(c=>c.card.inkable&&c.card.cost<=3).length;
+  // Always dump 7+ bricks. Keep curve when we already have cheap ink; otherwise dump expensive/non-inkable.
+  const always=h.filter(c=>c.card.cost>=7).map(c=>c.uid);
+  if(cheap>=3&&inkN>=2&&cheapInk>=1)return always;
+  if(cheap>=2&&inkN>=3)return always.concat(h.filter(c=>c.card.cost>=6&&!always.includes(c.uid)).map(c=>c.uid));
+  const dump=h.filter(c=>{
+    const cost=c.card.cost,inkable=!!c.card.inkable;
+    if(cost>=7)return true;
+    if(cost>=6&&(inkN<3||cheap<2))return true;
+    if(cost>=5&&!inkable)return true;
+    if(cost>=5&&cheapInk===0)return true;
+    if(cost>=4&&!inkable&&inkN<2)return true;
+    if(cheap<2&&cost>=4)return true;
+    return false;
+  }).map(c=>c.uid);
+  return [...new Set(dump)]}
 
 /* ---------- decks ---------- */
 const INKS=["Amber","Amethyst","Emerald","Ruby","Sapphire","Steel"];

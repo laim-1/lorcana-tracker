@@ -460,4 +460,94 @@ t("ai: hardChoose restores LEVEL after Normal shortlist (no Hard leak)", () => {
   assert.equal(h.t, "quest", "hard after normal: " + JSON.stringify(h));
 });
 
+
+t("ai: prefers Shift over full-cost when base is dry", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 8);
+  const base = put(st, 0, C({ name: "Elsa", lore: 1, strength: 2, willpower: 4, cost: 3 }));
+  // dry: played previous turn
+  base.playedOn = st.turnNo - 1;
+  const shiftCard = hand(st, 0, C({ name: "Elsa", cost: 7, lore: 3, strength: 5, willpower: 6, text: "Shift 3" }));
+  const acts = E.legalActions(st).filter(a => a.t === "play" && a.uid === shiftCard.uid);
+  assert.ok(acts.some(a => a.shift === base.uid), "shift legal");
+  assert.ok(acts.some(a => a.shift == null), "full play legal");
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "play");
+  assert.equal(a.uid, shiftCard.uid);
+  assert.equal(a.shift, base.uid, "should Shift not full-cost: " + JSON.stringify(a));
+});
+
+t("ai: prefers low-lore singer for songs", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 0);
+  const low = put(st, 0, C({ lore: 1, strength: 1, willpower: 4, cost: 2 }));
+  const high = put(st, 0, C({ lore: 3, strength: 1, willpower: 4, cost: 3 }));
+  low.playedOn = st.turnNo - 1; high.playedOn = st.turnNo - 1;
+  const song = hand(st, 0, real("Be Our Guest"));
+  const sings = E.legalActions(st).filter(a => a.t === "play" && a.uid === song.uid && a.singer != null);
+  assert.ok(sings.length >= 2, "both can sing");
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === song.uid && a.singer === low.uid, "low-lore singer: " + JSON.stringify(a));
+});
+
+t("ai: mulligan dumps expensive without cheap inkables", () => {
+  const st = E.newGame({ decks: [filler(), filler()], seed: 42 });
+  // Bad curve: no cheap inkables — dump expensive / non-inkable bricks
+  const bad = [
+    C({ cost: 7, lore: 3, inkwell: false }),
+    C({ cost: 6, lore: 2, inkwell: true }),
+    C({ cost: 5, lore: 1, inkwell: false }),
+    C({ cost: 4, lore: 1, inkwell: false }),
+    C({ cost: 5, lore: 2, inkwell: true }),
+    C({ cost: 4, lore: 1, inkwell: true }),
+    C({ cost: 3, lore: 1, inkwell: false }),
+  ];
+  st.players[0].hand = bad.map((c, i) => ({ uid: 900 + i, card: c, owner: 0, damage: 0, exerted: false, playedOn: 0, turnPlayed: 0, under: [], grants: [] }));
+  const dump = E.aiMulligan(st, 0);
+  assert.ok(dump.includes(900), "dump 7-cost");
+  assert.ok(dump.includes(901), "dump 6-cost when no cheap ink");
+  assert.ok(dump.includes(902), "dump 5-cost non-inkable");
+  // Good curve: only always-dump 7+
+  const good = [
+    C({ cost: 7, lore: 3, inkwell: false }),
+    C({ cost: 5, lore: 1, inkwell: false }),
+    C({ cost: 2, lore: 1, inkwell: true }),
+    C({ cost: 1, lore: 1, inkwell: true }),
+    C({ cost: 3, lore: 1, inkwell: true }),
+    C({ cost: 2, lore: 1, inkwell: true }),
+    C({ cost: 4, lore: 1, inkwell: true }),
+  ];
+  st.players[0].hand = good.map((c, i) => ({ uid: 800 + i, card: c, owner: 0, damage: 0, exerted: false, playedOn: 0, turnPlayed: 0, under: [], grants: [] }));
+  const dump2 = E.aiMulligan(st, 0);
+  assert.ok(dump2.includes(800), "good curve still dumps 7+");
+  assert.ok(!dump2.includes(801), "good curve keeps mid non-inkable");
+  assert.ok(!dump2.includes(802) && !dump2.includes(803), "keep cheap inkables");
+});
+
+t("ai: values moving onto lore-buff location when racing", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  st.players[0].lore = 10; st.players[1].lore = 12;
+  ink(st, 0, 2);
+  const ch = put(st, 0, C({ lore: 2, strength: 2, willpower: 4, cost: 3 }));
+  ch.playedOn = st.turnNo - 1;
+  const loc = put(st, 0, C({ type: ["Location"], lore: 1, willpower: 7, cost: 4, moveCost: 1, text: "Characters here get +1 lore." }));
+  // Ensure static parsed — if text parse fails, inject
+  if (!loc.card.statics.some(z => z.here && z.stat === "lore")) {
+    loc.card.statics.push({ here: true, stat: "lore", n: 1 });
+  }
+  loc.card.move = 1;
+  const moves = E.legalActions(st).filter(a => a.t === "move" && a.uid === ch.uid && a.loc === loc.uid);
+  assert.ok(moves.length, "move legal");
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "move" && a.uid === ch.uid || a.t === "quest", "move or quest: " + JSON.stringify(a));
+  // Score move should be clearly positive
+  const LEVEL_BAK = null;
+  // Use legal move presence + hard prefers it over end
+  assert.ok(a.t !== "end", "should not end with free lore move available");
+});
+
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -19,7 +19,8 @@ function parseOne(s){
 const KINDS={"character":["character"],"item":["item"],"location":["location"],"character or location":["character","location"],"item or location":["item","location"],"character or item":["character","item"],"character, item, or location":["character","item","location"]};
 function parseTarget(ph){ // e.g. "another chosen opposing damaged princess character of yours with cost 3 or less"
   const m=ph.match(/^(another )?chosen (opposing )?(damaged |exerted |ready |undamaged )?([a-z][a-z' -]*? )?(character, item, or location|character or location|item or location|character or item|character|item|location)( of yours)?(?: with (\d+) str or (less|more)| with cost (\d+) or less| named (.+?))?$/);
-  if(!m)return null;const t={opp:!!m[2],own:!!m[6],kinds:KINDS[m[5]],kind:m[5]==="character"?"char":m[5]==="item"?"item":"any",other:!!m[1]};
+  if(!m)return null;if(m[4]&&KINDS[(m[4]+m[5]).trim()]){m[5]=(m[4]+m[5]).trim();m[4]=undefined}
+  const t={opp:!!m[2],own:!!m[6],kinds:KINDS[m[5]],kind:m[5]==="character"?"char":m[5]==="item"?"item":"any",other:!!m[1]};
   if(m[3])t.state=m[3].trim();if(m[4]){const c=m[4].trim();if(c==="opposing")t.opp=true;else t.cls=c}
   if(m[7]){if(m[8]==="less")t.maxStr=+m[7];else t.minStr=+m[7]}if(m[9])t.maxCost=+m[9];if(m[10])t.name=m[10];
   t.helpful=t.own;return t}
@@ -93,7 +94,7 @@ function parseOne0(s){let l=s.toLowerCase().replace(/^if you do, /,"").trim();le
   if((m=l.match(/^if you have no cards in your hand, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",emptyHand:true,eff:e}}
   if((m=l.match(/^if you played a song this turn, (.+)$/))){const e=parseEffects(m[1]);if(e)return{k:"cond",songThisTurn:true,eff:e}}
   if((m=l.match(/^put a character card from your discard into your inkwell facedown and exerted$/)))return{k:"discardToInk"};
-  if((m=l.match(/^put (?:a|any) card from your hand into your inkwell facedown(?: and exerted)?$/)))return{k:"handToInk"};
+  if((m=l.match(/^put (?:a|any) card from your hand into your inkwell facedown( and exerted)?$/)))return{k:"handToInk",exerted:!!m[1]};
   if((m=l.match(/^return this card to your hand$/)))return{k:"returnSelf"};
   if((m=l.match(/^put this card into your inkwell facedown and exerted$/)))return{k:"inkSelf"};
   if((m=l.match(/^you pay (\d+) ink less for the next (character|item|action|song|location) you play this turn$/)))return{k:"discount",n:+m[1],type:m[2]};
@@ -330,7 +331,7 @@ Object.assign(DEFS_EXTRA,{
  "Stratos - Tornado Titan":c=>c.acts.push({ink:0,eff:[FN((st,pi)=>gain(st,pi,OWNCH(st,pi).filter(y=>hasCls(y,"titan")).length),(st,pi)=>OWNCH(st,pi).filter(y=>hasCls(y,"titan")).length*6)]}),
  "Treasure Guardian - Protector of the Cave":c=>c.statics.push({block:"quest",cond:x=>x.at==null},{block:"challenge",cond:x=>x.at==null}),
  "It Calls Me":c=>c.onPlay.push({k:"draw",n:1}),
- "Last-Ditch Effort":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.exerted=true;PKs(st,pi,OWNCH(st,pi).filter(z=>!z.exerted&&dry(st,z)),(y)=>{if(y)y.grants.push({kw:"challenger 2",until:"turnEnd",src:pi})},{ai:srt((a,b)=>strOf(b)-strOf(a)),prompt:"choose one of your characters"});},4,T_({opp:true}))),
+ "Last-Ditch Effort":c=>c.onPlay.push(FN((st,pi,self,x)=>{x.exerted=true;PKs(st,pi,OWNCH(st,pi),(y)=>{if(y){y.grants=y.grants||[];y.grants.push({kw:"challenger 2",until:"turnEnd",src:pi})}},{ai:srt((a,b)=>(!b.exerted&&dry(st,b))-(!a.exerted&&dry(st,a))||strOf(b)-strOf(a)),prompt:"choose one of your characters"});},4,T_({opp:true}))),
  "The Lamp":c=>c.acts.push({ink:0,sac:true,noExert:true,eff:[FN((st,pi)=>{const P=st.players[pi];if(P.play.some(y=>y.card.name==="Jafar"))draw(st,pi,2);if(P.play.some(y=>y.card.name==="Genie")){PKs(st,pi,st.players[opp(pi)].play.filter(y=>isChar(y)&&y.card.cost<=4),(t)=>{if(t)resolve(st,pi,[{k:"bounce",t:{}}],t.uid,null)},{ai:srt((a,b)=>instVal(b)-instVal(a)),prompt:"choose an opposing character"});}},(st,pi)=>{const P=st.players[pi];return(P.play.some(y=>y.card.name==="Jafar")?8:0)+(P.play.some(y=>y.card.name==="Genie")?5:0)-3})]}),
  "The Sorcerer's Hat":c=>c.acts.push({ink:1,eff:[{k:"nameReveal",to:"hand"}]}),
  "The Queen's Castle - Mirror Chamber":c=>c.onStart.push(FN((st,pi,self)=>{if(self)draw(st,pi,hereChars(st,self).length)},3)),
@@ -1522,7 +1523,7 @@ function newGame(o){
   }
   CUR=st;return st;
 }
-function mk(st,card,owner){return{uid:st.uid++,card,owner,damage:0,exerted:false,playedOn:-1,tStr:0,lStr:0,tLore:0,tChal:0,noQuest:false,noReady:false,at:null,under:[]}}
+function mk(st,card,owner){return{uid:st.uid++,card,owner,damage:0,exerted:false,playedOn:-1,tStr:0,lStr:0,tLore:0,tChal:0,noQuest:false,noReady:false,at:null,under:[],grants:[]}}
 function reset(x){x.grants=[];x.noQuestNext=x.noChalNext=x.noQuestNow=x.noChalNow=false;x.damage=0;x.exerted=false;x.tStr=0;x.lStr=0;x.tLore=0;x.tChal=0;x.noQuest=false;x.noReady=false;x.at=null}
 const YOU={inks:"ink",plays:"play",shifts:"shift",mulligans:"mulligan",keeps:"keep",ends:"end",reaches:"reach"};
 const log=(st,s)=>{s=s.replace(/^You (\w+)/,(m,v)=>"You "+(YOU[v]||v)).replace(/^You keep their hand/,"You keep your hand").replace(/You end their turn/,"You end your turn");st.log.push(s);if(st.log.length>300)st.log.shift()};
@@ -1556,7 +1557,7 @@ function countOf(x,what){if(!CUR)return 0;const P=CUR.players[x.owner];if(typeof
 function actsOf(x){const g=auras(x).filter(a=>a.grantAct).map(a=>a.grantAct);if(CUR&&x.tActs)for(const q of x.tActs)if(q.t===CUR.turnNo)g.push(q.ab);if(CUR&&isChar(x)){const P=CUR.players[x.owner];if(P.tempAct&&P.tempAct.t===CUR.turnNo)g.push(P.tempAct.ab);for(const s of hereStatics(x))if(s.grantAct)g.push(s.grantAct)}return g.length?x.card.acts.concat(g):x.card.acts}
 function hereStatics(x){if(x.at==null||!CUR)return[];const l=CUR.players[x.owner].play.find(y=>y.uid===x.at);return l?l.card.statics.filter(s=>s.here&&(!s.name||namesOf(x).includes(s.name))&&(!s.test||s.test(x,CUR,l))):[]}
 function statOn(x,f){let n=0;for(const s of x.card.statics){if(s.stat!==f||s.here||!condOk(x,s.cond))continue;n+=typeof s.count==="function"?(s.per||1)*(CUR?s.count(x,CUR.players[x.owner],CUR):0):s.perHand?s.perHand*(CUR?CUR.players[x.owner].hand.length:0):s.perOther?s.perOther*(CUR?CUR.players[x.owner].play.filter(y=>y!==x&&y.card.type==="character").length:0):s.n}
-  for(const s of hereStatics(x))if(s.stat===f)n+=s.n;for(const s of x.card.statics)if(s.stat===f&&s.per&&condOk(x,s.cond||"always"))n+=s.per*countOf(x,s.count);
+  for(const s of hereStatics(x))if(s.stat===f)n+=s.n;for(const s of x.card.statics)if(s.stat===f&&s.per&&typeof s.count!=="function"&&s.count!=null&&condOk(x,s.cond||"always"))n+=s.per*countOf(x,s.count);
   for(const a of auras(x))if(a.stat===f)n+=a.perLoc?-CUR.players[a.src.owner].play.filter(isLoc).length:a.n;return n}
 function K(x,k){if(k==="evasive"&&x.card.noEvasive)return undefined;if(k==="evasive"&&x.featherBy!=null&&CUR&&find(CUR,x.featherBy)?.zone==="play")return true;if(CUR&&auras(x).some(a=>a.kwOff===k))return k==="challenger"||k==="resist"?0:undefined;if(k==="reckless"&&CUR&&x.noReckT===CUR.turnNo)return undefined;
   if(CUR)for(const s of x.card.statics)if(s.kwPer===k){const n=countOf(x,s.count)+(x.card.kw[k]||0);if(n)return n}
@@ -1706,7 +1707,7 @@ function resolve0(st,pi,effs,tgt,src,fromAction){st._src=src?src.uid:null;st._sr
       case"mill":for(let k=0;k<e.n&&me.deck.length;k++)me.discard.push(me.deck.pop());break;
       case"banishAllX":{const ps=e.what.startsWith("opposing")?[o]:[me,o];for(const P of ps)[...P.play.filter(c=>(e.what.endsWith("items")?isItem(c):isChar(c))&&(e.maxStr==null||strOf(c)<=e.maxStr))].forEach(c=>banish(st,c));break}
       case"discardToInk":{const c=me.discard.filter(isChar).pop();if(c){me.discard.splice(me.discard.indexOf(c),1);reset(c);c.exerted=true;me.ink.push(c)}break}
-      case"handToInk":{PKs(st,pi,me.hand,(c)=>{if(!c)return;me.hand.splice(me.hand.indexOf(c),1);c.exerted=false;me.ink.push(c)},{prompt:"choose a card from your hand to put into your inkwell",ai:by(x=>discardPri(x))});break}
+      case"handToInk":{PKs(st,pi,me.hand,(c)=>{if(!c)return;me.hand.splice(me.hand.indexOf(c),1);c.exerted=!!e.exerted;me.ink.push(c)},{prompt:"choose a card from your hand to put into your inkwell",ai:by(x=>discardPri(x))});break}
       case"drawAll":draw(st,pi,e.n);draw(st,opp(pi),e.n);break;
       case"gainLore":gain(st,pi,e.n);break;
       case"oppLose":{if(e.ifMore&&o.lore<=me.lore)break;loseLore(st,o,e.n);break}
@@ -2024,6 +2025,6 @@ function coverage0(pool){const seen=new Map();for(const c of pool)if(!seen.has(c
   const sup=all.filter(c=>c.supported).length,vanilla=all.filter(c=>c.supported&&!c.onPlay.length&&!c.onQuest.length&&!c.acts.length&&!c.onBanish.length&&!c.entersExerted&&!c.enterDamage).length;
   return{unique:all.length,supported:sup,unsupported:all.length-sup,vanillaOrKeywordOnly:vanilla,withSimulatedText:sup-vanilla}}
 
-const E={actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K};
+const E={actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf};
 if(typeof module!=="undefined"&&module.exports)module.exports=E;else root.LorcanaEngine=E;
 })(typeof window!=="undefined"?window:globalThis);

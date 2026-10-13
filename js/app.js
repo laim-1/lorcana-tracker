@@ -19,7 +19,7 @@ const cardsFor=id=>cache[id]||S?.cards[id]||[];
 const value=cards=>cards.reduce((t,c)=>{const v=col[c.id];return v?t+(c.usd||0)*v.n+(c.usd_foil||c.usd||0)*v.f:t},0);
 const cnum=c=>parseInt(c.collector_number)||9999;
 async function j(u){const r=await fetch(u,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw r.status;return r.json()}
-const slim=c=>({id:c.id,name:c.name,version:c.version,collector_number:c.collector_number,rarity:c.rarity,ink:c.ink,img:c.image_uris?.digital?.normal,usd:num(c.prices?.usd),usd_foil:num(c.prices?.usd_foil),tcg:c.tcgplayer_id});
+const slim=c=>({id:c.id,name:c.name,version:c.version,collector_number:c.collector_number,rarity:c.rarity,ink:c.ink,img:c.image_uris?.digital?.normal,usd:num(c.prices?.usd),usd_foil:num(c.prices?.usd_foil),tcg:c.tcgplayer_id,text:c.text,cost:c.cost,type:c.type,str:c.strength,wil:c.willpower,lore:c.lore,inkwell:c.inkwell,cls:c.classifications,move:c.move_cost});
 async function loadSets(){try{const today=new Date().toISOString().slice(0,10);
  sets=(await j(API+"/sets")).results.filter(s=>(s.released_at||"9")<=today);
  sets.forEach(s=>s.card_count=S?.sets.find(x=>x.id==s.id)?.card_count)}catch(e){sets=S.sets;source="snapshot"}}
@@ -60,9 +60,13 @@ function renderCards(){if(!cur)return;const {cards}=cur,q=$("#q").value.toLowerC
    <button class="big" data-id="${c.id}" data-k="${k}" data-d="-1" aria-label="Remove ${k=="n"?"normal":"foil"}">&minus;</button><b>${v[k]}</b>
    <button class="big plus" data-id="${c.id}" data-k="${k}" data-d="1" aria-label="Add ${k=="n"?"normal":"foil"}">+</button></div></div>`).join("")}
   ${c.tcg?`<a class="tcg" href="https://www.tcgplayer.com/product/${encodeURIComponent(c.tcg)}" target="_blank" rel="noopener">View on TCGplayer</a>`:""}</div>`}).join("")}</div>`:`<p class="empty">No cards match.</p>`);summary()}
-app.addEventListener("click",e=>{const b=e.target.closest(".big");if(!b)return;const id=b.dataset.id,k=b.dataset.k,c=col[id]||{n:0,f:0};
+app.addEventListener("click",e=>{const im=e.target.closest(".card .art");if(im&&window.Zoom){zoomTracker(im);return}const b=e.target.closest(".big");if(!b)return;const id=b.dataset.id,k=b.dataset.k,c=col[id]||{n:0,f:0};
  const was=c.n+c.f;c[k]=Math.max(0,c[k]+ +b.dataset.d);if(c.n+c.f)col[id]=c;else delete col[id];save();if(+b.dataset.d>0&&window.FX){const card=b.closest(".card"),im=card&&card.querySelector("img");FX.at(b,{n:26,colors:k=="f"?[FX.COL.gold,FX.COL.blue,FX.COL.ink,FX.COL.white]:[FX.COL.gold,FX.COL.white],speed:2.8,size:2.8});if(im)FX.at(im,{n:was?14:34,colors:[FX.COL.gold,FX.COL.white,FX.COL.blue],speed:was?2:3.2,size:2.6});if(!was&&im){card.classList.remove("got");void card.offsetWidth;card.classList.add("got")}}
  b.parentNode.querySelector("b").textContent=c[k];b.closest(".card").classList.toggle("owned",c.n+c.f>0);summary()});
+function zoomTracker(art,again){if(!again&&!window.LORCANA_GAME_CARDS){const s=document.createElement("script");s.src="./data/game-cards.js?v="+(window.APP_VERSION||"");s.onload=()=>{if(window.Zoom&&Zoom.isOpen()&&art.isConnected){Zoom.close(true);zoomTracker(art,true)}};document.head.appendChild(s)}const card=art.closest(".card"),id=card&&card.querySelector("[data-id]")?.dataset.id,c=cur&&cur.cards.find(x=>x.id===id);if(!c)return;
+ const g=(window.LORCANA_GAME_CARDS&&window.LORCANA_GAME_CARDS.cards.find(x=>x.id===id))||{};const T=c.type||g.type,ty=T&&T[0]?String(T[0]).toLowerCase():"";
+ const zc={name:c.name,version:c.version,full:c.name+(c.version?" - "+c.version:""),cost:c.cost??g.cost,ink:c.ink,type:ty,cls:c.cls||g.classifications,str:c.str??g.strength,wil:c.wil??g.willpower,lore:c.lore??g.lore,move:c.move??g.move_cost,text:c.text??g.text,inkable:c.inkwell??g.inkwell,rarity:pretty(c.rarity)};
+ const v=col[id]||{n:0,f:0};Zoom.open({card:zc,img:c.img,large:c.img,from:art,state:[{t:"Owned: "+v.n+" normal, "+v.f+" foil",cls:v.n+v.f?"":"info"},{t:"#"+c.collector_number},...(c.usd?[{t:"Normal "+money(c.usd)}]:[]),...(c.usd_foil?[{t:"Foil "+money(c.usd_foil)}]:[])]})}
 function openSheet(html,bind){$("#sheet-body").innerHTML=html;bind&&bind();$("#scrim").hidden=false;$("#sheet").classList.add("open");$("#sheet").setAttribute("aria-hidden","false")}
 function closeSheet(){$("#sheet").classList.remove("open");$("#scrim").hidden=true;$("#sheet").setAttribute("aria-hidden","true")}
 $("#scrim").onclick=closeSheet;

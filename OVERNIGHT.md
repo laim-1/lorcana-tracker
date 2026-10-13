@@ -184,4 +184,5 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - #74 App icon + web manifest / A2HS meta.
 - #75 Enter transitions + loading skeletons.
 - Tests: tracker smoke (home actions + global search) passed; engine 101 still green from batch 7.
-- Commit: `6a602c7` (version `20261013093050`). Live: https://laim-1.github.io/lorcana-tracker/
+- Commit: `399c0bd` (version `20261013093050`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `399c0bd` status built; version.json `20261013093050` on https://laim-1.github.io/lorcana-tracker/.

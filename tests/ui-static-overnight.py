@@ -56,6 +56,7 @@ checks = [
     ("Singer tip", "Singer N lets a character sing" in play),
     ("Vanish tip", "Vanish: when a Vanish character takes damage" in play),
     ("Boost tip", "Boost: pay the Boost ink cost" in play),
+    ("Rush tip", "Rush characters can challenge the turn they are played" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

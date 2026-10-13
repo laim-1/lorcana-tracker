@@ -602,3 +602,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 70%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `d2f4e11` (version `20261013131516`). Live verified Pages built; version.json `20261013131516`.
+
+## Batch 66 (~6:18 AM) - Rush play for immediate clean kills + tip
+- Play: Rush valued when exerted targets (esp. lore ≥2) are clean-killable this turn.
+- hardAdj matches; tutorial tip for Rush challenge-on-play.
+- ui-static-overnight **51** checks. Engine **132** passed.
+- Hard vs Normal (40g): **Hard 70%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `bff179b` (version `20261013131811`). Live verified Pages built; version.json `20261013131811`.

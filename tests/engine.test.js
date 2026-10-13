@@ -906,4 +906,15 @@ t("ai: prefers playing Support when board has mates and exerted threats", () => 
   assert.ok(a.t === "play" && a.uid === support.uid, "prefer Support: " + JSON.stringify(a) + " support=" + support.uid + " plain=" + plain.uid);
 });
 
+
+t("ai: prefers playing Rush that can clean-kill an exerted lore threat", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true; ink(st, 0, 4);
+  const threat = put(st, 1, C({ lore: 3, strength: 1, willpower: 4 })); threat.exerted = true;
+  const rush = hand(st, 0, C({ lore: 1, strength: 4, willpower: 3, cost: 3, text: "Rush" }));
+  const plain = hand(st, 0, C({ lore: 1, strength: 4, willpower: 4, cost: 3 }));
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === rush.uid, "prefer Rush: " + JSON.stringify(a) + " rush=" + rush.uid + " plain=" + plain.uid);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -2012,7 +2012,11 @@ function scoreAction(st,a){
           const anySong=p.hand.some(h=>h.card.type==="song");
           s+=(H?5:1)+(songs.length?(H?14:5)+songs.length*3:0)+(anySong&&!songs.length?(H?4:1):0)}
         if(c.kw.support){const H=LEVEL==="hard";const mates=p.play.filter(y=>isChar(y)).length;const threats=o.play.filter(y=>isChar(y)&&y.exerted).length;
-          s+=(H?6:2)+(mates?(H?10:3):0)+(threats&&mates?(H?8:2):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+          s+=(H?6:2)+(mates?(H?10:3):0)+(threats&&mates?(H?8:2):0)}
+        if(c.kw.rush){const H=LEVEL==="hard";const ch=+c.kw.challenger||0;
+          const kills=o.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+ch-(K(y,"resist")||0))>=wilOf(y));
+          const loreK=kills.filter(y=>loreOf(y)>=2).length;
+          s+=(H?8:2)+(kills.length?(H?16:6)+kills.length*4:0)+(loreK?(H?10:3):0)+(o.play.some(y=>isChar(y)&&y.exerted)?(H?4:1):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
         if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
@@ -2245,6 +2249,9 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
       const songs=me.hand.filter(h=>h.card.type==="song"&&h.card.cost<=sv&&h.card.cost>c.cost);
       return 4+(songs.length?16+songs.length*4:me.hand.some(h=>h.card.type==="song")?6:0)}
     if(c.type==="character"&&c.kw.support){const mates=me.play.filter(y=>isChar(y)).length;return 5+(mates?12:0)+(op.play.some(y=>isChar(y)&&y.exerted)?8:0)}
+    if(c.type==="character"&&c.kw.rush){const ch=+c.kw.challenger||0;
+      const kills=op.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+ch-(K(y,"resist")||0))>=wilOf(y));
+      return 8+(kills.length?18+kills.length*5:0)+(kills.some(y=>loreOf(y)>=2)?10:0)}
     if(c.type==="location")return 8+locPlayValue(c)/4;
     if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;
         if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)b+=8}

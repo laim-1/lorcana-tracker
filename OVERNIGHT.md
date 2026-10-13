@@ -128,3 +128,5 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - #40 Rules reference sheet from the play menu.
 - Skipped: #26 undo (still needs pending-safe snapshot API beyond freeze), #31/#32 sound, #39 tutorial.
 - Tests: `node tests/engine.test.js` 99 passed; `node tools/audit.js` 104/104.
+- Commit: `ee7f55f` (version `20261013090024`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `ee7f55f` status built; version.json `20261013090024` on https://laim-1.github.io/lorcana-tracker/.

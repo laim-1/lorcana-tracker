@@ -415,6 +415,38 @@ t("#26 undo snap survives pending-creating action", () => {
 });
 
 
+
+t("ai: prefers low-lore clean killer among multi-challengers", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  const low = put(st, 0, C({ lore: 1, strength: 4, willpower: 5, cost: 3 }));
+  const high = put(st, 0, C({ lore: 3, strength: 4, willpower: 5, cost: 4 }));
+  const d = put(st, 1, C({ lore: 2, strength: 1, willpower: 3, cost: 2 })); d.exerted = true;
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "challenge");
+  assert.equal(a.uid, low.uid, "should challenge with low-lore: " + JSON.stringify(a));
+});
+
+t("ai: holds ink when a song can be sung instead", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = [];
+  ink(st, 0, 1);
+  put(st, 0, C({ cost: 4, lore: 1, strength: 2, willpower: 4 }));
+  const song = hand(st, 0, real("Be Our Guest"));
+  song.card.inkable = true;
+  const junk = hand(st, 0, C({ type: ["Action"], cost: 7, text: "", inkwell: true }));
+  junk.card.inkable = true; junk.card.onPlay = [];
+  // Score ink of song should be worse than singing it
+  const inkSong = E.legalActions(st).find(a => a.t === "ink" && a.uid === song.uid);
+  const sing = E.legalActions(st).find(a => a.t === "play" && a.uid === song.uid && a.singer != null);
+  assert.ok(inkSong && sing, "need ink+sing options");
+  // Force LEVEL via aiChoose path: never pick ink:song first
+  const a = E.aiChoose(st, "hard");
+  assert.ok(!(a.t === "ink" && a.uid === song.uid), "chose " + JSON.stringify(a));
+  assert.ok(a.t === "play" && a.uid === song.uid && a.singer != null || a.t === "ink" && a.uid === junk.uid || a.t === "quest" || a.t === "end",
+    "unexpected " + JSON.stringify(a));
+});
+
 t("ai: hardChoose restores LEVEL after Normal shortlist (no Hard leak)", () => {
   const st = game(); st.human = [false, false];
   ink(st, 0, 4); put(st, 0, C({ lore: 2, strength: 3, willpower: 5, cost: 3 }));

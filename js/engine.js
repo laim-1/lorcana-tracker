@@ -1968,15 +1968,26 @@ function locPlayValue(c){let v=c.lore*6+c.wil*0.5+(c.onStart.length?10:0)+(c.onE
 function scoreAction(st,a){
   const pi=st.active,p=st.players[pi],o=st.players[opp(pi)],F=a.uid!=null?find(st,a.uid):null,x=F&&F.inst;
   switch(a.t){
-    case"ink":{const c=x.card,ink=p.ink.length;if(ink>=8&&p.hand.length<4)return -1;
+    case"ink":{const c=x.card,ink=p.ink.length,ready=inkAvail(p);if(ink>=8&&p.hand.length<4)return -1;
       const dup=p.hand.filter(h=>h.card.name===c.name).length>1?8:0;
       const onlyPlay=c.cost===ink+1&&!p.hand.some(h=>h.uid!==x.uid&&h.card.cost<=ink+1&&h.card.type==="character");
       let s=200-c.lore*3-(c.cost<=ink+1?c.cost*2:0)+dup+(c.cost>ink+3?10:0);
-      if(onlyPlay&&p.lore+3<o.lore&&c.type==="character"&&c.lore>=2)s-=20;if(ink<3&&c.cost>=5)s+=10;return s}
+      if(onlyPlay&&p.lore+3<o.lore&&c.type==="character"&&c.lore>=2)s-=20;if(ink<3&&c.cost>=5)s+=10;
+      // Hold ink for songs: don't ink a song/action we can sing or pay for this turn with positive value
+      if(c.type==="song"||c.type==="action"){const ev=effVal(st,pi,c.onPlay,null);if(ev>0){
+        const canSing=c.type==="song"&&p.play.some(y=>isChar(y)&&!y.exerted&&dry(st,y)&&!blocked(y,"sing")&&singVal(y)>=c.cost);
+        const canPay=costOf(st,pi,c)<=ready;if(canSing||canPay)s-=35+Math.min(20,ev)}}
+      // Prefer inking junk over keeping a dead song we cannot cast soon
+      if((c.type==="song"||c.type==="action")&&effVal(st,pi,c.onPlay,null)<=0)s+=12;
+      return s}
     case"play":{const c=x.card,effs=a.mode!=null?c.onPlay.find(e=>e.k==="modal").opts[a.mode]:c.onPlay;let s=100+c.cost*4+effVal(st,pi,effs,a.target)+(a.exerted?(p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6):0)-(a.decline?3:0);
       if(c.type==="character")s+=c.lore*3;if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}if(a.shift!=null){const base=find(st,a.shift)?.inst;s+=12+(c.lore-(base?loreOf(base):0))*6+(base&&base.damage?4:0)+(LEVEL==="hard"?6:0)}
       if(PERS==="control"&&c.type!=="character")s+=10;if(PERS==="aggro"&&c.type==="character")s+=c.str;
-      if(a.singer!=null){const sg=find(st,a.singer).inst;s+=c.cost*2-sg.card.lore*5}
+      if(a.singer!=null){const sg=find(st,a.singer).inst;s+=c.cost*2-sg.card.lore*5+(LEVEL==="hard"?8:4)} // prefer sing over pay
+      if(a.singers){const ids=String(a.singers).split(",").map(Number);const loreBurn=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);s+=c.cost*2-loreBurn*3+(LEVEL==="hard"?6:2)}
+      if((c.type==="song"||c.type==="action")&&!a.singer&&!a.singers){ // paying ink: hold for better songs, boost strong songs
+        const ev=effVal(st,pi,c.onPlay,a.target);if(ev>=8)s+=10+(CTX.threat?8:0);
+        const ready=inkAvail(p),need=costOf(st,pi,c);if(need>=ready&&ready>0&&ev>0)s+=6} // spend last ink on a good song
       if((c.type==="action"||c.type==="song")&&effVal(st,pi,c.onPlay,a.target)<=0)s=-1;
       return s}
     case"act":{const ab=actsOf(x)[a.i],v=effVal(st,pi,ab.eff,a.target);return v<=0?-1:60+v-(isChar(x)?x.card.lore*4:0)-ab.ink}
@@ -1986,6 +1997,15 @@ function scoreAction(st,a){
       // minus our attacker if it dies and the lore we give up by not questing.
       const dl=isLoc(d)?d.card.lore:loreOf(d),race=o.lore>=14?dl*6:0;
       let v=(kills?instVal(d)+dl*5+race+(isLoc(d)?d.card.lore*3:0):(dies?0:Math.min(as,wilOf(d)-d.damage)*0.8+(d.damage+as>=wilOf(d)-2?dl:0)))-(dies?instVal(x)*0.9:0)-(K(x,'reckless')?0:loreOf(x)*3);
+      if(kills&&!dies)v+=(LEVEL==="hard"?12:5); // clean kill (Hard weights more)
+      if(kills&&dies){const ivd=instVal(d),ivx=instVal(x);if(ivd>ivx*1.1)v+=(LEVEL==="hard"?10:4);else if(ivd<ivx*0.85)v-=(LEVEL==="hard"?16:8)}
+      // Multi-challenger: prefer lowest-lore clean killer (Hard searches alts; Normal light bias)
+      if(kills&&!dies&&!K(x,'reckless')&&(LEVEL==="hard"||LEVEL==="normal")){const alts=legalActions(st).filter(b=>b.t==="challenge"&&b.target===a.target&&b.uid!==a.uid);
+        const mul=LEVEL==="hard"?5:2;
+        for(const b of alts){const ox=find(st,b.uid)?.inst;if(!ox)continue;
+          const oas=strOf(ox)+(K(ox,"challenger")||0);const ok=d.damage+Math.max(0,oas-(K(d,"resist")||0))>=wilOf(d);
+          const od=!isLoc(d)&&ox.damage+Math.max(0,strOf(d)-(K(ox,"resist")||0))>=wilOf(ox);
+          if(ok&&!od){if(loreOf(ox)<loreOf(x))v-=(loreOf(x)-loreOf(ox))*mul;if(LEVEL==="hard"&&instVal(ox)+2<instVal(x))v-=6}}}
       if(CTX.lethal&&!K(x,'reckless')&&!isLoc(d))return -1; // we win by questing this turn: don't exert questers to fight
       if(CTX.threat&&kills&&dl>0)v+=40+dl*10; // they can reach 20 next turn: remove their questers
       if(PERS==="aggro")v+=15;else if(PERS==="control")v+=6;else if(PERS==="quester")v-=10;
@@ -2021,7 +2041,9 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
   const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}
     if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
-  for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);LEVEL=L0;v=evalBoard(sim,pi);if(sim.players[pi].lore>sim.players[opp(pi)].lore)v+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)v+=10;if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
+  for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);LEVEL=L0;v=evalBoard(sim,pi);if(sim.players[pi].lore>sim.players[opp(pi)].lore)v+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)v+=10;if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
+    if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;if(d&&at&&isChar(d)){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);if(kills&&live)v+=18;else if(kills)v+=6}}
+    if(HDEEP&&a.t==="play"&&(a.singer!=null||a.singers))v+=8}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
     try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(v>bs){bs=v;best=a}}
   LEVEL=L0;CUR=st;return best}
 let PERS=null,CTX={},HDEEP=false,LITE_OFF=false;
@@ -2043,9 +2065,9 @@ function aiChoose(st,level){
   // Hard: rollout every candidate through the opponent's reply and our next turn. Normal: same lookahead on the
   // 4 best heuristic candidates, one opponent turn deep. Easy: noisy heuristic only.
   if((LEVEL==="hard"||LEVEL==="hard2")&&!st.pending){HDEEP=true;try{const b=hardChoose(st,A);if(b)return b}finally{HDEEP=false;LEVEL="hard"}}
-  if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,4);LEVEL="normal";if(b)return b}
+  if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,3);LEVEL="normal";if(b)return b}
   if(LEVEL==="ply"&&!st.pending){const b=plyChoose(st,A);if(b)return b;LEVEL="normal"}
-  const noise=LEVEL==="easy"?90:LEVEL==="normal"?5:0,r=st.r||Math.random;
+  const noise=LEVEL==="easy"?90:LEVEL==="normal"?14:0,r=st.r||Math.random;
   for(const a of A){let s=scoreAction(st,a);if(LEVEL==="hard")s+=hardAdj(st,a,s);
     if(LEVEL==="easy"&&(a.t==="challenge"&&r()<0.35||a.t==="ink"&&r()<0.3))s=-1;if(s>=0&&noise)s+=r()*noise;if(s>bs){bs=s;best=a}}
   if(bs<0&&A.some(a=>a.t==="end"))return{t:"end"};
@@ -2056,10 +2078,26 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
   if(a.t==="quest"&&CTX.lethal)return 48;
   if(a.t==="quest"&&me.lore>=op.lore)return 14;
   if(a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;
-    if(d&&isChar(d)){let b=0;if(at){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);if(kills&&live)b+=14}
+    if(d&&isChar(d)){let b=0;if(at){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);
+      if(kills&&live){b+=24; // clean kill
+        // multi-challenger: extra if we are the lowest-lore clean killer
+        const alts=legalActions(st).filter(x=>x.t==="challenge"&&x.target===a.target&&x.uid!==a.uid);
+        let lower=false;for(const x of alts){const ox=find(st,x.uid)?.inst;if(!ox)continue;
+          const oas=strOf(ox)+(K(ox,"challenger")||0);const ok=d.damage+Math.max(0,oas-(K(d,"resist")||0))>=wilOf(d);
+          const od=ox.damage+Math.max(0,strOf(d)-(K(ox,"resist")||0))>=wilOf(ox);
+          if(ok&&!od&&loreOf(ox)<loreOf(at)){lower=true;break}}
+        if(lower)b-=10;else b+=4}
+      else if(kills&&!live){const ivd=instVal(d),ivx=instVal(at);b+=ivd>ivx?10:ivd<ivx*0.8?-8:2}}
       if(op.lore>=8||loreOf(d)>=2||CTX.threat)b+=loreOf(d)*5+(op.lore>=12?8:0)+(CTX.threat?18:0);return b}}
+  if(a.t==="ink"){const c=find(st,a.uid)?.inst?.card;if(!c)return 0;
+    if((c.type==="song"||c.type==="action")&&effVal(st,pi,c.onPlay,null)>4){
+      const canSing=c.type==="song"&&me.play.some(y=>isChar(y)&&!y.exerted&&dry(st,y)&&!blocked(y,"sing")&&singVal(y)>=c.cost);
+      if(canSing||costOf(st,pi,c)<=inkAvail(me))return -22} // hold: play/sing it instead
+    return 0}
   if(a.t==="play"){const c=find(st,a.uid).inst.card;if(a.shift!=null)return 10+c.lore*2;if(c.type==="character"&&c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return 6;
-    if(c.type==="location")return 8+locPlayValue(c)/4;if(c.type!=="character"&&me.ink.length>=c.cost)return 4+(CTX.threat&&(c.type==="action"||c.type==="song")?6:0)}
+    if(c.type==="location")return 8+locPlayValue(c)/4;
+    if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers)b+=10;return b+(me.ink.length>=c.cost?2:0)}
+    if(c.type!=="character"&&me.ink.length>=c.cost)return 4}
   if(a.t==="move"){const l=find(st,a.loc).inst;return 6+locBenefit(l)/3}
   return 0}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;const inkN=h.filter(c=>c.card.inkable).length;

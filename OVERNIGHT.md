@@ -205,3 +205,9 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - `.histlist` / `.logfull` max-height scroll inside sheets.
 - Hardened `tests/ui-batch8.py` (hash navigation, case-insensitive title, evaluate click).
 - Commit: `4d01e25` (version `20261013093429`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 11 (~2:40 AM) - prefetch + README
+- Idle-prefetch all set card lists after home load (faster global search / wishlist / movers).
+- Wishlist total uses a one-pass price map.
+- README updated for tracker extras + play-mode overnight features.
+- Commit: `88f4c62` (version `20261013093457`). Live: https://laim-1.github.io/lorcana-tracker/

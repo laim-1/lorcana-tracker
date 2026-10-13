@@ -55,7 +55,9 @@ function home(){cur=null;chrome(null);quickAdd=false;
  const isMain=s=>/^\d+$/.test(String(s.code));
  const list=[...sets].sort({main:(a,b)=>isMain(b)-isMain(a)||b.released_at.localeCompare(a.released_at)||a.name.localeCompare(b.name),new:(a,b)=>b.released_at.localeCompare(a.released_at),old:(a,b)=>a.released_at.localeCompare(b.released_at),
   name:(a,b)=>a.name.localeCompare(b.name),pct:(a,b)=>st.get(b.id).p-st.get(a.id).p,value:(a,b)=>st.get(b.id).v-st.get(a.id).v}[sort.sets]);
- const hist=loadHist(),wishCost=wish.reduce((t,id)=>{for(const s of sets){const c=cardsFor(s.id).find(x=>x.id===id);if(c)return t+(c.usd||0)}return t},0);
+ const hist=loadHist();
+ const byIdPrice=(()=>{const m=new Map();for(const s of sets)for(const c of cardsFor(s.id))m.set(c.id,c.usd||0);return m})();
+ const wishCost=wish.reduce((t,id)=>t+(byIdPrice.get(id)||0),0);
  const done=list.filter(s=>st.get(s.id).p>=100).length;
  app.innerHTML=`<div class="hero"><div><div class="ql">Collection value</div><div class="hv">${money(tot)}</div></div><div class="hs">${owned} card${owned==1?"":"s"}<br>${done}/${sets.length} sets done</div></div>
  <div class="hactions">
@@ -213,7 +215,11 @@ $("#q").oninput=renderCards;
 $("#back").onclick=()=>{if(cur)setScrollMap[cur.id]=scrollY;location.hash=""};
 function route(){if(window.FX&&location.hash!=="#play")FX.mode("tracker");document.body.classList.remove("enter-anim");void document.body.offsetWidth;document.body.classList.add("enter-anim");if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
 $("#play-btn").onclick=()=>location.hash="play";
-window.onhashchange=route;loadSets().then(route);
+window.onhashchange=route;loadSets().then(async()=>{route();
+  // Idle-prefetch set cards so global search / wishlist totals / movers are ready
+  const pref=async()=>{for(const s of sets){try{await loadCards(s.id)}catch(e){}await new Promise(r=>setTimeout(r,30))}};
+  if(typeof requestIdleCallback==="function")requestIdleCallback(()=>pref(),{timeout:4000});else setTimeout(pref,1500);
+});
 if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
 const IMG_CACHE="lorcana-imgs-v1";
 if(window.caches)caches.keys().then(ks=>ks.forEach(k=>{if(k!==IMG_CACHE&&!k.startsWith("lorcana-game-cards"))caches.delete(k)})).catch(()=>{});

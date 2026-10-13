@@ -5,16 +5,16 @@
 3. [x] Hand fan with 8+ cards easier to tap
 4. [x] Show AI difficulty again in opponent bar
 5. [x] Exerted cards rotate cleanly with damage badges
-6. Zoom view never covers action buttons
-7. Fix any leftover animation copies
-8. Make turn banner never overlap cards
+6. [x] Zoom view never covers action buttons
+7. [x] Fix any leftover animation copies
+8. [x] Make turn banner never overlap cards
 9. [x] Safe-area padding on notched phones
-10. Faster first load of the game data
-11. Long-press zoom timing feels right
+10. [x] Faster first load of the game data
+11. [x] Long-press zoom timing feels right
 12. [x] Picker magnifier button always visible
-13. Sticky headers never cover content
-14. Pinch-zoom disabled on game board
-15. Prevent double-taps from firing twice
+13. [x] Sticky headers never cover content
+14. [x] Pinch-zoom disabled on game board
+15. [x] Prevent double-taps from firing twice
 16. Restore scroll position when leaving a set
 17. Offline images cached after first view
 18. Audit 50 more popular cards vs printed text
@@ -27,17 +27,17 @@
 25. End-of-game when both reach 20 handled
 ## Game features
 26. Undo last action before confirming
-27. Action log with card images
+27. [x] Action log with card images
 28. [x] Hint button showing legal moves
 29. [x] Pass-and-play 2-player mode
 30. [x] Game speed settings for animations
 31. Sound effects pack with volume slider
 32. Background music toggle
-33. Match history and win/loss stats
+33. [x] Match history and win/loss stats
 34. Per-deck win rates
 35. [x] AI personalities (aggressive, quester, control)
 36. [x] Hard AI uses locations better
-37. Practice mode vs goldfish (no AI)
+37. [x] Practice mode vs goldfish (no AI)
 38. Save and resume a game in progress
 39. Tutorial game with guided steps
 40. Rules reference page

@@ -10,14 +10,38 @@ let snapPool=null,pool=null,byId=new Map(),source="snapshot",root,S={screen:"men
 
 function ensureRoot(){if(root)return;root=document.createElement("div");root.id="play";root.hidden=true;document.body.appendChild(root);
   root.addEventListener("click",onClick);root.addEventListener("input",onInput);
-  let lpT=null;root.addEventListener("pointerdown",e=>{const t=e.target.closest("[data-a=tile],[data-zuid],[data-a=bview1],[data-a=mtog]");if(!t)return;lpT=setTimeout(()=>{S.lp=true;longZoom(t)},450)});
-  ["pointerup","pointercancel","pointerleave","pointermove"].forEach(n=>root.addEventListener(n,e=>{if(n==="pointermove"&&e.movementX*e.movementX+e.movementY*e.movementY<16)return;clearTimeout(lpT)}));
-  root.addEventListener("contextmenu",e=>e.preventDefault())}
+  // #11 Long-press zoom ~320ms (before iOS callout); suppress native copy/image menus on cards
+  let lpT=null,lpX=0,lpY=0;root.addEventListener("pointerdown",e=>{const t=e.target.closest("[data-a=tile],[data-zuid],[data-a=bview1],[data-a=mtog]");if(!t)return;
+    lpX=e.clientX;lpY=e.clientY;clearTimeout(lpT);lpT=setTimeout(()=>{S.lp=true;S._tapLock=Date.now()+400;longZoom(t)},320);
+    if(e.pointerType==="touch"){try{t.setPointerCapture(e.pointerId)}catch(_){}}},{passive:true});
+  const clearLp=e=>{if(e&&e.type==="pointermove"){const dx=e.clientX-lpX,dy=e.clientY-lpY;if(dx*dx+dy*dy<100)return}clearTimeout(lpT)};
+  ["pointerup","pointercancel","pointerleave","pointermove"].forEach(n=>root.addEventListener(n,clearLp,{passive:true}));
+  root.addEventListener("contextmenu",e=>e.preventDefault());
+  // #14 Disable pinch-zoom / double-tap zoom on the game surface
+  root.addEventListener("gesturestart",e=>e.preventDefault());
+  root.addEventListener("gesturechange",e=>e.preventDefault());
+  // Double-tap zoom is blocked via viewport maximum-scale + touch-action; click debounce handles duplicate actions.
+}
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+const GC_URL="./data/game-cards.js?v="+V,GC_CACHE="lorcana-game-cards-v1";
+async function loadScriptCached(url){
+  if(window.LORCANA_GAME_CARDS)return;
+  try{
+    if(window.caches){
+      const c=await caches.open(GC_CACHE);let r=await c.match(url);
+      if(!r){r=await fetch(url,{cache:"force-cache"});if(r&&r.ok)await c.put(url,r.clone())}
+      if(r&&r.ok){const blob=await r.blob();const u=URL.createObjectURL(blob);try{await loadScript(u);if(window.LORCANA_GAME_CARDS)return}finally{URL.revokeObjectURL(u)}}
+    }
+  }catch(e){}
+  await loadScript(url)}
+let _poolP=null;
+function prefetchPool(){if(pool||window.LORCANA_GAME_CARDS||_poolP)return _poolP;_poolP=loadScriptCached(GC_URL).catch(()=>{_poolP=null});return _poolP}
 async function loadPool(){
-  if(pool)return;if(!window.LORCANA_GAME_CARDS)await loadScript("./data/game-cards.js?v="+V);
+  if(pool)return;await prefetchPool();if(!window.LORCANA_GAME_CARDS)await loadScript(GC_URL);
   setPool(window.LORCANA_GAME_CARDS.cards);refreshLive();
 }
+// Kick off game data fetch as soon as the tracker is idle (faster Play tap)
+if(typeof requestIdleCallback==="function")requestIdleCallback(()=>prefetchPool(),{timeout:2500});else setTimeout(()=>prefetchPool(),1200);
 function setPool(raw){if(pool&&!snapPool)snapPool=pool;pool=raw.filter(c=>/^\d+$/.test(String(c.set))).map(E.normCard); // main numbered sets only
   byId=new Map(pool.map(c=>[c.id,c]))}
 async function refreshLive(){ // try to replace the snapshot with live Lorcast data (used for the next game)
@@ -48,15 +72,20 @@ function renderMenu(){
   const own=deckFromSel("own"),cus=decks();
   if(!/^(s\d+|own|c\d+)$/.test(String(S.deck))||(S.deck[0]==="c"&&!cus[+S.deck.slice(1)])||(S.deck[0]==="s"&&!STARTERS[+S.deck.slice(1)]))S.deck="s0";
   const opt=(id,name,sub,dis)=>`<button class="dopt ${S.deck===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
-  const PPm=S.mode==="pp";root.innerHTML=`<div class="phead">`+bar(PPm?"Pass and play":"Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
-  <h4>Mode</h4><div class="opts"><button class="opt ${!PPm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play (2 players)</button></div>
+  const PPm=S.mode==="pp",GLm=S.mode==="gold";const HS=histStats();
+  const title=PPm?"Pass and play":GLm?"Practice (goldfish)":"Play vs AI";
+  root.innerHTML=`<div class="phead">`+bar(title)+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
+  <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
+  ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
-  <h4>${PPm?"Player 2 deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
-  ${PPm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
+  <h4>${PPm?"Player 2 deck":GLm?"Goldfish deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
+  ${PPm||GLm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
   <h4>AI style</h4><div class="opts">${Object.entries(STYLES).map(([k,l])=>`<button class="opt ${SET.style===k?"on":""}" data-a="sty" data-v="${k}">${l}</button>`).join("")}</div>`}
+  ${GLm?`<p class="meta small">Goldfish never plays cards — it only draws and ends its turn. Practice your opening and combos.</p>`:""}
+  <button class="wide" data-a="history">Match history</button>
   <button class="wide" data-a="settings">Settings</button>
   <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
 }
@@ -105,18 +134,45 @@ const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,tips:true,sty
   if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.tips=r.tips!==false;return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
+/* #33 Match history */ const HKEY="lorcanaMatchHistory.v1";
+function loadHist(){try{const a=JSON.parse(localStorage.getItem(HKEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
+function saveHist(a){try{localStorage.setItem(HKEY,JSON.stringify(a.slice(0,80)))}catch(e){}}
+function recordMatch(st){if(!st||st._recorded)return;st._recorded=true;const w=st.winner,meWon=S.pp?null:(w===0),oppName=S.pp?(S.names||["P1","P2"])[1]:(S.oppName||"AI");
+  const row={t:Date.now(),mode:S.pp?"pp":(S.mode==="gold"?"gold":"ai"),won:meWon,winner:w,turns:st.turnNo,lore:[st.players[0].lore,st.players[1].lore],
+    me:S.meName||"You",opp:oppName,level:S.pp||S.mode==="gold"?null:SET.level,style:S.pp||S.mode==="gold"?null:SET.style,
+    streak:0};const h=loadHist();if(!S.pp&&S.mode!=="gold"){const last=h[0];row.streak=meWon?(last&&last.won?((last.streak||0)+1):1):0}h.unshift(row);saveHist(h);S.lastResult=row}
+function histStats(){const h=loadHist().filter(x=>x.mode==="ai");let w=0,l=0,st=0;for(const x of h){if(x.won)w++;else l++}for(const x of h){if(x.won)st=x.streak||st;else break}return{w,l,n:h.length,streak:st,rows:loadHist()}}
+/* #27 Action log with card images */ function pushLog(ev){if(!ev)return;S.alog=S.alog||[];const imgOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.img:""};
+  const nameOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.full:(ev.name||"")};
+  let row=null;const who=pi=>S.pp?PN(pi):(pi===ME()?"You":"AI");
+  if(ev.t==="play")row={t:"play",pi:ev.pi,img:imgOf(ev.uid)||"",label:who(ev.pi)+" played",name:ev.name||nameOf(ev.uid)};
+  else if(ev.t==="quest")row={t:"quest",pi:ev.pi,img:imgOf(ev.uid),label:who(ev.pi)+" quested",name:nameOf(ev.uid),sub:"+"+ev.n+" lore"};
+  else if(ev.t==="challenge")row={t:"challenge",pi:ev.pi,img:imgOf(ev.a),img2:imgOf(ev.d),label:who(ev.pi)+" challenged",name:nameOf(ev.a),sub:"vs "+nameOf(ev.d)};
+  else if(ev.t==="banish")row={t:"banish",pi:ev.pi,img:imgOf(ev.uid),label:"Banished",name:nameOf(ev.uid)};
+  else if(ev.t==="ink")row={t:"ink",pi:ev.pi,img:imgOf(ev.uid),label:who(ev.pi)+" inked",name:nameOf(ev.uid)};
+  else if(ev.t==="turn")row={t:"turn",pi:ev.pi,label:"Turn "+(S.st?S.st.turnNo:"")+" · "+who(ev.pi),name:""};
+  else if(ev.t==="lore"&&ev.n)row={t:"lore",pi:ev.pi,label:who(ev.pi)+" gained lore",sub:"+"+ev.n};
+  if(row){row.at=Date.now();S.alog.push(row);if(S.alog.length>120)S.alog.shift()}}
+function noteEvents(evs){for(const e of evs||[])pushLog(e)}
+function alogHtml(){const rows=(S.alog||[]).slice().reverse();
+  if(!rows.length)return`<p class="meta">No actions yet.</p>`;
+  return`<div class="alog">${rows.map(r=>`<div class="alogrow ${r.t||""}"><div class="alogimgs">${r.img?`<img src="${esc(r.img)}" alt="">`:""}${r.img2?`<img src="${esc(r.img2)}" alt="">`:""}</div><div class="alogtxt"><small>${esc(r.label||"")}</small>${r.name?`<b>${esc(r.name)}</b>`:""}${r.sub?`<span>${esc(r.sub)}</span>`:""}</div></div>`).join("")}</div>`}
+
 const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard"};
 function startGame(rematch){
   let me,op;
   if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
   S.last={me,op};S.oppName=op.name;S.meName=me.name;
-  S.pp=S.mode==="pp";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;
-  S.st=E.newGame({decks:[me.cards,op.cards],names:S.pp?S.names:["You","AI"],seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,S.pp]});
-  if(!S.pp)E.mulligan(S.st,1,E.aiMulligan(S.st,1));S.mullSel=new Set();S.sel=null;S.tm=null;S.screen="coin";render();
+  S.pp=S.mode==="pp";S.gold=S.mode==="gold";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;
+  const oppHuman=S.pp,oppLabel=S.pp?S.names:S.gold?["You","Goldfish"]:["You","AI"];
+  S.st=E.newGame({decks:[me.cards,op.cards],names:S.pp?S.names:oppLabel,seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,oppHuman]});
+  if(!S.pp){if(S.gold)E.mulligan(S.st,1,[]);else E.mulligan(S.st,1,E.aiMulligan(S.st,1))}
+  S.mullSel=new Set();S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.screen="coin";render();
 }
 function renderCoin(){const f=S.st.first===0,fn=S.st.first;
-  root.innerHTML=`<div class="coinwrap"><div class="coin spin"><div class="cface">${S.pp?"P"+(fn+1):f?"YOU":"AI"}</div></div><h2 class="cres hidden">${S.pp?esc(PN(fn))+" goes first":f?"You go first":"AI goes first"}</h2>
+  const face=S.pp?"P"+(fn+1):f?"YOU":(S.gold?"GF":"AI");const whoFirst=S.pp?esc(PN(fn))+" goes first":f?"You go first":(S.gold?"Goldfish goes first":"AI goes first");
+  root.innerHTML=`<div class="coinwrap"><div class="coin spin"><div class="cface">${face}</div></div><h2 class="cres hidden">${whoFirst}</h2>
   <p class="meta cres hidden">${S.pp?"The first player skips their draw on turn 1. Each player now picks their opening hand in private.":f?"The first player skips their draw on turn 1.":"You will draw a card on your first turn."}</p><button class="wide primary cres hidden" data-a="tomull">Continue</button></div>`;
   setTimeout(()=>root.querySelectorAll(".cres").forEach(x=>x.classList.remove("hidden")),1300);sfx("flip")}
 function renderMull(){const ms=S.pp?S.mullSeat:0,p=S.st.players[ms],n=S.mullSel.size;
@@ -129,7 +185,8 @@ function renderMull(){const ms=S.pp?S.mullSeat:0,p=S.st.players[ms],n=S.mullSel.
 // Viewer seat: 0 vs the AI; in pass-and-play it follows the active player (or whoever must answer a pending choice).
 const ME=()=>!S.pp||!S.st?0:(S.st.pending&&S.st.winner==null?S.st.pending.pi:S.st.active),OP=()=>1-ME();
 const SEAT=pos=>pos===0?ME():OP(); // board position (0 bottom, 1 top) -> seat
-const aiTurn=()=>!S.pp&&S.st&&S.st.active===1&&S.st.winner==null;
+const aiTurn=()=>!S.pp&&!S.gold&&S.st&&S.st.active===1&&S.st.winner==null;
+const goldTurn=()=>S.gold&&S.st&&S.st.active===1&&S.st.winner==null;
 const PN=i=>S.pp?(S.names||["Player 1","Player 2"])[i]:i===0?"You":"AI";
 const myTurn=()=>S.st&&S.st.active===ME()&&S.st.winner==null&&!S.st.pending;
 function legalFor(uid){return myTurn()?E.legalActions(S.st).filter(a=>a.uid===uid):[]}
@@ -149,10 +206,11 @@ const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 
  deck:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 22h9a2 2 0 0 0 2-2V7" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
  disc:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
  hand:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="9" height="13" rx="2" transform="rotate(-12 7 12)" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="11" y="5" width="9" height="13" rx="2" transform="rotate(10 15 11)" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
- hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>'};
+ hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+ log:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'};
 function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
   return`<div class="hud h${pos}">${pos===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
-   <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?"AI · "+LEVELS[SET.level].toUpperCase()+(SET.style!=="balanced"?" · "+STYLES[SET.style].toUpperCase():""):"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
+   <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?(S.gold?"GOLDFISH":("AI · "+LEVELS[SET.level].toUpperCase()+(SET.style!=="balanced"?" · "+STYLES[SET.style].toUpperCase():""))):"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
    <div class="chips"><div class="chip ink pile" id="ink-${pos}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
    <div class="chip pile" id="deck-${pos}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
    <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pos}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
@@ -195,8 +253,11 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const my=st.active===ME();const acts=my&&!st.pending?E.legalActions(st):[];const canEnd=acts.some(a=>a.t==="end");
   const ml=st.players[ME()].lore,ol=st.players[OP()].lore,race=ml===ol?"Tied "+ml+"–"+ol:ml>ol?(S.pp?esc(PN(ME())):"You")+" ahead "+ml+"–"+ol:(S.pp?esc(PN(OP())):"AI")+" ahead "+ol+"–"+ml;
   const hintBtn=my&&!S.tm?`<button class="hintbtn ${S.hint?"on":""}" data-a="hint" aria-label="${S.hint?"Hide hints":"Show legal moves"}" title="Legal moves">${ICO.hint}</button>`:"";
-  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":"AI TURN"}</b><small>Turn ${st.turnNo} · ${race} · ${my?(st.players[ME()].inked?"Ink used":"Ink available"):"AI is playing"}</small></div>
-   <div class="bacts">${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
+  const turnLab=S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":(S.gold?"GOLDFISH TURN":"AI TURN");
+  const sub=my?(st.players[ME()].inked?"Ink used":"Ink available"):(S.gold?"Pass and draw only":"AI is playing");
+  const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
+  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
+   <div class="bacts">${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);
   const g=groupActs(acts);const btn=(k,l,cls="")=>`<button class="ab ${cls}" data-a="grp" data-k="${k}">${l}</button>`;
@@ -215,6 +276,8 @@ function renderBoard(){
   const st=S.st;if(S.pp&&st.winner==null&&S.shown!==ME()){clearFx();root.innerHTML=handoff(ME(),st.pending&&st.pending.pi!==st.active?"Your choice":"Your turn");return}
   const me=st.players[ME()];
   const rects=snapRects();
+  // #7: scrub leftover animation copies before redraw (keep snapRects first)
+  document.querySelectorAll("body > .ghost, body > .ftext, body > .tsweep, body > .shuffle").forEach(x=>{try{x.getAnimations&&x.getAnimations().forEach(a=>a.cancel())}catch(_){ }x.remove()});
   noteOppPlay(st.events||[]);
   root.innerHTML=`<div class="gb">
    ${hud(1)}${zone(1)}
@@ -224,8 +287,10 @@ function renderBoard(){
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${hint?"hint":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    ${lastPlayHtml()}<div id="toast" class="toast"></div></div>
    ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  fitBoard();if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0)&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
+  fitBoard();if(st.winner!=null){noteEvents(st.events||[]);clearFx();st.events=[];recordMatch(st);closeSheet()}else animate(rects);if(window.FX)FX.mode("board");tickLore();
+  if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0||S.gold)&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
+  if(goldTurn()&&!S.busy)goldLoop();
 }
 function lastPlayHtml(){const lp=S.lastOpp;if(!lp||!lp.img)return"";const age=Date.now()-(lp.at||0);if(age>4200){return""}
   return`<div class="lastplay ${age>3400?"out":""}" aria-live="polite"><img src="${esc(lp.img)}" alt=""><div><small>${S.pp?esc(PN(OP())):"Opponent"} played</small><b>${esc(lp.name||"Card")}</b></div></div>`}
@@ -260,16 +325,23 @@ function pickerSheet(){const st=S.st,P=st.pending,p=st.players[ME()];if(!P)retur
     ${thumb}${head?`<div class="pksrc">${esc(head)}</div>`:""}<div class="pkq">${esc(prompt.charAt(0).toUpperCase()+prompt.slice(1))}</div>${sub?`<div class="pksub">${esc(sub)}</div>`:""}
     <div class="${lab?"pkopts":"pkgrid"}">${items.join("")}</div>${btn}</div>`}
 function handoff(seat,what){return`<div class="handoff"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2><p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p><button class="wide primary" data-a="handoff" data-v="${seat}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
-function endScreen(){const st=S.st,w=S.pp||st.winner===0,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
+function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
+  if(!st._recorded)recordMatch(st);const R=S.lastResult||{},streak=(!S.pp&&!S.gold&&R.won)?(R.streak||0):0;
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
-  return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${w?"VICTORY":"DEFEAT"}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${S.pp?esc(PN(st.winner))+" wins":w?"Victory":"Defeat"}</h2><p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
+  const title=S.pp?esc(PN(st.winner))+" wins":S.gold?(st.winner===0?"Practice complete":"Goldfish wins"):(w?"Victory":"Defeat");
+  const cine=w?"VICTORY":"DEFEAT";
+  return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
+  ${streak?`<p class="streak">Win streak <b>${streak}</b></p>`:""}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
   <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
+  <button class="wide" data-a="alog">Action log</button>
   <button class="wide primary" data-a="again">Rematch</button><button class="wide" data-a="tomenu">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||"",ex:e.classList.contains("ex"),dmg:+(e.querySelector(".dtok")?.textContent||0),hand:e.classList.contains("hc")})});
   for(const id of["lore-0","lore-1","ink-0","ink-1","deck-0","deck-1","disc-0","disc-1","hand-1"]){const e=document.getElementById(id);if(e)m.set(id,{r:e.getBoundingClientRect()})}return m}
 function ghost(r,html,cls){const g=document.createElement("div");g.className="ghost "+(cls||"");g.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;g.innerHTML=html;document.body.appendChild(g);GH.add(g);const kill=()=>{g.remove();GH.delete(g)};g.addEventListener("animationend",kill);g._t=setTimeout(kill,2500);return g}
-const GH=new Set();function clearFx(){for(const g of GH){clearTimeout(g._t);g.getAnimations&&g.getAnimations().forEach(a=>a.cancel());g.remove()}GH.clear();document.querySelectorAll(".ghost,.ftext").forEach(x=>x.remove())}
+const GH=new Set();function clearFx(){for(const g of GH){clearTimeout(g._t);try{g.getAnimations&&g.getAnimations().forEach(a=>a.cancel())}catch(_){ }g.remove()}GH.clear();
+  document.querySelectorAll(".ghost,.ftext,.tsweep,.shuffle").forEach(x=>{try{x.getAnimations&&x.getAnimations().forEach(a=>a.cancel())}catch(_){ }x.remove()});
+  if(root)root.querySelectorAll(".ct.enter,.ct.flipin,.ct.readied,.ct.aifocus,.chip.fill").forEach(el=>{el.classList.remove("enter","flipin","readied","aifocus","fill");el.style.opacity="";el.style.visibility="";el.style.transform=""})}
 function floatText(r,text,cls){const g=document.createElement("div");g.className="ftext "+cls;g.textContent=text;g.style.left=(r.left+r.width/2)+"px";g.style.top=(r.top+r.height/3)+"px";document.body.appendChild(g);setTimeout(()=>g.remove(),1300);return g}
 const elOf=u=>root.querySelector(`[data-uid="${u}"]`),rectOf=(m,u)=>m.get(u)?.r||elOf(u)?.getBoundingClientRect();
 const fxp=(el,o)=>{if(window.FX&&el)FX.at(el,o)};
@@ -286,7 +358,7 @@ function shatter(o,to,slow){const N=6;const polys=["0 0,55% 0,40% 45%,0 35%","55
     g.animate(kf,{duration:900*slow,delay:300*slow,easing:"cubic-bezier(.3,.1,.3,1)",fill:"both"})}}
 function turnSweep(mine){if(lowA())return;const d=document.createElement("div");d.className="tsweep "+(mine?"mine":"theirs");d.innerHTML=`<span>${mine?"YOUR TURN":"AI TURN"}</span>`;document.body.appendChild(d);GH.add(d);d._t=setTimeout(()=>{d.remove();GH.delete(d)},1500)}
 function animate(old){const evs=(S.st.events||[]).splice(0);const slow=SET.speed==="slow"?1.4:SET.speed==="fast"?.7:1;const L=lowA();
-  noteOppPlay(evs);
+  noteEvents(evs);noteOppPlay(evs);
   // state-diff tweens: exert/ready rotation, damage pop
   if(!L)for(const [u,o] of old){if(typeof u!=="number")continue;const el=elOf(u);if(!el||!el.classList.contains("ct"))continue;const ex=el.classList.contains("ex");
     if(o.ex!==ex){const art=el.querySelector(".art");art&&art.animate([{transform:ex?"translate(-50%,-50%) rotate(0deg)":"rotate(90deg) scale(.8)"},{transform:ex?"translate(-50%,-50%) rotate(90deg)":"none"}],{duration:380*slow,easing:"cubic-bezier(.3,1.3,.5,1)"});if(!ex)el.classList.add("readied")}
@@ -320,7 +392,17 @@ function toast(msg){const t=document.getElementById("toast");if(!t)return;t.text
 function describe(a,st){const n=u=>E.find(st,u)?.inst.card.full||"";switch(a.t){case"ink":return"AI puts a card into its inkwell";case"play":return a.singer!=null?`AI sings ${n(a.uid)}`:a.shift!=null?`AI shifts ${n(a.uid)}`:`AI plays ${n(a.uid)}`;
   case"quest":return`AI quests with ${n(a.uid)}`;case"challenge":return`AI challenges ${n(a.target)} with ${n(a.uid)}`;case"move":return`AI moves ${n(a.uid)} to ${n(a.loc)}`;case"act":return`AI uses ${n(a.uid)}'s ability`;case"boost":return`AI boosts ${n(a.uid)}`;case"end":return"AI ends its turn";case"discard":return"AI discards a card"}return""}
 /* ---- player interaction ---- */
-function doAct(a){S.sel=null;S.tm=null;S.hint=false;closeSheet();try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}renderBoard();if(aiTurn()&&S.st.winner==null)aiLoop()}
+function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}renderBoard();if(aiTurn()&&S.st.winner==null)aiLoop();else if(goldTurn())goldLoop()}
+function goldLoop(){if(S.busy||!S.st||S.screen!=="board")return;S.busy=true;
+  const step=()=>{const st=S.st;if(!st||!S.gold||st.winner!=null||st.active!==1){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
+    if(st.pending){ // auto-resolve goldfish choices: skip / first option / discard last
+      const P=st.pending;try{if(P.kind==="ask"){if(P.min===0||P.reveal)E.act(st,{t:"askDone"});else E.act(st,{t:"ask",i:0});if(st.pending===P)E.act(st,{t:"askDone"})}
+        else if(P.kind==="dig"||P.kind==="free")E.act(st,{t:"pickDone"});
+        else if(P.n){const h=st.players[1].hand;if(h.length)E.act(st,{t:"discard",uid:h[h.length-1].uid})}
+        else E.act(st,{t:"askDone"})}catch(e){try{E.act(st,{t:"end"})}catch(_){ }}
+      renderBoard();setTimeout(step,SPEED[SET.speed]*.35);return}
+    try{E.act(st,{t:"end"})}catch(e){console.error(e)}renderBoard();S.busy=false};
+  setTimeout(step,SPEED[SET.speed]*.4)}
 function startTargeting(list,key,label){
   if(list.length===1&&(list[0][key]==null)){doAct(list[0]);return}
   const withT=list.filter(a=>a[key]!=null);if(!withT.length){doAct(list[0]);return}
@@ -404,7 +486,14 @@ function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on
 function pauseMenu(){S.paused=true;sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
 /* events */
 function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");q.focus();q.setSelectionRange(pos,pos)}if(e.target.id==="bname")S.build.name=e.target.value}
-function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]')){S.lp=false;e.preventDefault();return}const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
+function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();return}
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
+  // #15 Prevent double-taps from firing twice on board actions only (not menu/nav)
+  if(/^(tile|grp|end|endforce|act|pkpick|ppick|pdisc|chs|concedeok)$/.test(a)){
+    const now=Date.now();const key=a+":"+(b.dataset.uid||b.dataset.k||b.dataset.i||"");
+    if(S._lastAct&&S._lastAct.key===key&&now-S._lastAct.t<300){e.preventDefault();return}
+    S._lastAct={key,t:now}}
+
   switch(a){
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
     case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
@@ -423,7 +512,7 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
       setTimeout(()=>{const sh=document.createElement("div");sh.className="shuffle";sh.innerHTML='<i></i><i></i><i></i>';document.body.appendChild(sh);GH.add(sh);sh._t=setTimeout(()=>{sh.remove();GH.delete(sh);go()},850)},520+outs.length*70);break}
     case"handoff":S.shown=+v;if(S.screen==="mull")renderMull();else renderBoard();break;
     case"mode":S.mode=v;renderMenu();break;
-    case"sty":SET.style=v;saveSet();renderMenu();break;
+    case"lvl":SET.level=v;saveSet();renderMenu();break;case"sty":SET.style=v;saveSet();renderMenu();break;
     case"tomull":S.screen="mull";render();break;
     case"tile":if(S.lp){S.lp=false;return}tapTile(+b.dataset.uid);break;
     case"zc":zoom(+b.dataset.uid,b);break;
@@ -457,6 +546,11 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
       S.skipEndConfirm=false;doAct({t:"end"});break}
     case"endforce":S.skipEndConfirm=true;closeSheet();doAct({t:"end"});break;
     case"log":sheet(`<h4>Game log</h4><div class="logfull">${S.st.log.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join("")}</div><button class="wide" data-a="close">Close</button>`);break;
+    case"alog":sheet(`<h4>Action log</h4>${alogHtml()}<button class="wide" data-a="close">Close</button>`);break;
+    case"history":{const H=histStats();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
+      const rows=H.rows.map(r=>{const res=r.mode==="pp"?(r.winner===0?"P1 win":"P2 win"):(r.mode==="gold"?(r.winner===0?"Practice clear":"Practice end"):(r.won?"Win":"Loss"));
+        return`<div class="histrow ${r.won?"win":(r.mode==="ai"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}</small></div>`}).join("")||`<p class="meta">No matches yet. Play a game!</p>`;
+      sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="histlist">${rows}</div><button class="wide" data-a="close">Close</button>`);break}
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"again":startGame(true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }

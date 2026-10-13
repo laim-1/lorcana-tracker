@@ -324,8 +324,11 @@ h1{font-size:15px}
 /* ================= Card zoom ================= */
 .zoom{position:fixed;inset:0;z-index:60}
 .zscrim{position:absolute;inset:0;background:rgba(6,4,18,.78);backdrop-filter:blur(6px)}
-.zwrap{position:absolute;left:0;right:0;bottom:0;top:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));pointer-events:none;transition:transform .2s}
-.zwrap>*{pointer-events:auto}
+/* #6: panel splits scrollable card text from fixed action buttons so acts are never covered */
+.zpanel{position:absolute;inset:0;display:flex;flex-direction:column;pointer-events:none;transition:transform .2s,opacity .2s}
+.zpanel>*{pointer-events:auto}
+.zwrap{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 14px 12px;overscroll-behavior:contain}
+.zpanel.hasacts .zwrap{padding-bottom:8px}
 .zgrab{width:46px;height:5px;border-radius:3px;background:rgba(255,255,255,.35);margin-bottom:10px;flex:none}
 .zimg{position:relative;width:min(86vw,calc(58vh * .716));aspect-ratio:734/1024;flex:none;border-radius:4.5%/3.3%;box-shadow:0 20px 60px rgba(0,0,0,.7),0 0 0 2px rgba(245,201,85,.5),0 0 40px rgba(123,92,255,.35);overflow:hidden;will-change:transform}
 .zimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -342,8 +345,8 @@ h1{font-size:15px}
 .zan{color:#f5c955;font-weight:900;letter-spacing:.3px}.zrem{color:#a99fd6;font-weight:600;font-size:14px}
 .zs{display:inline-block;padding:0 5px;border-radius:6px;font-size:11px;font-weight:900;vertical-align:2px;line-height:17px;color:#14112a}
 .zs-str{background:#ffcf70}.zs-wil{background:#9fd0ff}.zs-lore{background:#f5c955}.zs-ink{background:#6fb4ff}.zs-ex{background:#e9e4ff}
-.zacts{position:sticky;bottom:0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:420px;margin-top:12px;padding:10px;border-radius:16px;background:rgba(16,12,40,.95);border:1px solid rgba(245,201,85,.5)}
-.zacts .ab{min-height:48px;flex:1 1 30%;font-size:16px}
+.zacts{flex:0 0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:100%;margin:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0;background:rgba(16,12,40,.98);border:1px solid rgba(245,201,85,.55);border-bottom:0;box-shadow:0 -8px 28px rgba(0,0,0,.45);z-index:2}
+.zacts .ab{min-height:48px;flex:1 1 30%;font-size:16px;max-width:100%}
 .zclose{position:fixed;top:calc(10px + env(safe-area-inset-top));right:10px;width:44px;height:44px;border-radius:22px;background:rgba(20,15,50,.85);border:1px solid rgba(190,170,255,.4);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
 .pkcw{position:relative;display:block}
 .pkz{position:absolute;right:4px;bottom:4px;width:36px;height:36px;border-radius:18px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(16,12,40,.85);border:1px solid rgba(245,201,85,.6);color:#f5c955;z-index:3}
@@ -472,3 +475,49 @@ img{-webkit-user-drag:none;user-drag:none;-webkit-user-select:none;user-select:n
 .banner{max-width:100%;overflow:hidden}
 .banner>div{min-width:0;overflow:hidden}
 .banner>div small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
+/* ================= Overnight batch 4: zoom acts, touch, load, log, history, goldfish ================= */
+/* #8 Turn banner never overlaps cards */
+.banner{position:relative;z-index:5;flex:0 0 auto;isolation:isolate}
+.zone{position:relative;z-index:1}
+.gb .banner{box-shadow:0 4px 14px rgba(0,0,0,.35)}
+/* #13 Sticky headers never cover content */
+html{scroll-padding-top:calc(64px + env(safe-area-inset-top))}
+main#app{scroll-margin-top:calc(72px + env(safe-area-inset-top))}
+header + main#app{padding-top:12px}
+#play .pbody{scroll-margin-top:72px}
+#play .phead{box-shadow:0 6px 16px rgba(0,0,0,.35)}
+/* #14 Pinch-zoom disabled on game board */
+.gb,.gb *{touch-action:manipulation}
+.hand2{touch-action:pan-x}
+.hc,.ct,.bcard,[data-a=tile]{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.ct img,.hc img,.bcard img,.pkc img{-webkit-touch-callout:none;pointer-events:none}
+/* #11 Long-press: images don't steal the hold; our zoom owns it */
+#play img{-webkit-touch-callout:none;-webkit-user-drag:none}
+/* #27 Action log */
+.alog{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding:4px 0 8px}
+.alogrow{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:rgba(18,14,40,.9);border:1px solid rgba(123,92,255,.35)}
+.alogimgs{display:flex;gap:4px;flex:0 0 auto}
+.alogimgs img{width:40px;height:56px;object-fit:cover;border-radius:6px;border:1px solid rgba(245,201,85,.45);background:#120f26}
+.alogtxt{min-width:0;flex:1}.alogtxt small{display:block;font-size:11px;font-weight:800;color:#a99fd6;text-transform:uppercase;letter-spacing:.3px}
+.alogtxt b{display:block;font-size:15px;font-weight:900;color:#fff3c4;line-height:1.2}
+.alogtxt span{display:block;font-size:13px;font-weight:700;color:#c6bde6;margin-top:2px}
+.alogrow.turn{background:rgba(245,201,85,.08);border-color:rgba(245,201,85,.35)}
+.alogrow.banish{border-color:rgba(255,77,106,.45)}
+.alogrow.quest{border-color:rgba(245,201,85,.5)}
+.alogrow.challenge{border-color:rgba(255,110,120,.5)}
+/* #33 Match history */
+.histbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 4px;padding:12px 14px;border-radius:14px;border:2px solid rgba(245,201,85,.55);background:linear-gradient(90deg,rgba(60,45,130,.55),rgba(28,22,58,.9));min-height:48px;cursor:pointer}
+.histbar b{font-size:18px;font-weight:900;color:#f5c955}.histbar span{font-size:13px;font-weight:700;color:#c6bde6}
+.histsum{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:#1b1640;border:1px solid #3d3378}
+.histsum b{font-size:20px;color:#f5c955}.histsum span{font-size:13px;color:#c6bde6;font-weight:700}
+.histlist{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto}
+.histrow{padding:10px 12px;border-radius:12px;background:#120f26;border:1px solid #3d3378}
+.histrow.win{border-color:#4fd18b}.histrow.loss{border-color:#a8475b}
+.histrow b{display:block;font-size:15px;font-weight:900;color:#fff3c4}
+.histrow span{display:block;font-size:13px;font-weight:700;color:#c6bde6;margin-top:2px}
+.histrow small{display:block;font-size:11px;font-weight:700;color:#8f86b8;margin-top:4px}
+.streak{font-size:16px;font-weight:800;color:#f5c955;margin:0 0 8px}.streak b{font-size:22px}
+/* Loading state for game data */
+#play .empty{padding:28px 16px}

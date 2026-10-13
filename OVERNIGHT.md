@@ -67,3 +67,33 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   for layout peek/dtok/hint/last-play/concede/game-speed; `ui-ai-style.py` + `ui-start.py` passed.
 - Commit: `c2d869d` (version `20261013083143`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `aa074b4` status built; version.json `20261013083143` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 4 (~1:45 AM) - zoom acts, touch polish, load, log, history, goldfish
+- #6 Zoom actions never covered: zoom UI split into scrollable card panel + fixed
+  bottom `.zacts` bar (safe-area aware) so Play/Quest/etc stay on-screen.
+- #7 Leftover animation copies: `clearFx` now cancels WAAPI + removes `.ghost`,
+  `.ftext`, `.tsweep`, `.shuffle`, and resets stuck board classes/opacity.
+- #8 Turn banner never overlaps cards: banner `z-index` + isolation; zones stay
+  below; layout check in ui-batch4.
+- #10 Faster first load: idle prefetch of `game-cards.js`, Cache API reuse, blob
+  URL inject so Play opens from cache after first visit.
+- #11 Long-press zoom at ~320ms (before iOS callout); stronger callout/drag
+  suppression; images `pointer-events:none` on tiles so holds don't open native
+  copy/image menus.
+- #13 Sticky headers: `scroll-padding-top` / play `phead` shadow so content is
+  not hidden under sticky bars.
+- #14 Pinch-zoom disabled: viewport `maximum-scale=1,user-scalable=no`; board
+  `touch-action:manipulation`; gesturestart/change cancelled on `#play`.
+- #15 Double-tap guard on board actions only (tile/end/grp/pick) so menu nav
+  taps are not blocked.
+- #27 Action log with card images: banner log button + end-screen entry; rows
+  show card art for play/quest/challenge/banish/ink/turn.
+- #33 Match history + W/L: localStorage history, menu chip `XW – YL`, history
+  sheet, win streak on victory screen (AI matches).
+- #37 Practice vs goldfish: mode on deck screen; goldfish only draws/ends turn
+  (auto-resolves pending); HUD/banner labeled GOLDFISH.
+- Skipped #31/#32 (sound pack / music) as non-quick; #26 undo still blocked;
+  #38 save/resume and #46 rewards left for later (streak shipped with #33).
+- Tests: `node tests/engine.test.js` 86 passed; `tests/ui-batch4.py` passed;
+  `ui-batch3.py`, `ui-start.py`, `ui-ai-style.py` passed.
+- Commit: (pending) version `20261013084440`. Live: https://laim-1.github.io/lorcana-tracker/

@@ -28,8 +28,8 @@ async function loadCards(id){if(cache[id])return cache[id];
  const s=sets.find(x=>x.id==id);if(s)s.card_count=cache[id].length;return cache[id]}
 const srcLabel=()=>source=="live"?"Live TCGplayer prices via Lorcast":"Snapshot prices from "+S.fetched.slice(0,10);
 const saveSort=()=>localStorage.setItem(SKEY,JSON.stringify(sort));
-function chrome(set){$("#back").hidden=!set;$("#tools").hidden=!set;$("#menu-btn").hidden=!!set;
- $("#play-btn").hidden=!!set;$("#title").textContent=set?set.name:"LIAM'S LORCANA";$("#title").classList.toggle("small",!!set)}
+function chrome(set){const hid=(q,v)=>{const e=$(q);if(e)e.hidden=v};hid("#back",!set);hid("#tools",!set);hid("#menu-btn",!!set);
+ hid("#play-btn",!!set);const ti=$("#title");if(ti){ti.textContent=set?set.name:"LIAM'S LORCANA";ti.classList.toggle("small",!!set)}}
 function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length;return{got,t,p:t?got/t*100:0,v:value(cs)}}
 function home(){cur=null;chrome(null);
  const st=new Map(sets.map(s=>[s.id,setStats(s)])),tot=[...st.values()].reduce((a,x)=>a+x.v,0),owned=Object.keys(col).length;

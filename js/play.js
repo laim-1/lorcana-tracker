@@ -4,9 +4,9 @@
 const E=window.LorcanaEngine,V=window.APP_VERSION||"dev",DKEY="lorcanaDecks.v1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const STARTERS=[["Amber","Amethyst"],["Ruby","Sapphire"],["Emerald","Steel"],["Amber","Steel"],["Amethyst","Ruby"],["Emerald","Sapphire"]];
+const STARTERS=E.STARTER_DECKS; // official Ravensburger starter decklists (sets 1-10, 12)
 const STATUS_LABEL={full:"Fully simulated",keywords:"Keywords simulated",plain:"No abilities",partial:"Partly simulated",vanilla:"Ability not simulated"};
-let pool=null,byId=new Map(),source="snapshot",root,S={screen:"menu",sel:null,deck:"s0",opp:"random",build:null,st:null,busy:false,mullSel:new Set()};
+let snapPool=null,pool=null,byId=new Map(),source="snapshot",root,S={screen:"menu",sel:null,deck:"s0",opp:"random",build:null,st:null,busy:false,mullSel:new Set()};
 
 function ensureRoot(){if(root)return;root=document.createElement("div");root.id="play";root.hidden=true;document.body.appendChild(root);
   root.addEventListener("click",onClick);root.addEventListener("input",onInput);
@@ -18,7 +18,7 @@ async function loadPool(){
   if(pool)return;if(!window.LORCANA_GAME_CARDS)await loadScript("./data/game-cards.js?v="+V);
   setPool(window.LORCANA_GAME_CARDS.cards);refreshLive();
 }
-function setPool(raw){pool=raw.filter(c=>/^\d+$/.test(String(c.set))).map(E.normCard); // main numbered sets only
+function setPool(raw){if(pool&&!snapPool)snapPool=pool;pool=raw.filter(c=>/^\d+$/.test(String(c.set))).map(E.normCard); // main numbered sets only
   byId=new Map(pool.map(c=>[c.id,c]))}
 async function refreshLive(){ // try to replace the snapshot with live Lorcast data (used for the next game)
   try{const sig=()=>AbortSignal.timeout(10000);const sets=(await (await fetch("https://api.lorcast.com/v0/sets",{signal:sig()})).json()).results;
@@ -32,9 +32,9 @@ const decks=()=>{let d;try{d=JSON.parse(localStorage.getItem(DKEY)||"[]")}catch(
   const ok=d.filter(x=>x&&typeof x==="object"&&x.cards&&typeof x.cards==="object"&&!Array.isArray(x.cards)).map(x=>({name:typeof x.name==="string"&&x.name.trim()?x.name:"My deck",cards:Object.fromEntries(Object.entries(x.cards).filter(([k,n])=>typeof k==="string"&&Number.isFinite(+n)&&+n>0).map(([k,n])=>[k,Math.min(99,Math.floor(+n))]))}));
   if(ok.length!==d.length||JSON.stringify(ok)!==JSON.stringify(d))try{localStorage.setItem(DKEY,JSON.stringify(ok))}catch(e){}return ok};
 const saveDecks=d=>localStorage.setItem(DKEY,JSON.stringify(d));
-function ownedMap(){const col=(()=>{try{const o=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})(),m={};for(const[id,v]of Object.entries(col))m[id]=(v.n||0)+(v.f||0);return m}
+function ownedMap(){const col=(()=>{try{const o=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})(),m={};for(const[id,v]of Object.entries(col))m[id]=v&&typeof v==="object"?(Math.max(0,+v.n||0)+Math.max(0,+v.f||0)):0;return m}
 function deckFromSel(sel){if(typeof sel!=="string"||!/^(s\d+|own|c\d+)$/.test(sel)||(sel[0]==="s"&&!STARTERS[+sel.slice(1)]))sel="s0";
-  if(sel[0]==="s"){const p=STARTERS[+sel.slice(1)];return{name:p.join(" / "),cards:E.buildDeck(mainPool(),p)}}
+  if(sel[0]==="s"){const p=STARTERS[+sel.slice(1)];return{name:p.name,cards:E.deckFromList(mainPool(),p.list)||E.deckFromList(snapPool||[],p.list)||E.buildDeck(mainPool(),p.inks)}}
   if(sel==="own"){const o=ownedMap(),b=E.bestOwnedPair(pool,o);const d=b&&b.n>=60?E.buildDeck(pool,b.inks,o):null;return{name:"My collection"+(b?" ("+b.inks.join(" / ")+")":""),cards:d,need:b?b.n:0}}
   if(sel[0]==="c"){const d=decks()[+sel.slice(1)];if(!d)return{cards:null};const cards=[];for(const[id,n]of Object.entries(d.cards)){const c=byId.get(id);if(c)for(let i=0;i<n;i++)cards.push(c)}return{name:d.name,cards:cards.length>=60&&!E.validateDeck(cards)?cards:null}}
 }
@@ -49,11 +49,11 @@ function renderMenu(){
   if(!/^(s\d+|own|c\d+)$/.test(String(S.deck))||(S.deck[0]==="c"&&!cus[+S.deck.slice(1)])||(S.deck[0]==="s"&&!STARTERS[+S.deck.slice(1)]))S.deck="s0";
   const opt=(id,name,sub,dis)=>`<button class="dopt ${S.deck===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
   root.innerHTML=bar("Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div><div class="pbody">
-  <h4>Your deck</h4>${STARTERS.map((p,i)=>opt("s"+i,p.join(" / "),"Starter deck · 60 cards")).join("")}
+  <h4>Your deck</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
-  <h4>Opponent</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${p.join("/")}</button>`).join("")}</div>
+  <h4>Opponent</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
   <h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
   <button class="wide" data-a="settings">Settings</button>
   <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;

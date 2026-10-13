@@ -201,4 +201,14 @@ t("audit: Belle - Strange but Special +4 lore with 10 ink", () => { const st = g
 t("audit: Steal from the Rich drains 1 lore per quest this turn", () => { const st = game(); st.players[1].lore = 5; const q = put(st, 0, C({ lore: 1 })); playReal(st, "Steal from the Rich"); E.act(st, { t: "quest", uid: q.uid }); assert.equal(st.players[1].lore, 4); });
 t("audit: tools/audit.js finds no mismatches", () => { const out = require("child_process").execFileSync("node", [__dirname + "/../tools/audit.js"]).toString(); const r = JSON.parse(out.trim().split("\n")[0]); assert.equal(r.fail, 0, out); assert.equal(r.err, 0, out); });
 
+const POOL_ALL = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard);
+const aiStats = lv => JSON.parse(require("child_process").execFileSync("node", [__dirname + "/../tools/ai-stats.js", "20", lv]).toString().trim().split("\n")[0]);
+const ST = { easy: aiStats("easy"), normal: aiStats("normal"), hard: aiStats("hard") };
+t("ai: Normal challenges in most games and takes most favorable trades", () => { const r = ST.normal; assert.ok(r.challenge / r.games >= 2, JSON.stringify(r)); assert.ok(r.favTurnTakeRate >= 0.8, JSON.stringify(r)); });
+t("ai: Normal plays actions/songs, items and locations", () => { const r = ST.normal; assert.ok((r.playAction + r.playSong) / r.games >= 0.8, JSON.stringify(r)); assert.ok(r.playItem + r.playLoc > 0, JSON.stringify(r)); assert.ok(r.gamesNonChar / r.games >= 0.7, JSON.stringify(r)); });
+t("ai: Easy still challenges sometimes, less than Normal", () => { const r = ST.easy; assert.ok(r.challenge > 0 && r.favTurnTakeRate >= 0.3 && r.favTurnTakeRate < ST.normal.favTurnTakeRate + 0.05, JSON.stringify(r)); });
+t("ai: Hard beats Normal more often than not", () => { assert.ok(ST.hard.wins / ST.hard.games > 0.5, JSON.stringify(ST.hard)); });
+t("decks: all official starter decks resolve to legal 60-card decks", () => { assert.ok(E.STARTER_DECKS.length >= 23); for (const d of E.STARTER_DECKS) { const x = E.deckFromList(POOL_ALL, d.list); assert.ok(x && x.length === 60, d.name); assert.equal(E.validateDeck(x), null, d.name); assert.ok(x.some(c => c.type !== "character"), d.name); } });
+t("decks: collection auto-build includes non-characters and locations", () => { const o = {}; POOL_ALL.forEach((c, i) => { if (i % 3 === 0) o[c.id] = 2 }); const b = E.bestOwnedPair(POOL_ALL, o); const d = E.buildDeck(POOL_ALL, b.inks, o); assert.ok(d && d.length === 60); const nc = d.filter(c => c.type !== "character").length; assert.ok(nc >= 12, "non-characters " + nc); assert.equal(E.validateDeck(d), null); });
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

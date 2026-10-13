@@ -187,6 +187,10 @@ function renderBuilder(){
   <div class="opts">${[`<button class="opt sm ${!b.set?"on":""}" data-a="bset" data-v="">Any set</button>`].concat(sets.slice(0,16).map(i=>`<button class="opt sm ${b.set===i?"on":""}" data-a="bset" data-v="${esc(i)}">Set ${esc(i)}</button>`)).join("")}</div>`:""}
   <div class="opts"><span class="meta small">Sort</span>${[["cost","Cost"],["type","Type"],["name","Name"],["set","Set"]].map(([k,l])=>`<button class="opt sm ${b.sort===k?"on":""}" data-a="bsort" data-v="${k}">${l}</button>`).join("")}</div>
   <div class="meta small">${total} cards${total>b.limit?`, showing ${b.limit}`:""}</div>
+  ${n===0&&b.view==="deck"?`<div class="emptydeck"><p class="meta">This deck is empty. Load an official starter, import a list, or switch to All cards to add cards.</p>
+  <button class="wide primary" data-a="bstarter">Load official starter…</button>
+  <button class="wide" data-a="bimport">Import Dreamborn / text list</button>
+  <button class="wide" data-a="bview" data-v="all">Browse all cards</button></div>`:""}
   <div class="bgrid">${list.map(c=>{const k=b.cards[c.id]||0;return`<button class="bcard ${k?"in":""}" data-a="bview1" data-id="${c.id}"><img loading="lazy" src="${esc(c.img)}" alt="${esc(c.full)}">${k?`<span class="cnt">${k}</span>`:""}${badge(c)}</button>`}).join("")}</div>
   ${total>b.limit?`<button class="wide" data-a="bmore">Show more</button>`:""}</div>`;
 }

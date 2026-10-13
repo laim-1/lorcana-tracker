@@ -358,3 +358,7 @@ hard         93%     63%       -
 ## Batch 38 (~3:05 AM) - discard saved game
 - Play menu: Discard saved game (confirm) next to Resume when a save exists.
 - Commit: `8d8ddb3` (version `20261013100019`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 39 (~3:05 AM) - empty deck builder CTA
+- This deck view when empty: Load starter / Import / Browse all cards prompts.
+- Commit: `7c348f4` (version `20261013100038`). Live: https://laim-1.github.io/lorcana-tracker/

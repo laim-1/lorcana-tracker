@@ -362,3 +362,17 @@ hard         93%     63%       -
 ## Batch 39 (~3:05 AM) - empty deck builder CTA
 - This deck view when empty: Load starter / Import / Browse all cards prompts.
 - Commit: `7c348f4` (version `20261013100038`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 40 (~3:37 AM) - AI strengthen Hard + smarter Normal
+- Fixed `hardChoose` LEVEL leak: restore caller LEVEL after rollouts (Normal no longer inherits Hard scoring mid-blend).
+- Ink: protect only playable lore threat when behind; prefer inking dead high-cost / duplicates.
+- Shift: score lore gain vs base + damage carry + Hard bonus.
+- Mulligan: keep inkables; dump expensive / non-inkable 4+ when short on inkables.
+- Normal noise 5 (was 8) — clearer vs Easy, still loses to Hard.
+- Hard-only: hardAdj in rollout blend; lethal quest / threat challenge post-roll bonuses; favorable-trade challenge adj; shift adj.
+- Hard vs Normal (40g): **Hard 65%**, Normal 43% (0 stalls). Target ~60%+ held.
+- Normal vs Easy (24g): **Normal 83%**, Easy 8%.
+- Full ladder (30g, prior leak-fix baseline matched overnight): easy 7%/10%; normal 80%/37%; hard 93%/63%.
+- ai-stats Normal 20g: actions+songs 0.9/game, non-char games 17/20, favTake 0.88.
+- Engine 102 passed; ui-static-overnight 14 passed.
+- Commit: pending. Live: https://laim-1.github.io/lorcana-tracker/

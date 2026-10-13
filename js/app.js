@@ -88,9 +88,13 @@ function moreSheet(){openSheet(`<h4>Collection tools</h4>
 function histSheet(){const h=loadHist().slice().reverse();const mx=Math.max(1,...h.map(x=>x.v||0));
   const bars=h.length?`<div class="vchart">${h.map(x=>`<div class="vbar" title="${esc(x.d)} ${money(x.v)}"><i style="height:${Math.round(100*(x.v||0)/mx)}%"></i><small>${esc(x.d.slice(5))}</small></div>`).join("")}</div>`:`<p class="meta">Play with your collection a few days to build history.</p>`;
   openSheet(`<h4>Collection value history</h4>${bars}<p class="meta small">One snapshot per day while you open the app.</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet})}
-function moversSheet(){const rows=movers();
+async function moversSheet(){openSheet(`<h4>Biggest price movers</h4><p class="meta">Loading…</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet});
+  await Promise.all(sets.map(s=>loadCards(s.id)));
+  const rows=movers();
   openSheet(`<h4>Biggest price movers</h4>${rows.length?`<div class="histlist">${rows.map(r=>`<div class="histrow ${r.d>0?"win":"loss"}"><b>${esc(r.c.name)}</b><span>${r.d>0?"+":""}${money(r.d)}</span><small>${esc(r.c.version||"")} · ${money(r.was)} → ${money(r.now)} · ${esc(r.set)}</small></div>`).join("")}</div>`:`<p class="meta">Need a prior price snapshot. Check again tomorrow after prices refresh.</p>`}<button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet})}
-function wishSheet(){const rows=wish.map(id=>{for(const s of sets){const c=cardsFor(s.id).find(x=>x.id===id);if(c)return{c,s}}return null}).filter(Boolean);
+async function wishSheet(){openSheet(`<h4>Wishlist</h4><p class="meta">Loading prices…</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet});
+  await Promise.all(sets.map(s=>loadCards(s.id)));
+  const rows=wish.map(id=>{for(const s of sets){const c=cardsFor(s.id).find(x=>x.id===id);if(c)return{c,s}}return null}).filter(Boolean);
   const tot=rows.reduce((t,r)=>t+(r.c.usd||0),0);
   openSheet(`<h4>Wishlist</h4><div class="histsum"><b>${rows.length} cards</b><span>${money(tot)} total</span></div>
   ${rows.length?`<div class="histlist">${rows.map(r=>`<div class="histrow"><b>${esc(r.c.name)}</b><span>${money(r.c.usd)}</span><small>${esc(r.c.version||"")} · ${esc(r.s.name)}</small>
@@ -98,7 +102,9 @@ function wishSheet(){const rows=wish.map(id=>{for(const s of sets){const c=cards
   <button class="wide" id="done">Close</button>`,()=>{
    $("#sheet-body").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{wish=wish.filter(x=>x!==b.dataset.rm);saveWish();wishSheet()});
    $("#done").onclick=closeSheet})}
-function dupesSheet(){const rows=[];for(const s of sets)for(const c of cardsFor(s.id)){const v=col[c.id];if(!v)continue;const extra=Math.max(0,(v.n||0)-1)+Math.max(0,(v.f||0)-1);if(extra>0)rows.push({c,s,extra,v})}
+async function dupesSheet(){openSheet(`<h4>Duplicates / trade list</h4><p class="meta">Loading…</p><button class="wide" id="done">Close</button>`,()=>{$("#done").onclick=closeSheet});
+  await Promise.all(sets.map(s=>loadCards(s.id)));
+  const rows=[];for(const s of sets)for(const c of cardsFor(s.id)){const v=col[c.id];if(!v)continue;const extra=Math.max(0,(v.n||0)-1)+Math.max(0,(v.f||0)-1);if(extra>0)rows.push({c,s,extra,v})}
   rows.sort((a,b)=>b.extra-a.extra||(b.c.usd||0)-(a.c.usd||0));
   openSheet(`<h4>Duplicates / trade list</h4><p class="meta small">Extras beyond 1 normal + 1 foil.</p>
   ${rows.length?`<div class="histlist">${rows.map(r=>`<div class="histrow"><b>${esc(r.c.name)}</b><span>${r.extra} extra</span><small>${esc(r.c.version||"")} · N${r.v.n}/F${r.v.f} · ${money(r.c.usd)} · ${esc(r.s.name)}</small></div>`).join("")}</div>`:`<p class="meta">No extras yet.</p>`}

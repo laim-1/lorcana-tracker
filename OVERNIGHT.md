@@ -211,3 +211,9 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Wishlist total uses a one-pass price map.
 - README updated for tracker extras + play-mode overnight features.
 - Commit: `88f4c62` (version `20261013093457`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 12 (~2:40 AM) - wishlist/movers/dupes load-on-open
+- Wishlist, price movers, and duplicates sheets `await loadCards` for every set before
+  rendering totals (no more $0 while idle prefetch is still running).
+- Live verified earlier: version `20261013093457` (batch 11) built on Pages.
+- Commit: `f3b4504` (version `20261013093604`). Live: https://laim-1.github.io/lorcana-tracker/

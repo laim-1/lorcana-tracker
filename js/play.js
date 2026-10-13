@@ -422,8 +422,8 @@ function renderBoard(){
    ${hud(1)}${zone(1)}
    ${banner()}
    ${zone(0)}${hud(0)}
-   <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const acts=myTurn()&&!S.tm?legalFor(h.uid):[];const pl=acts.some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;const hint=S.hint&&acts.length>0;
-     return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${hint?"hint":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
+   <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.length?me.hand.map(h=>{const acts=myTurn()&&!S.tm?legalFor(h.uid):[];const pl=acts.some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;const hint=S.hint&&acts.length>0;
+     return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${hint?"hint":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join(""):`<span class="handempty" role="status">Hand empty — draw next turn</span>`}</div></div>
    ${lastPlayHtml()}<div id="toast" role="status" aria-live="polite" class="toast"></div></div>
    ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}${S.tut&&st.winner==null?tutHtml():""}`;
   fitBoard();if(st.winner!=null){noteEvents(st.events||[]);clearFx();st.events=[];recordMatch(st);closeSheet();if(S.tut){S.tut=null}}else animate(rects);if(window.FX)FX.mode("board");tickLore();
@@ -710,7 +710,10 @@ function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on
   <p class="meta small">Music uses soft generated tones (no downloads). Requires Sound effects On.</p>
   <h4>Tips</h4><div class="opts"><button class="opt" data-a="tipsagain">Show tips again</button></div>`}
 function pauseMenu(){S.paused=true;const canSave=S.st&&S.st.winner==null&&!S.st.pending&&!(S.st.pq&&S.st.pq.length)&&S.st.phase==="main";
-  const meta=S.st?`<p class="meta small">Turn ${S.st.turnNo} · seed ${S.st.seed||"?"} · ${(S.meName||"You")} vs ${(S.oppName||"AI")}</p>`:"";
+  const st0=S.st,me0=st0&&st0.players[ME()];
+  const dry0=me0?me0.play.filter(x=>x.card.type==="character"&&!E.dry(st0,x)).length:0;
+  const rdy0=me0?me0.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st0,x)).length:0;
+  const meta=st0?`<p class="meta small">Turn ${st0.turnNo} · seed ${st0.seed||"?"} · ${(S.meName||"You")} vs ${(S.oppName||"AI")}${(rdy0||dry0)?` · ${rdy0} ready${dry0?` · ${dry0} drying`:""}`:""}</p>`:"";
   sheet(`<h4>Game paused</h4>${meta}<button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
 const SAVEKEY="lorcanaSave.v1";
 function saveGameNow(){if(!S.st)return toast("No game");const fr=E.freezeState(S.st);if(!fr)return toast("Can't save a finished game");if(fr.error)return toast("Finish the current choice before saving");

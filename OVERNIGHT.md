@@ -409,3 +409,38 @@ normal     | 87%  |   -    |  50%
 hard       | 97%  |  63%   |   -
 ```
 Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Normal; Normal ~75%+ vs Easy).
+
+## Batch 44 (~3:57 AM) - AI challenge trades + hold ink for songs
+- Challenge scoring: clean-kill bonus; favorable vs bad trades; multi-challenger
+  prefers lowest-lore clean killer (Hard stronger than Normal).
+- Ink: hold when a song/action can be sung or paid this turn; prefer singing /
+  Sing Together over paying; Hard hardAdj penalizes inking singable songs.
+- Ladder separation: Normal noise 14, hardChoose shortlist top-3; Hard rollout
+  bonuses for clean kills and sung songs.
+- Tests: multi-challenger low-lore pick; hold ink vs Be Our Guest sing; LEVEL leak
+  still ok. Engine **105** passed.
+- Hard vs Normal (40g): **Hard 60%**, Normal 35% (0 stalls). Normal vs Easy (24g):
+  **Normal 75%**, Easy 13%. Targets held.
+- Commit: `03b1961` (with 45). Live version via batch 45 stamp.
+
+## Batch 45 (~3:57 AM) - empty board, ready/dry, handoff, history UX
+- Empty character row labels + empty items/locations strip when characters exist.
+- READY chip on dry ready characters (your turn); DRYING unchanged.
+- Pass-and-play handoff: ink ready / ready chars / drying line for the receiver.
+- Match history: daily counts toward streak stats; shows best streak + Daily W–L.
+- ui-static-overnight **25** checks (then 27 in batch 46).
+- Commit: `d633882` (version `20261013105738`). Live verified Pages built;
+  version.json `20261013105738`; engine multi-challenger live.
+
+## Batch 46 (~3:58 AM) - banner ready + daily W–L chip
+- Your-turn banner subline: `N ready` next to drying / ink available.
+- Daily challenge menu button shows career Daily W–L when any dailies played.
+- Static overnight **27** passed.
+- Commit: `e1ad060` (version `20261013105834`).
+
+## Batch 47 (~4:00 AM) - empty hand + pause ready/dry
+- Empty hand: centered "Hand empty — draw next turn" label (44px+ tap area height).
+- Pause menu meta: your ready + drying character counts next to turn/seed.
+- Live verify after Pages for batch 46 already OK (`20261013105834`).
+- Static overnight **29** checks.
+

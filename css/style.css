@@ -636,3 +636,5 @@ button.histrow:active{opacity:.9}
 .emptystrip .zempty{margin:0;font-size:12px;font-weight:800;color:#6a5cb0;letter-spacing:.3px;text-transform:uppercase}
 .rowlbl.zempty{font-size:13px;font-weight:900;color:#6a5cb0;padding:12px 8px;text-align:center;line-height:1.3}
 .handoff .hboard{margin:0 0 10px;font-size:15px;font-weight:800;color:#c9b8ff}
+
+.handempty{display:flex;align-items:center;justify-content:center;min-height:44px;width:100%;padding:10px 14px;font-size:13px;font-weight:800;color:#7a6bb8;letter-spacing:.3px;text-transform:uppercase;text-align:center}

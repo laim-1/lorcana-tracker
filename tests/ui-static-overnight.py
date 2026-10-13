@@ -33,6 +33,8 @@ checks = [
     ("hist best/daily", "dailyW" in play and "Best " in play),
     ("banner ready count", "readyN" in play),
     ("daily WL on button", "HS.dailyW" in play),
+    ("hand empty", "handempty" in play),
+    ("pause ready/dry", "rdy0" in play and "drying" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

@@ -186,3 +186,15 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Tests: tracker smoke (home actions + global search) passed; engine 101 still green from batch 7.
 - Commit: `399c0bd` (version `20261013093050`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `399c0bd` status built; version.json `20261013093050` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 9 (~2:35 AM) - AI strength check + tracker UI test
+- Measured `node tools/ai-table.js 40 easy normal hard` (0 stalls, ~44s):
+    row vs col | easy | normal | hard
+    easy       |  -   |   8%   |  8%
+    normal     | 83%  |   -    | 38%
+    hard       | 93%  |  65%   |  -
+  Hard beats Normal 65% (target ≥60%). No AI code changes needed.
+- Added `tests/ui-batch8.py` for tracker home actions, PWA links, set tools.
+- All BACKLOG.md items 1–75 marked [x] and live.
+- Commit: `accd199` (version `20261013093341`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: (pushing)

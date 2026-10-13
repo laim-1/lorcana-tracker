@@ -238,3 +238,10 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 ## Batch 16 (~2:45 AM) - foil counts on set tiles
 - Set list shows owned foil count (`12/204 · 3F`) beside progress.
 - Commit: `c021bd5` (version `20261013094035`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 17 (~2:45 AM) - Hard AI lore-race / threat polish
+- 80-game table earlier: Hard vs Normal was 59% (just under target).
+- Tweaked `hardAdj` + hard rollout eval: earlier challenge of lore threats,
+  lethal quest bonus, post-rollout lore-ahead / threat-cut bonuses.
+- Remeasure 48g Hard vs Normal: **63%** (0 stalls). Engine 102 passed.
+- Commit: `f8a65a0` (version `20261013094451`). Live: https://laim-1.github.io/lorcana-tracker/

@@ -2013,13 +2013,13 @@ function evalBoard(st,pi){
   for(const x of op.play){if(!isChar(x)){v-=x.card.cost*1.5+(isLoc(x)?x.card.lore*6:0);continue}v-=(instVal(x)*(1-x.damage/Math.max(1,wilOf(x))*0.4)+loreOf(x)*5)*PW.ob}
   if(op.lore+opChars.reduce((a,x)=>a+loreOf(x),0)>=20)v-=400; // they threaten to win next turn
   return v}
-function hardChoose(st,A,topK){if(topK&&A.length>topK){const sc=A.map(a=>[a,scoreAction(st,a)]).sort((x,y)=>y[1]-x[1])/*nc:ai-order*/;A=sc.slice(0,topK).map(x=>x[0]);if(!A.some(a=>a.t==="end")){const e=sc.find(x=>x[0].t==="end");if(e)A.push(e[0])}}const pi=st.active,base=evalBoard(st,pi);let best=null,bs=-Infinity;
+function hardChoose(st,A,topK){if(topK&&A.length>topK){const sc=A.map(a=>[a,scoreAction(st,a)]).sort((x,y)=>y[1]-x[1])/*nc:ai-order*/;A=sc.slice(0,topK).map(x=>x[0]);if(!A.some(a=>a.t==="end")){const e=sc.find(x=>x[0].t==="end");if(e)A.push(e[0])}}const pi=st.active,op=st.players[opp(pi)],base=evalBoard(st,pi);let best=null,bs=-Infinity;
   // Rollout: take the candidate, finish our turn greedily, let the opponent play one greedy turn, then evaluate.
   const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}
     if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
-  for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);v=evalBoard(sim,pi)}catch(e){v=-Infinity}LEVEL="hard";CUR=st;
-    try{v+=Math.max(0,scoreAction(st,a))/40}catch(e){};if(v>bs){bs=v;best=a}}
+  for(const a of A){let v;try{const sim=cloneState(st);LEVEL="normal";act(sim,a);roll(sim);v=evalBoard(sim,pi);if(sim.players[pi].lore>sim.players[opp(pi)].lore)v+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)v+=10}catch(e){v=-Infinity}LEVEL="hard";CUR=st;
+    try{v+=Math.max(0,scoreAction(st,a))/35}catch(e){};if(v>bs){bs=v;best=a}}
   CUR=st;return best}
 let PERS=null,CTX={},HDEEP=false,LITE_OFF=false;
 // Turn context for the heuristics: can we win by questing now (lethal), can the opponent reach 20 on their next turn (threat)?
@@ -2048,12 +2048,13 @@ function aiChoose(st,level){
   if(bs<0&&A.some(a=>a.t==="end"))return{t:"end"};
   return best;
 }
-function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove questers when behind
+function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove questers when behind/threat
   const pi=st.active,me=st.players[pi],op=st.players[opp(pi)];if(s<0)return 0;
-  if(a.t==="quest"&&me.lore>=op.lore)return 12;
-  if(a.t==="challenge"){const d=find(st,a.target).inst;if(isChar(d)&&op.lore>=12)return loreOf(d)*6;}
+  if(a.t==="quest"&&CTX.lethal)return 48;
+  if(a.t==="quest"&&me.lore>=op.lore)return 14;
+  if(a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&isChar(d)&&(op.lore>=8||loreOf(d)>=2||CTX.threat))return loreOf(d)*5+(op.lore>=12?8:0)+(CTX.threat?18:0)}
   if(a.t==="play"){const c=find(st,a.uid).inst.card;if(c.type==="character"&&c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return 6;
-    if(c.type==="location")return 8+locPlayValue(c)/4;if(c.type!=="character"&&me.ink.length>=c.cost)return 4}
+    if(c.type==="location")return 8+locPlayValue(c)/4;if(c.type!=="character"&&me.ink.length>=c.cost)return 4+(CTX.threat&&(c.type==="action"||c.type==="song")?6:0)}
   if(a.t==="move"){const l=find(st,a.loc).inst;return 6+locBenefit(l)/3}
   return 0}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;return cheap>=3?[]:h.filter(c=>c.card.cost>=5).map(c=>c.uid)}

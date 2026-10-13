@@ -145,4 +145,5 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   → quest → done) with Skip/Next; auto-advances when check passes.
 - Tests: `node tests/engine.test.js` 101 passed; `tests/ui-batch6.py` passed
   (settings sound/volume/music, tutorial overlay, ink+undo).
-- Commit: (pending stamp/push)
+- Commit: `b9aa5f9` (version `20261013091902`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `b9aa5f9` status built; version.json `20261013091902` on https://laim-1.github.io/lorcana-tracker/.

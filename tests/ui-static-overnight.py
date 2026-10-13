@@ -45,6 +45,8 @@ checks = [
     ("hints on banner", "hints on" in play),
     ("handoff hand", "in hand" in play and "inkable" in play),
     ("pausemeta", "pausemeta" in play),
+    ("questable lore", "questable" in play),
+    ("Support tip", "Support:" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

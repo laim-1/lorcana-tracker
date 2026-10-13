@@ -698,4 +698,17 @@ t("ai: Support buffs the character that can clean-kill", () => {
   }
 });
 
+
+t("ai: prefers questing Bodyguard when threats are ready", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 0);
+  const bg = put(st, 0, C({ lore: 1, strength: 2, willpower: 6, cost: 3, text: "Bodyguard" }));
+  bg.card.kw.bodyguard = true;
+  bg.playedOn = st.turnNo - 1;
+  put(st, 1, C({ lore: 1, strength: 4, willpower: 4, cost: 3 })); // ready threat
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "quest" && a.uid === bg.uid, "quest Bodyguard to protect: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

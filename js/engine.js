@@ -2080,6 +2080,9 @@ function scoreAction(st,a){
       // Race: push lore when ahead or when we can outpace without threat removal
       if(!CTX.threat&&p.lore>=o.lore)qs+=(LEVEL==="hard"?10:3)+(loreOf(x)>=2?(LEVEL==="hard"?6:2):0);
       if(!CTX.threat&&p.lore+loreOf(x)>=o.lore+4)qs+=(LEVEL==="hard"?8:2);
+      // Bodyguard wall: if already exerted it protects; if ready and we have other questers + threats, prefer keeping it ready to enter-exert... actually Bodyguard protects when EXERTED. So questing (exerting) a Bodyguard HELPS protection. Prefer questing BG when threats exist.
+      if(K(x,"bodyguard")&&o.play.some(y=>isChar(y)&&!y.exerted&&strOf(y)>=2))qs+=(LEVEL==="hard"?8:2);
+      // Prefer questing low-str Bodyguard over high-lore when both available? skip
       return qs}
     case"move":{if(!LEVEL||LEVEL==="easy")return -1;const l=find(st,a.loc).inst,mc=moveCost(st,pi,x,l),ben=locBenefit(l);
       // Prefer parking high-lore / fragile characters on protective or lore-buffing locations.
@@ -2158,6 +2161,7 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
   const pi=st.active,me=st.players[pi],op=st.players[opp(pi)];if(s<0)return 0;
   if(a.t==="quest"&&CTX.lethal)return 48;
   if(a.t==="quest"&&me.lore>=op.lore){const ch=find(st,a.uid)?.inst;return 16+(ch&&loreOf(ch)>=2?6:0)+(me.lore>=op.lore+3?8:0)}
+  if(a.t==="quest"){const ch=find(st,a.uid)?.inst;if(ch&&K(ch,"bodyguard")&&op.play.some(y=>isChar(y)&&!y.exerted&&strOf(y)>=2))return 8}
   if(a.t==="challenge"&&!CTX.threat&&me.lore>=op.lore+3){const at=find(st,a.uid)?.inst,d=find(st,a.target)?.inst;
     if(at&&d&&isChar(d)&&loreOf(at)>=2){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);
       const dies=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))>=wilOf(at);

@@ -515,3 +515,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Pause menu: lore scoreline, ink ready/total, inkable-in-hand (`pausemeta`).
 - ui-static-overnight **39** checks. Engine **117** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `c788374` (version `20261013122409`). Live verified Pages built; version.json `20261013122409`.
+
+## Batch 56 (~5:27 AM) - Bodyguard quest wall, Support tip, questable lore
+- Hard prefers questing Bodyguard when opposing ready threats (exerted Bodyguard walls).
+- Tutorial tip for Support; end-turn confirm notes remaining questable lore.
+- ui-static-overnight **41** checks. Engine **118** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.

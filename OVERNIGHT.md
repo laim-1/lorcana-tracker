@@ -164,3 +164,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - #59 Only-owned-cards toggle.
 - Tests: `node tests/engine.test.js` 101 passed; `tests/ui-batch7.py` passed.
 - Commit: `7f69e55` (version `20261013092637`). Live: https://laim-1.github.io/lorcana-tracker/
+- Live verified: Pages build `e0ee254` status built; version.json `20261013092637` on https://laim-1.github.io/lorcana-tracker/.

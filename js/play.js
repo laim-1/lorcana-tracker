@@ -663,7 +663,8 @@ function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on
   <p class="meta small">Music uses soft generated tones (no downloads). Requires Sound effects On.</p>
   <h4>Tips</h4><div class="opts"><button class="opt" data-a="tipsagain">Show tips again</button></div>`}
 function pauseMenu(){S.paused=true;const canSave=S.st&&S.st.winner==null&&!S.st.pending&&!(S.st.pq&&S.st.pq.length)&&S.st.phase==="main";
-  sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
+  const meta=S.st?`<p class="meta small">Turn ${S.st.turnNo} · seed ${S.st.seed||"?"} · ${(S.meName||"You")} vs ${(S.oppName||"AI")}</p>`:"";
+  sheet(`<h4>Game paused</h4>${meta}<button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
 const SAVEKEY="lorcanaSave.v1";
 function saveGameNow(){if(!S.st)return toast("No game");const fr=E.freezeState(S.st);if(!fr)return toast("Can't save a finished game");if(fr.error)return toast("Finish the current choice before saving");
   const meta={savedAt:Date.now(),mode:S.mode||"ai",pp:!!S.pp,gold:!!S.gold,daily:!!S.daily,deck:S.deck,meName:S.meName,oppName:S.oppName,level:SET.level,style:SET.style,names:S.names,last:S.last?{me:{name:S.last.me.name},op:{name:S.last.op.name}}:null};

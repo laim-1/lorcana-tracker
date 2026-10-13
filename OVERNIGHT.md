@@ -341,3 +341,7 @@ hard         93%     63%       -
 ## Batch 34 (~3:05 AM) - static overnight smoke test
 - tests/ui-static-overnight.py asserts polish hooks (swap, quick, history filters, delete/rename, near sets, etc.).
 - Commit: `4809109` (version `20261013095742`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 35 (~3:05 AM) - pause meta (turn/seed)
+- Pause menu shows turn number, RNG seed, and matchup names (handy for bug reports).
+- Commit: `9318a53` (version `20261013095800`). Live: https://laim-1.github.io/lorcana-tracker/

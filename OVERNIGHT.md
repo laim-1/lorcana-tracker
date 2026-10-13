@@ -448,4 +448,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Tutorial tip mentions green READY vs blue DRYING tags.
 - Menu histbar shows Best streak when relevant.
 - Static overnight **31** checks.
+- Commit: `6ab7e9e` (version `20261013110021`). Live verified Pages built; version.json `20261013110021`.
+
+### Window close (~4:02 AM) after batches 44–48
+- AI: Hard **60%** vs Normal (40g); Normal **75%** vs Easy (24g). Engine **105** tests.
+- Polish: empty board/hand, READY/DRYING, handoff ink/ready/dry, daily streak/history UX, banner ready count.
+- Live: https://laim-1.github.io/lorcana-tracker/ version `20261013110021`.
+- No breakage observed; Pages builds waited between pushes when needed.
 

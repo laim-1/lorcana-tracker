@@ -56,6 +56,10 @@ const decks=()=>{let d;try{d=JSON.parse(localStorage.getItem(DKEY)||"[]")}catch(
   const ok=d.filter(x=>x&&typeof x==="object"&&x.cards&&typeof x.cards==="object"&&!Array.isArray(x.cards)).map(x=>({name:typeof x.name==="string"&&x.name.trim()?x.name:"My deck",notes:typeof x.notes==="string"?x.notes.slice(0,500):"",cards:Object.fromEntries(Object.entries(x.cards).filter(([k,n])=>typeof k==="string"&&Number.isFinite(+n)&&+n>0).map(([k,n])=>[k,Math.min(99,Math.floor(+n))]))}));
   if(ok.length!==d.length||JSON.stringify(ok)!==JSON.stringify(d))try{localStorage.setItem(DKEY,JSON.stringify(ok))}catch(e){}return ok};
 const saveDecks=d=>localStorage.setItem(DKEY,JSON.stringify(d));
+function deckMeta(d){const cards=[];for(const[id,n]of Object.entries(d.cards||{})){const c=byId.get(id);if(c)for(let i=0;i<n;i++)cards.push(c)}
+  const n=cards.length,inks=[...new Set(cards.flatMap(c=>c.inks||[]))];
+  const err=n?E.validateDeck(cards):(n<60?"Need 60 cards":null);const ok=n>=60&&inks.length<=2&&!err;
+  return{n,inks,ok,label:`${n} cards · ${inks.slice(0,2).join("/")||"no ink"}${ok?" · legal":" · draft"}`}}
 function ownedMap(){const col=(()=>{try{const o=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})(),m={};for(const[id,v]of Object.entries(col))m[id]=v&&typeof v==="object"?(Math.max(0,+v.n||0)+Math.max(0,+v.f||0)):0;return m}
 function deckFromSel(sel){if(typeof sel!=="string"||!/^(s\d+|own|c\d+)$/.test(sel)||(sel[0]==="s"&&!STARTERS[+sel.slice(1)]))sel="s0";
   if(sel[0]==="s"){const p=STARTERS[+sel.slice(1)];return{name:p.name,cards:E.deckFromList(mainPool(),p.list)||E.deckFromList(snapPool||[],p.list)||E.buildDeck(mainPool(),p.inks)}}
@@ -83,7 +87,7 @@ function renderMenu(){
   <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
-  ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
+  ${cus.map((d,i)=>{const m=deckMeta(d);return opt("c"+i,d.name,m.label)}).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
   <h4>${PPm?"Player 2 deck":GLm?"Goldfish deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
   ${PPm||GLm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>

@@ -264,3 +264,7 @@ hard         93%     63%       -
 - Undo toast quotes the last log line when available.
 - Regression: ui-batch6/7/8 all passed sequentially.
 - Commit: `013ae18` (version `20261013094640`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 20 (~2:50 AM) - menu deck legal/draft badges
+- Custom decks on the Play menu show `legal` vs `draft` with ink pair and count.
+- Commit: `54fe393` (version `20261013094655`). Live: https://laim-1.github.io/lorcana-tracker/

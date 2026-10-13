@@ -470,9 +470,11 @@ function handoff(seat,what){const st=S.st,l0=st?st.players[0].lore:0,l1=st?st.pl
   const readyN=P?P.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
   const inkN=P?E.inkAvail(P):0;const inkT=P?P.ink.length:0;
   const boardBits=[inkT?`${inkN}/${inkT} ink ready`:null,readyN?`${readyN} ready`:null,dryN?`${dryN} drying`:null].filter(Boolean).join(" · ");
+  const d0=(S.last&&S.last.me&&S.last.me.name)||S.meName||"";const d1=(S.last&&S.last.op&&S.last.op.name)||S.oppName||"";
+  const deckBits=d0&&d1?`<p class="hdecks" aria-live="polite">${esc(PN(0))}: ${esc(d0)} · ${esc(PN(1))}: ${esc(d1)}</p>`:"";
   return`<div class="handoff" role="dialog" aria-label="Pass the phone"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2>
   <p class="hscore" aria-live="polite">${esc(PN(0))} ${l0} – ${l1} ${esc(PN(1))}${tn?` · Turn ${tn}`:""}</p>
-  ${boardBits?`<p class="hboard" aria-live="polite">${esc(PN(seat))}: ${esc(boardBits)}</p>`:""}
+  ${deckBits}${boardBits?`<p class="hboard" aria-live="polite">${esc(PN(seat))}: ${esc(boardBits)}</p>`:""}
   <p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p>
   <button class="wide primary" data-a="handoff" data-v="${seat}" aria-label="Show cards for ${esc(PN(seat))}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
 function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
@@ -480,11 +482,16 @@ function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
   const title=S.pp?esc(PN(st.winner))+" wins":S.gold?(st.winner===0?"Practice complete":"Goldfish wins"):(w?"Victory":"Defeat");
   const cine=w?"VICTORY":"DEFEAT";
-  const deckLine=!S.pp&&S.last?`<p class="meta rematchdecks">${esc(S.last.me&&S.last.me.name||"You")} vs ${esc(S.last.op&&S.last.op.name||"Opponent")}${S.daily?" · Daily":""}${SET.level&&!S.pp&&!S.gold?" · "+String(SET.level).toUpperCase():""}</p>`:"";
+  const d0=S.last&&S.last.me&&S.last.me.name,d1=S.last&&S.last.op&&S.last.op.name;
+  const deckLine=S.last&&d0&&d1?`<p class="meta rematchdecks">${esc(d0)} vs ${esc(d1)}${S.daily?" · Daily":""}${SET.level&&!S.pp&&!S.gold?" · "+String(SET.level).toUpperCase():""}${S.pp?" · Pass and play":""}</p>`:"";
   const streakBlock=streak?`<p class="streak" role="status">${esc(R.reward||("Win streak "+streak))} <b>${streak}</b></p>`:(!S.pp&&!S.gold&&!w?`<p class="streak broke" role="status">Streak ended</p>`:"");
+  const ch0=st.players[0].play.filter(x=>x.card.type==="character").length,ch1=st.players[1].play.filter(x=>x.card.type==="character").length;
+  const ink0=st.players[0].ink.length,ink1=st.players[1].ink.length;
+  const hand0=st.players[0].hand.length,hand1=st.players[1].hand.length;
+  const boardLine=`<p class="endboard" role="status">Final board · chars ${ch0}–${ch1} · ink ${ink0}–${ink1} · hand ${hand0}–${hand1}</p>`;
   return`<div class="modal end ${w?"won":"lost"}" role="dialog" aria-label="${esc(title)}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${cine}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${title}</h2>
-  ${streakBlock}${deckLine}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
-  <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
+  ${streakBlock}${deckLine}${boardLine}<p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
+  <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}${rowS("Chars left",ch0,ch1)}${rowS("Ink",ink0,ink1)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
   <button class="wide" data-a="alog" aria-label="Open action log">Action log</button><button class="wide" data-a="sumcopy" aria-label="Copy match summary">Copy match summary</button>
   <button class="wide primary" data-a="again" aria-label="Rematch same decks">Rematch</button>${!S.pp&&!S.gold?`<button class="wide" data-a="againSwap" aria-label="Rematch with decks swapped">Rematch · swap decks</button>`:""}<button class="wide" data-a="tomenu" aria-label="Change decks">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
@@ -696,7 +703,7 @@ function aiLoop(){if(S.busy)return;S.busy=true;
     toast(describe(a,st));
     setTimeout(()=>{clearUndo();try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
   setTimeout(step,SPEED[SET.speed]*.6)}
-const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (blue DRYING tag) can't quest or challenge until your next turn. Green READY means dry and ready. Rush can challenge the turn they are played.","First to 20 lore wins. The banner shows the lore race and whether ink is still available this turn.","Shift: play a Floodborn onto a matching character for the Shift cost — it keeps damage and drying. Look for purple glow on Shift targets.","Songs can be sung for free by exerting a ready character with cost (or Singer N) ≥ the song cost. Sing Together combines several singers.","When a move is illegal you will see a short toast (for example drying, not enough ink, or wrong target). Use the hint button to highlight legal moves."];
+const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (blue DRYING tag) can't quest or challenge until your next turn. Green READY means dry and ready. Rush can challenge the turn they are played.","First to 20 lore wins. The banner shows the lore race and whether ink is still available this turn.","Shift: play a Floodborn onto a matching character for the Shift cost — it keeps damage and drying. Look for purple glow on Shift targets.","Songs can be sung for free by exerting a ready character with cost (or Singer N) ≥ the song cost. Sing Together combines several singers.","Bodyguard: if an opposing Bodyguard is exerted, you must challenge it before other characters. Ward: actions and abilities cannot choose that character — challenge it instead.","When a move is illegal you will see a short toast (for example drying, not enough ink, or wrong target). Use the hint button to highlight legal moves."];
 function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}sheet(`<h4>Tip ${i+1} of ${TIPS.length}</h4><p class="tiptext">${TIPS[i]}</p><button class="wide primary" data-a="tip" data-i="${i+1}">${i+1<TIPS.length?"Next":"Got it"}</button><button class="wide ghostw" data-a="tip" data-i="99">Skip tips</button>`)}
 function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on":""}" data-a="set" data-k="${k}" data-v="${v}">${l}</button>`;
   return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}</div>
@@ -876,8 +883,12 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"tip":tip(+b.dataset.i);break;
     case"concede":sheet(`<h4>Concede?</h4><p class="conwarn">You will lose this game. This cannot be undone.</p><button class="wide primary" data-a="concedeok" style="background:#c4163a;border-color:#ff4d6a">Concede and lose</button><button class="wide ghostw" data-a="pause">Keep playing</button>`);break;
     case"concedeok":S.paused=false;closeSheet();S.st.winner=S.pp?OP():1;S.st.phase="over";S.st.log.push((S.pp?PN(ME()):"You")+" conceded.");renderBoard();break;
-    case"hint":{if(!myTurn()||S.tm){S.hint=false;break}S.hint=!S.hint;if(S.hint){const A=E.legalActions(S.st),kinds={};for(const a of A){const k=a.t==="end"?"end turn":a.t;kinds[k]=(kinds[k]||0)+1}
-      const parts=Object.entries(kinds).map(([k,n])=>n+" "+k);toast(parts.length?"Legal now: "+parts.slice(0,5).join(", "):"No legal actions")}renderBoard();break}
+    case"hint":{if(!myTurn()||S.tm){S.hint=false;break}S.hint=!S.hint;if(S.hint){const A=E.legalActions(S.st),kinds={};const lab={end:"end turn",quest:"quest",challenge:"challenge",play:"play",ink:"ink",move:"move",act:"ability",boost:"boost",shift:"shift"};
+      for(const a of A){let k=a.t;if(a.t==="play"&&a.shift!=null)k="shift";else if(a.t==="play"&&(a.singer!=null||a.singers))k="sing";kinds[k]=(kinds[k]||0)+1}
+      const useful=Object.keys(kinds).filter(k=>k!=="end");
+      if(!useful.length)toast("No plays left — tap End turn when ready");
+      else{const parts=useful.map(k=>kinds[k]+" "+(lab[k]||k));toast("Highlighted: "+parts.slice(0,5).join(", ")+" · gold glow = legal")}
+      }else toast("Hints off");renderBoard();break}
     case"quitgame":S.paused=false;closeSheet();S.screen="menu";S.st=null;render();break;
     case"end":{const acts=E.legalActions(S.st).filter(a=>a.t!=="end");
       const remain=acts.filter(a=>a.t==="quest"||a.t==="challenge"||a.t==="play"||a.t==="act"||a.t==="move"||a.t==="ink");

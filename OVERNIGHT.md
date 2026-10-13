@@ -466,3 +466,17 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 60%**, Normal 35% (0 stalls). Normal vs Easy (24g): **Normal 79%**, Easy 13%.
 - Commit: `8a42031` (version `20261013120229`). Live verified Pages built; version.json `20261013120229`.
 
+## Batch 50 (~5:09 AM) - ink win-cons, Sing Together lore, Ward/BG
+- Do not ink high-lore / Shift-with-base / needed Bodyguard–Ward when junk inkables exist (Hard-weighted + hardAdj).
+- Sing Together: prefer lowest-lore singer sets; penalize oversized sets.
+- Challenge: bonus for clean-killing Ward and clearing Bodyguard walls.
+- Tests: ink junk over lore-3; Sing Together low-lore pair; Ward challenge. Engine **112** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 30% (0 stalls). Normal vs Easy (24g): **Normal 79%**.
+- Commit: `2f1f1d3` (version `20261013120851`). Live verified Pages built; version.json `20261013120851`.
+
+## Batch 51 (~5:11 AM) - endboard, handoff decks, hint toast, BG/Ward tip
+- End screen: final board line (chars / ink / hand) + table rows for chars left and ink; pass-and-play shows deck names too.
+- Pass-and-play handoff: deck names under the scoreline (`hdecks`).
+- Hint button: clearer toast (Highlighted… / No plays left → End turn); tips off toast.
+- Tutorial tip for Bodyguard (must challenge) and Ward (challenge, not target with actions).
+- ui-static-overnight **35** checks. CSS: `.endboard`, `.hdecks`.

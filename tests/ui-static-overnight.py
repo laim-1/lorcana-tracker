@@ -37,6 +37,10 @@ checks = [
     ("pause ready/dry", "rdy0" in play and "drying" in play),
     ("READY tip", "Green READY" in play),
     ("histbar best", "Best " in play and "histbar" in play),
+    ("endboard", "endboard" in play),
+    ("handoff decks", "hdecks" in play),
+    ("Bodyguard tip", "Bodyguard" in play and "Ward" in play),
+    ("hint highlight toast", "Highlighted:" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

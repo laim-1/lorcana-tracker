@@ -3,7 +3,7 @@ const API="https://api.lorcast.com/v0",KEY="lorcanaCollection.v1",SKEY="lorcanaS
 const WKEY="lorcanaWishlist.v1",HVAL="lorcanaValueHistory.v1",PKEY="lorcanaPriceSnap.v1",BKEY="lorcanaBackupRemind.v1";
 const LOGOS=new Set(["1","2","3","4","5","6","7","8","9","10","11","12"]);
 const RAR=["Common","Uncommon","Rare","Super_rare","Legendary","Epic","Enchanted","Iconic","Promo","Special"];
-const SET_SORTS={main:"Main sets first",new:"Newest first",old:"Oldest first",name:"Name A-Z",pct:"Most collected",value:"Highest value"};
+const SET_SORTS={main:"Main sets first",new:"Newest first",old:"Oldest first",name:"Name A-Z",pct:"Most collected",remain:"Closest to done",finish:"Cheapest to finish",value:"Highest value"};
 const CARD_SORTS={num:"Card number",name:"Name A-Z",phigh:"Price high-low",plow:"Price low-high",rarity:"Rarity (rarest first)",qty:"Owned quantity"};
 let col=(()=>{try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");if(!o||typeof o!=="object"||Array.isArray(o))return{};for(const k of Object.keys(o)){const v=o[k];if(!v||typeof v!=="object"){delete o[k];continue}v.n=Math.max(0,+v.n||0);v.f=Math.max(0,+v.f||0);if(!v.n&&!v.f)delete o[k]}return o}catch(e){return{}}})(),sets=[],cache={},source="live",cur=null,F={own:"",rarity:"",ink:"",price:"",foil:""};
 let wish=(()=>{try{const a=JSON.parse(localStorage.getItem(WKEY)||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"):[]}catch(e){return[]}})();
@@ -58,7 +58,10 @@ function home(){cur=null;chrome(null);quickAdd=false;
  recordValue(tot);
  const isMain=s=>/^\d+$/.test(String(s.code));
  const list=[...sets].sort({main:(a,b)=>isMain(b)-isMain(a)||b.released_at.localeCompare(a.released_at)||a.name.localeCompare(b.name),new:(a,b)=>b.released_at.localeCompare(a.released_at),old:(a,b)=>a.released_at.localeCompare(b.released_at),
-  name:(a,b)=>a.name.localeCompare(b.name),pct:(a,b)=>st.get(b.id).p-st.get(a.id).p,value:(a,b)=>st.get(b.id).v-st.get(a.id).v}[sort.sets]);
+  name:(a,b)=>a.name.localeCompare(b.name),pct:(a,b)=>st.get(b.id).p-st.get(a.id).p,
+  remain:(a,b)=>{const A=st.get(a.id),B=st.get(b.id);return (A.t-A.got)-(B.t-B.got)||B.p-A.p},
+  finish:(a,b)=>finishCost(a)-finishCost(b)||a.name.localeCompare(b.name),
+  value:(a,b)=>st.get(b.id).v-st.get(a.id).v}[sort.sets]);
  const hist=loadHist();
  const byIdPrice=(()=>{const m=new Map();for(const s of sets)for(const c of cardsFor(s.id))m.set(c.id,c.usd||0);return m})();
  const wishCost=wish.reduce((t,id)=>t+(byIdPrice.get(id)||0),0);
@@ -72,9 +75,11 @@ function home(){cur=null;chrome(null);quickAdd=false;
  </div>
  ${wish.length?`<div class="wishbar" data-go="wish"><b>Wishlist</b><span>${wish.length} cards · ${money(wishCost)}</span></div>`:""}
  <div class="sortnote">Sorted by ${SET_SORTS[sort.sets].toLowerCase()}</div>`+list.map(s=>{const {got,t,p,v,foils}=st.get(s.id),logo=LOGOS.has(String(s.code));
+  const miss=t-got;const fin=sort.sets==="finish"||sort.sets==="remain"?finishCost(s):null;
+  const right=fin!=null&&miss?money(fin)+" to finish":money(v);
   return `<button class="set" data-id="${s.id}">${logo?`<img class="logo" src="./assets/sets/${esc(s.code)}.png?v=${V}" alt="${esc(s.name)}" loading="lazy">`:`<div class="logo txt"><span>${esc(s.name)}</span></div>`}
   <div class="sbody"><div class="bar"><div style="width:${p}%"></div></div>
-  <div class="prog"><span>${got}/${t}${foils?` · ${foils}F`:""}</span>${badgeFor(p)}<span class="gold">${money(v)}</span></div></div></button>`}).join("");
+  <div class="prog"><span>${got}/${t}${foils?` · ${foils}F`:""}${miss&&fin!=null?` · ${miss} left`:""}</span>${badgeFor(p)}<span class="gold">${right}</span></div></div></button>`}).join("");
  app.querySelectorAll(".set").forEach(e=>e.onclick=()=>location.hash="set/"+e.dataset.id);
  app.querySelectorAll("[data-go]").forEach(e=>e.onclick=()=>homeGo(e.dataset.go));
  app.querySelectorAll("img.logo").forEach(i=>i.onerror=()=>{i.outerHTML=`<div class="logo txt"><span>${esc(i.alt)}</span></div>`});
@@ -161,6 +166,7 @@ async function setView(id){homeScroll=scrollY;const s=sets.find(x=>x.id==id);chr
 function sortCards(a){const f={num:(x,y)=>cnum(x)-cnum(y),name:(x,y)=>x.name.localeCompare(y.name)||cnum(x)-cnum(y),
  phigh:(x,y)=>Math.max(y.usd||0,y.usd_foil||0)-Math.max(x.usd||0,x.usd_foil||0),plow:(x,y)=>(x.usd??x.usd_foil??1e9)-(y.usd??y.usd_foil??1e9),
  rarity:(x,y)=>RAR.indexOf(y.rarity)-RAR.indexOf(x.rarity)||cnum(x)-cnum(y),qty:(x,y)=>qty(y.id)-qty(x.id)||cnum(x)-cnum(y)}[sort.cards];return a.sort(f)}
+function finishCost(set){const cards=cardsFor(set.id);return cards.filter(c=>!own(c.id)).reduce((t,c)=>t+(c.usd||0),0)}
 function missingCost(cards){return cards.filter(c=>!own(c.id)).reduce((t,c)=>t+(c.usd||0),0)}
 function summary(){const got=cur.cards.filter(c=>own(c.id)).length;const miss=cur.cards.length-got;const mc=missingCost(cur.cards);
  $("#sumline").innerHTML=`<span>${got}/${cur.cards.length} owned</span><span class="gold">${money(value(cur.cards))}</span>${miss?`<span class="miss">Missing ${miss} · ${money(mc)}</span>`:`<span class="miss ok">Set complete</span>`}`}

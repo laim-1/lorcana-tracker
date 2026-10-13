@@ -322,3 +322,8 @@ hard         93%     63%       -
 - Nearly-complete set buttons CSS cleaned up.
 - ui-batch6/7/8 all passed.
 - Commit: `6786898` (version `20261013095518`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 31 (~3:00 AM) - set sorts closest/cheapest
+- Tracker set sorts: Closest to done (fewest missing) and Cheapest to finish (USD of missing).
+- Set row shows "N left" / "$X to finish" when those sorts are active.
+- Commit: `113ab58` (version `20261013095649`). Live: https://laim-1.github.io/lorcana-tracker/

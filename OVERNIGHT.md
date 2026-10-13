@@ -41,3 +41,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - #44 Confirm End Turn sheet when quest/challenge/play/act/move/ink still remain.
 - Tests: `node tests/engine.test.js` 86 passed; `tests/ui-ai-style.py` passed (style picker,
   bar labels, lore race, inkable chip, end-turn confirm).
+- Commit: `6a9f264` (version 20261013082155). Live: https://laim-1.github.io/lorcana-tracker/

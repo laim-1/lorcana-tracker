@@ -19,6 +19,7 @@ checks = [
     ("wclear", 'id="wclear"' in app),
     ("finishCost", "finishCost" in app),
     ("remain sort", "Closest to done" in app),
+    ("foilsTotal", "foilsTotal" in app),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

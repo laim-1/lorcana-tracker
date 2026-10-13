@@ -350,3 +350,7 @@ hard         93%     63%       -
 - Home hero shows total foil copies owned.
 - AI ladder 30g: easy 7%/10% vs N/H; normal 80%/37% vs E/H; hard 93%/63% vs E/N.
 - Commit: `44806ec` (version `20261013095954`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 37 (~3:00 AM) - static test includes foil hero
+- ui-static-overnight checks foilsTotal.
+- Commit: `c593b89` (version `20261013100002`). Live: https://laim-1.github.io/lorcana-tracker/

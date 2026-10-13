@@ -277,3 +277,8 @@ hard         93%     63%       -
 ## Batch 22 (~2:50 AM) - tap cost curve to filter
 - Cost curve bars are buttons; tap filters This deck by that cost (tap again clears).
 - Commit: `7eb45d9` (version `20261013094750`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 23 (~2:55 AM) - tutorial uses goldfish
+- Tutorial opponent is goldfish (draw/pass only) so guided steps stay predictable.
+- Copy updated; ui-batch6 still passes.
+- Commit: `97dcdb4` (version `20261013094829`). Live: https://laim-1.github.io/lorcana-tracker/

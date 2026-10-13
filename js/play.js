@@ -685,7 +685,7 @@ const TUT_STEPS=[
   {id:"welcome",title:"Welcome to Lorcana",body:"This short tutorial walks you through inking, playing a character, ending your turn, and questing. Tap Next when you are ready — the board stays interactable.",auto:false},
   {id:"ink",title:"Ink a card",body:"Once per turn you may put an inkable card from your hand into your inkwell. Cards with a gold drop can be inked. Select an inkable hand card, then tap Ink it.",check:st=>{const p=st.players[0];return p.inked||p.ink.length>0}},
   {id:"play",title:"Play a character",body:"Spend ready ink to play a character from your hand. Glowing hand cards are playable — tap one, then Play. New characters are drying and cannot quest this turn.",check:st=>st.players[0].play.some(x=>x.card.type==="character")},
-  {id:"end",title:"End your turn",body:"When you are done, tap End turn. Your opponent (Easy AI) will take a short turn.",check:st=>st.turnNo>=2||(st.active===1&&!st.pending)},
+  {id:"end",title:"End your turn",body:"When you are done, tap End turn. The practice opponent only draws and passes — then it is your turn again.",check:st=>st.turnNo>=2||(st.active===1&&!st.pending)},
   {id:"quest",title:"Quest for lore",body:"On your next turn, ready dry characters can quest. Tap a ready character that is not drying, then Quest to gain lore. First to 20 wins!",check:st=>st.players[0].lore>0||(S.alog||[]).some(r=>r.t==="quest"&&r.pi===0)},
   {id:"done",title:"You're ready!",body:"Great work. Keep playing this game, or quit to the menu and try Daily challenge or a full AI match. Use the undo button (curved arrow) to take back your last action when it is available.",auto:false}
 ];
@@ -700,13 +700,14 @@ function startTutorial(){if(!pool||!pool.length){toast("Cards still loading");re
   const me=deckFromSel("s0"),op=deckFromSel("s1");
   if(!me.cards||!op.cards){toast("Tutorial decks not ready");return}
   SET.level="easy";SET.style="balanced";saveSet();
-  S.daily=false;S.mode="ai";S.pp=false;S.gold=false;S.deck="s0";S.opp="s1";S.last={me,op};
-  S.meName=me.name+" (Tutorial)";S.oppName="Tutorial AI";S.names=["You","AI"];S.shown=null;S.mullSeat=0;clearUndo();
+  // Goldfish opponent keeps steps predictable (draw + end only)
+  S.daily=false;S.mode="gold";S.pp=false;S.gold=true;S.deck="s0";S.opp="s1";S.last={me,op};
+  S.meName=me.name+" (Tutorial)";S.oppName="Goldfish";S.names=["You","Goldfish"];S.shown=null;S.mullSeat=0;clearUndo();
   S.tut={i:0,seen:{}};S.tutLock=false;
-  S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:42,first:0,human:[true,false]});
-  E.mulligan(S.st,1,[]); // goldfish-like empty mull for AI simplicity
+  S.st=E.newGame({decks:[me.cards,op.cards],names:["You","Goldfish"],seed:42,first:0,human:[true,false]});
+  E.mulligan(S.st,1,[]);
   S.mullSel=new Set();S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.tipShown=true;S.screen="coin";render();
-  toast("Tutorial started — Easy AI");syncMusic()}
+  toast("Tutorial started — practice opponent");syncMusic()}
 
 /* events */
 function onInput(e){const id=e.target.id;

@@ -268,3 +268,8 @@ hard         93%     63%       -
 ## Batch 20 (~2:50 AM) - menu deck legal/draft badges
 - Custom decks on the Play menu show `legal` vs `draft` with ink pair and count.
 - Commit: `54fe393` (version `20261013094655`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 21 (~2:50 AM) - near-win banner + meta description
+- Banner pulses when either player is at 18+ lore (respects reduced-motion / low FX).
+- HTML meta description for share/SEO.
+- Commit: `4595a63` (version `20261013094730`). Live: https://laim-1.github.io/lorcana-tracker/

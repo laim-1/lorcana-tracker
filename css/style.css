@@ -612,3 +612,9 @@ body.enter-anim #app{animation:fadeup .28s ease-out}
 @media (max-width:360px){.hact{font-size:13px;padding:0 6px}.hactions{gap:6px}}
 
 .hero .spark{display:block;margin-top:8px;opacity:.95;filter:drop-shadow(0 0 6px rgba(245,201,85,.35))}
+
+.banner.near{box-shadow:0 0 0 2px #ff4d6a,0 0 24px rgba(255,77,106,.45)!important;animation:nearpulse 1.6s ease-in-out infinite}
+@keyframes nearpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.12)}}
+
+.lowfx .banner.near{animation:none}
+@media (prefers-reduced-motion: reduce){.banner.near{animation:none}}

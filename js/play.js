@@ -352,12 +352,13 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
     return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`}
   const my=st.active===ME();const acts=my&&!st.pending?E.legalActions(st):[];const canEnd=acts.some(a=>a.t==="end");
   const ml=st.players[ME()].lore,ol=st.players[OP()].lore,race=ml===ol?"Tied "+ml+"–"+ol:ml>ol?(S.pp?esc(PN(ME())):"You")+" ahead "+ml+"–"+ol:(S.pp?esc(PN(OP())):"AI")+" ahead "+ol+"–"+ml;
+  const near=ml>=18||ol>=18;
   const hintBtn=my&&!S.tm?`<button class="hintbtn ${S.hint?"on":""}" data-a="hint" aria-label="${S.hint?"Hide hints":"Show legal moves"}" title="Legal moves">${ICO.hint}</button>`:"";
   const undoBtn=canUndo()?`<button class="hintbtn" data-a="undo" aria-label="Undo last action" title="Undo">${ICO.undo}</button>`:"";
   const turnLab=S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":(S.gold?"GOLDFISH TURN":"AI TURN");
   const sub=my?(st.players[ME()].inked?"Ink used":"Ink available"):(S.gold?"Pass and draw only":"AI is playing");
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
-  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
+  return`<div class="banner ${my?"mine":"theirs"} ${near?"near":""}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
    <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);

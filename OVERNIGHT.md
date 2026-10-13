@@ -337,3 +337,7 @@ hard         93%     63%       -
 ## Batch 33 (~3:00 AM) - fix duplicate Draw again
 - Sample hand sheet had two Draw again buttons; kept one (bhandagain).
 - Commit: `ce1067a` (version `20261013095726`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 34 (~3:05 AM) - static overnight smoke test
+- tests/ui-static-overnight.py asserts polish hooks (swap, quick, history filters, delete/rename, near sets, etc.).
+- Commit: `4809109` (version `20261013095742`). Live: https://laim-1.github.io/lorcana-tracker/

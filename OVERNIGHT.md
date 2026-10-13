@@ -354,3 +354,7 @@ hard         93%     63%       -
 ## Batch 37 (~3:00 AM) - static test includes foil hero
 - ui-static-overnight checks foilsTotal.
 - Commit: `c593b89` (version `20261013100002`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 38 (~3:05 AM) - discard saved game
+- Play menu: Discard saved game (confirm) next to Resume when a save exists.
+- Commit: `8d8ddb3` (version `20261013100019`). Live: https://laim-1.github.io/lorcana-tracker/

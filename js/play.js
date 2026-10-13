@@ -81,7 +81,7 @@ function renderMenu(){
   root.innerHTML=`<div class="phead">`+bar(title)+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
   <h4>Mode</h4><div class="opts"><button class="opt ${!PPm&&!GLm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play</button><button class="opt ${GLm?"on":""}" data-a="mode" data-v="gold">Practice (goldfish)</button></div>
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
-  ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button>`:""})()}
+  ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button><button class="wide ghostw" data-a="forgetSave">Discard saved game</button>`:""})()}
   ${!PPm&&!GLm?`<button class="wide" data-a="quick">Quick play <small>random starters</small></button><button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
   <button class="wide" data-a="tutorial">Tutorial <small>guided first game</small></button>
   <button class="wide ghostw" data-a="rules">Rules reference</button>
@@ -751,7 +751,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
     case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"quick":{S.mode="ai";S.deck="s"+Math.floor(Math.random()*STARTERS.length);S.opp="s"+Math.floor(Math.random()*STARTERS.length);startGame();break}
     case"start":startGame();break;
-    case"daily":startDaily();break;case"tutorial":startTutorial();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;
+    case"daily":startDaily();break;case"tutorial":startTutorial();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;case"forgetSave":if(confirm("Discard the saved game?")){clearSave();toast("Save discarded");renderMenu()}break;
     case"undo":doUndo();break;case"tutnext":if(S.tut){S.tut.i=Math.min(S.tut.i+1,TUT_STEPS.length-1);renderBoard()}break;
     case"tutdone":case"tutskip":S.tut=null;if(S.screen==="board")renderBoard();toast(a==="tutskip"?"Tutorial skipped":"Tutorial complete");break;
     case"savegame":saveGameNow();break;case"singtok":{if(!S.tm||S.tm.mode!=="singT")break;const set=[...S.tm.sel].join(",");

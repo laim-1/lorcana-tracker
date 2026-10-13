@@ -1996,7 +1996,10 @@ function scoreAction(st,a){
       let exertBonus=0;if(a.exerted&&c.kw.bodyguard){const H=LEVEL==="hard";const others=p.play.filter(y=>isChar(y)&&loreOf(y)>=2).length;const threats=o.play.filter(y=>isChar(y)&&!y.exerted&&strOf(y)>=2).length;
         exertBonus=others||threats?(H?18:6)+others*4+threats*3:-8}else if(a.exerted)exertBonus=p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6;
       let s=100+c.cost*4+effVal(st,pi,effs,a.target)+exertBonus-(a.decline?3:0);
-      if(c.type==="character"){s+=c.lore*3;if(c.kw.evasive&&o.play.some(y=>isChar(y)&&K(y,"evasive")&&loreOf(y)>=2))s+=(LEVEL==="hard"?10:3);if(c.kw.evasive)s+=(LEVEL==="hard"?4:1)}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+      if(c.type==="character"){s+=c.lore*3;
+        const oppEv=o.play.some(y=>isChar(y)&&K(y,"evasive")&&loreOf(y)>=2);
+        if(c.kw.evasive&&oppEv)s+=(LEVEL==="hard"?10:3);if(c.kw.evasive)s+=(LEVEL==="hard"?4:1);
+        if(c.kw.alert&&oppEv)s+=(LEVEL==="hard"?12:4);if(c.kw.alert)s+=(LEVEL==="hard"?3:1)}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
         if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
@@ -2055,9 +2058,9 @@ function scoreAction(st,a){
       if(kills&&K(d,"ward"))v+=(LEVEL==="hard"?16:6)+(dl>=2?6:0);
       // Bodyguard: clearing the wall opens high-lore behind it
       if(kills&&K(d,"bodyguard")){const behind=o.play.filter(y=>isChar(y)&&y.uid!==d.uid&&loreOf(y)>=2).length;v+=(LEVEL==="hard"?8:3)+behind*4}
-      // Evasive: only Evasive can challenge Evasive — value those trades, especially lore threats
-      if(K(d,"evasive")&&K(x,"evasive")&&kills)v+=(LEVEL==="hard"?12:4)+(dl>=2?8:0);
-      if(K(d,"evasive")&&!K(x,"evasive"))v=-1; // illegal path shouldn't appear, but guard
+      // Evasive: only Evasive (or Alert) can challenge Evasive — value those trades, especially lore threats
+      if(K(d,"evasive")&&(K(x,"evasive")||K(x,"alert"))&&kills)v+=(LEVEL==="hard"?12:4)+(dl>=2?8:0)+(K(x,"alert")&&!K(x,"evasive")?4:0);
+      if(K(d,"evasive")&&!K(x,"evasive")&&!K(x,"alert"))v=-1; // illegal path shouldn't appear, but guard
       // Multi-challenger: prefer lowest-lore clean killer (Hard searches alts; Normal light bias)
       if(kills&&!dies&&!K(x,'reckless')&&(LEVEL==="hard"||LEVEL==="normal")){const alts=legalActions(st).filter(b=>b.t==="challenge"&&b.target===a.target&&b.uid!==a.uid);
         const mul=LEVEL==="hard"?5:2;
@@ -2183,7 +2186,7 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
       if(op.lore>=8||loreOf(d)>=2||CTX.threat)b+=loreOf(d)*5+(op.lore>=12?8:0)+(CTX.threat?18:0);
       if(K(d,"ward")&&at&&d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d))b+=14;
       if(K(d,"bodyguard")&&at&&d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d))b+=8;
-      if(K(d,"evasive")&&at&&K(at,"evasive")&&d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d))b+=10+loreOf(d)*3;
+      if(K(d,"evasive")&&at&&(K(at,"evasive")||K(at,"alert"))&&d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d))b+=10+loreOf(d)*3;
       return b}}
   if(a.t==="ink"){const c=find(st,a.uid)?.inst?.card;if(!c)return 0;
     if((c.type==="song"||c.type==="action")&&effVal(st,pi,c.onPlay,null)>4){

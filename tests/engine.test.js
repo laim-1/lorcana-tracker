@@ -726,4 +726,19 @@ t("ai: Evasive challenges opposing Evasive lore threat", () => {
   assert.ok(a.t === "challenge" && a.target === th.uid, "Evasive vs Evasive lore: " + JSON.stringify(a));
 });
 
+
+t("ai: Alert challenges opposing Evasive lore threat", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 0);
+  const atk = put(st, 0, C({ lore: 1, strength: 4, willpower: 4, cost: 3, text: "Alert" }));
+  atk.card.kw.alert = true;
+  atk.playedOn = st.turnNo - 1;
+  const th = put(st, 1, C({ lore: 3, strength: 1, willpower: 3, cost: 3, text: "Evasive" }));
+  th.card.kw.evasive = true;
+  th.exerted = true;
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "challenge" && a.target === th.uid, "Alert vs Evasive lore: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

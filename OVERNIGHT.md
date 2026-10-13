@@ -532,3 +532,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Copy match summary includes decks, difficulty, chars left, ink.
 - ui-static-overnight **42** checks. Engine **119** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `de1c0fb` (version `20261013123020`). Live verified Pages built; version.json `20261013123020`.
+
+## Batch 58 (~5:34 AM) - Alert vs Evasive + Evasive tip
+- Alert challenges Evasive like Evasive (scoring + hardAdj); prefer playing Alert into opposing Evasive lore.
+- Tutorial tip for Evasive/Alert challenge rules.
+- ui-static-overnight **43** checks. Engine **120** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.

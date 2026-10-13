@@ -607,3 +607,6 @@ body.enter-anim #app{animation:fadeup .28s ease-out}
 .sheet .histlist{max-height:48vh;overflow:auto;-webkit-overflow-scrolling:touch;margin:8px 0 12px}
 .sheet .logfull{max-height:48vh;overflow:auto}
 .sheet .vchart{max-width:100%}
+
+/* home actions readable on narrow phones */
+@media (max-width:360px){.hact{font-size:13px;padding:0 6px}.hactions{gap:6px}}

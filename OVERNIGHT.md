@@ -217,3 +217,9 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   rendering totals (no more $0 while idle prefetch is still running).
 - Live verified earlier: version `20261013093457` (batch 11) built on Pages.
 - Commit: `f3b4504` (version `20261013093604`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 13 (~2:40 AM) - narrow-phone home actions + live verify
+- Home action buttons slightly tighter under 360px width.
+- Live verified: version.json `20261013093604` (batch 12) built on Pages.
+- Engine regression: 101 passed.
+- Commit: `a235ace` (version `20261013093751`). Live: https://laim-1.github.io/lorcana-tracker/

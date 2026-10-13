@@ -436,11 +436,16 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Your-turn banner subline: `N ready` next to drying / ink available.
 - Daily challenge menu button shows career Daily W–L when any dailies played.
 - Static overnight **27** passed.
-- Commit: `e1ad060` (version `20261013105834`).
+- Commit: `e1ad060` (version `20261013105834`). Live verified Pages built; version.json `20261013105834`.
 
 ## Batch 47 (~4:00 AM) - empty hand + pause ready/dry
 - Empty hand: centered "Hand empty — draw next turn" label (44px+ tap area height).
 - Pause menu meta: your ready + drying character counts next to turn/seed.
-- Live verify after Pages for batch 46 already OK (`20261013105834`).
 - Static overnight **29** checks.
+- Commit: `fc732a9` (version `20261013105926`). Live: Pages built; version.json `20261013105926`.
+
+## Batch 48 (~4:01 AM) - READY tip + histbar best streak
+- Tutorial tip mentions green READY vs blue DRYING tags.
+- Menu histbar shows Best streak when relevant.
+- Static overnight **31** checks.
 

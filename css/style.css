@@ -395,3 +395,4 @@ h1{font-size:15px}
 .startbar{position:sticky;bottom:0;z-index:5;margin:12px -14px 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(14,11,36,0),rgba(14,11,36,.92) 30%)}
 .startbar .wide{margin:0}
 #play:not(.onboard){overflow-y:auto;-webkit-overflow-scrolling:touch}
+.startbar.top{position:sticky;top:0;bottom:auto;z-index:6;margin:0;padding:8px 14px;background:linear-gradient(180deg,rgba(14,11,36,.96) 70%,rgba(14,11,36,0))}

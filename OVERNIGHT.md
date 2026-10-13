@@ -506,3 +506,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Pass-and-play handoff: hand count + inkable count on board line.
 - ui-static-overnight **38** checks. Engine **116** passed.
 - Hard vs Normal (40g): **Hard 75%**, Normal 33%. Normal vs Easy (24g): **Normal 83%**.
+
+- Commit: `7ced61f` (version `20261013122027`). Live verified Pages built; version.json `20261013122027`.
+
+## Batch 55 (~5:24 AM) - Support clean-kill pick, Rush, pause meta
+- Support AI: buff the ally that the Support strength enables a clean kill (else lore/str).
+- Rush: Hard values clean-kill challenges the turn Rush is played.
+- Pause menu: lore scoreline, ink ready/total, inkable-in-hand (`pausemeta`).
+- ui-static-overnight **39** checks. Engine **117** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.

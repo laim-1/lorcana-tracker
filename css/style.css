@@ -638,3 +638,5 @@ button.histrow:active{opacity:.9}
 .handoff .hboard{margin:0 0 10px;font-size:15px;font-weight:800;color:#c9b8ff}.handoff .hdecks{margin:0 0 8px;font-size:13px;font-weight:700;color:#a894d8;line-height:1.35}
 
 .handempty{display:flex;align-items:center;justify-content:center;min-height:44px;width:100%;padding:10px 14px;font-size:13px;font-weight:800;color:#7a6bb8;letter-spacing:.3px;text-transform:uppercase;text-align:center}
+
+.pausemeta{font-weight:700;color:#c9b8ff;line-height:1.4}

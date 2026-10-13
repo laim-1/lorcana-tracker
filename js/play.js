@@ -721,7 +721,10 @@ function pauseMenu(){S.paused=true;const canSave=S.st&&S.st.winner==null&&!S.st.
   const st0=S.st,me0=st0&&st0.players[ME()];
   const dry0=me0?me0.play.filter(x=>x.card.type==="character"&&!E.dry(st0,x)).length:0;
   const rdy0=me0?me0.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st0,x)).length:0;
-  const meta=st0?`<p class="meta small">Turn ${st0.turnNo} · seed ${st0.seed||"?"} · ${(S.meName||"You")} vs ${(S.oppName||"AI")}${(rdy0||dry0)?` · ${rdy0} ready${dry0?` · ${dry0} drying`:""}`:""}</p>`:"";
+  const ink0=me0?`${E.inkAvail(me0)}/${me0.ink.length} ink`:"";
+  const inkable0=me0?me0.hand.filter(h=>h.card.inkable).length:0;
+  const lore0=st0?`${st0.players[ME()].lore}–${st0.players[OP()].lore}`:"";
+  const meta=st0?`<p class="meta small pausemeta">Turn ${st0.turnNo} · ${lore0} lore · seed ${st0.seed||"?"} · ${(S.meName||"You")} vs ${(S.oppName||"AI")}${(rdy0||dry0)?` · ${rdy0} ready${dry0?` · ${dry0} drying`:""}`:""}${ink0?` · ${ink0}`:""}${inkable0?` · ${inkable0} inkable`:""}</p>`:"";
   sheet(`<h4>Game paused</h4>${meta}<button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
 const SAVEKEY="lorcanaSave.v1";
 function saveGameNow(){if(!S.st)return toast("No game");const fr=E.freezeState(S.st);if(!fr)return toast("Can't save a finished game");if(fr.error)return toast("Finish the current choice before saving");

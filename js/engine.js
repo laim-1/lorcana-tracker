@@ -1894,7 +1894,10 @@ function act0(st,a){
       else{p.play.push(x);if(c.entersExeIf&&c.entersExeIf(st,pi)||c.type==="item"&&st.players[opp(pi)].play.some(y=>y.card.oppItemsExerted)||(isChar(x)&&p.nextBG===st.turnNo&&(p.nextBG=-1,x.grants.push({kw:"bodyguard",until:"srcStart",src:pi}),true))||c.kw.rush&&st.players[opp(pi)].play.some(y=>y.card.rushExerted&&y.exerted)||c.entersExerted||a.exerted&&c.kw.bodyguard||a.fromGy&&p.play.some(y=>y.card.gyPlay))x.exerted=true;log(st,`${p.name} plays ${c.full}.`);if(c.enterDamage)damage(st,x,c.enterDamage)}
       resolve(st,pi,c.onPlay,a.target,x);yp(st,pi,x);if(st._paid!=null&&st._paid<=2){st._ctx=x;fire(st,pi,"onPaySmall",x)}if(c.type==="character")fire(st,opp(pi),"onOppPlayChar",x);break}
     case"quest":{x.exerted=true;p.questT=st.turnNo;if(x.card.onExertYT)trig(st,pi,x.card.onExertYT,x);if(x.card.actTax)payInk(p,1);const lv=loreOf(x);ev(st,{t:"quest",pi,uid:x.uid,n:lv});log(st,`${x.card.full} quests for ${lv} lore.`);if(p.willowT===st.turnNo)draw(st,pi,1);fire(st,opp(pi),"onOppQuest",x);
-      if(x.card.kw.support){const others=p.play.filter(c=>isChar(c)&&c!==x);if(others.length){PKs(st,pi,(a.support!=null&&others.find(o=>o.uid===a.support))||others,(t)=>{t.tStr+=strOf(x);log(st,`Support: ${t.card.name} gets +${strOf(x)} strength.`);fire(st,pi,"onSupportChosen",t)},{ai:srt((a,b)=>b.card.lore-a.card.lore),prompt:"choose a card"});}}
+      if(x.card.kw.support){const others=p.play.filter(c=>isChar(c)&&c!==x);if(others.length){const bonus=strOf(x);const oPlay=st.players[opp(pi)].play.filter(y=>isChar(y)&&y.exerted);
+        const supScore=t=>{let s=loreOf(t)*2+strOf(t);for(const d of oPlay){const base=d.damage+Math.max(0,strOf(t)+(K(t,"challenger")||0)-(K(d,"resist")||0));const withB=d.damage+Math.max(0,strOf(t)+bonus+(K(t,"challenger")||0)-(K(d,"resist")||0));
+          if(withB>=wilOf(d)&&base<wilOf(d))s+=40+loreOf(d)*6;else if(withB>=wilOf(d))s+=8+loreOf(d)*2}return s};
+        PKs(st,pi,(a.support!=null&&others.find(o=>o.uid===a.support))||others,(t)=>{t.tStr+=strOf(x);log(st,`Support: ${t.card.name} gets +${strOf(x)} strength.`);fire(st,pi,"onSupportChosen",t)},{ai:srt((a,b)=>supScore(b)-supScore(a)),prompt:"choose a card"});}}
       gain(st,pi,lv);if(p.questedT!==st.turnNo){p.questedT=st.turnNo;p.questedBy=x.uid}else p.questedBy=-1;for(const h of (p.hooks||[]))if(h.on==='quest'&&st.winner==null)trig(st,pi,h.eff,x);if(st.winner==null)for(const y of [...p.play])for(const h of y.card.onAllyQuest){if(y===x&&!h.cls)continue;if(h.cls&&!x.card.cls.some(k=>k.toLowerCase()===h.cls))continue;if(h.test&&!h.test(x,y,st))continue;if(h.once){if(y.onceT===st.turnNo)continue;y.onceT=st.turnNo}trig(st,pi,h.eff,y)}
       if(x.at!=null&&st.winner==null){const L=p.play.find(y=>y.uid===x.at);if(L&&L.card.onQuestHere){st._ctx=x;trig(st,pi,L.card.onQuestHere,L)}}
       if(st.winner==null){if(a.target!=null)resolve(st,pi,x.card.onQuest,a.target,x);else trig(st,pi,x.card.onQuest,x)}break}
@@ -2069,6 +2072,8 @@ function scoreAction(st,a){
         if(kills&&!dies&&dl<=1&&loreOf(x)>=2&&p.lore>=16)v-=(LEVEL==="hard"?10:3)}
       // When behind / close race, prefer removing their lore over chipping low-lore
       if((p.lore+2<=o.lore||o.lore>=14)&&kills&&dl>=2)v+=(LEVEL==="hard"?12:4);
+      // Rush: value using the free challenge the turn played on clean kills
+      if(K(x,"rush")&&!dry(st,x)&&kills)v+=(LEVEL==="hard"?14:5)+(dies?0:6)+(dl>=2?6:0);
       if(PERS==="aggro")v+=15;else if(PERS==="control")v+=6;else if(PERS==="quester")v-=10;
       if(K(x,'reckless'))v+=50;return v>0?70+v:(K(x,'reckless')?10+v/100:-1)}
     case"quest":{let qs=50+loreOf(x)*6+(p.lore+loreOf(x)>=20?500:0)+(CTX.lethal?900:0)+(PERS==="quester"?12:PERS==="aggro"?-5:0);

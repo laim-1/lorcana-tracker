@@ -668,4 +668,34 @@ t("ai: does not use ability that exerts lethal quester", () => {
   assert.equal(a.t, "quest", "quest lethal, not act: " + JSON.stringify(a));
 });
 
+
+t("ai: Support buffs the character that can clean-kill", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 0);
+  const supporter = put(st, 0, C({ lore: 1, strength: 3, willpower: 4, cost: 2, text: "Support" }));
+  supporter.card.kw.support = true;
+  supporter.playedOn = st.turnNo - 1;
+  const killer = put(st, 0, C({ lore: 1, strength: 2, willpower: 5, cost: 3 })); // 2+3=5 can kill
+  killer.playedOn = st.turnNo - 1;
+  const highLore = put(st, 0, C({ lore: 3, strength: 1, willpower: 4, cost: 3 })); // lore bait, can't kill with +3
+  highLore.playedOn = st.turnNo - 1;
+  const def = put(st, 1, C({ lore: 2, strength: 1, willpower: 5, cost: 3 }));
+  def.exerted = true;
+  // Quest with supporter → Support pick should be killer not highLore
+  E.act(st, { t: "quest", uid: supporter.uid });
+  // Pending may be Support choice — if AI resolved in act for non-human, check killer has tStr
+  // human seats: st.human is [false,false] so AI picks immediately
+  assert.ok(killer.tStr >= 3 || (st.pending && st.pending.pi === 0), "support applied or pending: tStr=" + killer.tStr + " pending=" + !!st.pending);
+  if (!st.pending) {
+    assert.ok(killer.tStr >= 3, "killer got support strength");
+    assert.ok(!(highLore.tStr > 0) || killer.tStr >= highLore.tStr, "prefer kill enabler over pure lore");
+  } else {
+    // Force AI choose on pending if somehow pending
+    const a = E.aiChoose(st, "hard");
+    if (a) E.act(st, a);
+    assert.ok(killer.tStr >= 3, "after pick killer buffed");
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

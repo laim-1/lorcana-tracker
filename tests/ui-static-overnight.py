@@ -44,6 +44,7 @@ checks = [
     ("emptychip", "emptychip" in play),
     ("hints on banner", "hints on" in play),
     ("handoff hand", "in hand" in play and "inkable" in play),
+    ("pausemeta", "pausemeta" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

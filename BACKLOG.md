@@ -62,20 +62,20 @@
 58. [x] Deck validity badge with reasons
 59. [x] Only-owned-cards toggle
 ## Tracker
-60. Wishlist with total cost
-61. Missing-cards list per set with price to complete
-62. Set completion stats and badges
-63. Collection value history chart
-64. Biggest price movers in your collection
-65. Search across all sets
-66. Card detail page with price and TCGplayer link
-67. Enchanted/foil-only collecting view
-68. Quick add mode (rapid +1 taps)
-69. Bulk mark a whole set owned
-70. Backup reminder for export
-71. Share collection summary image
-72. Duplicates/trade list view
-73. Filter by price range
+60. [x] Wishlist with total cost
+61. [x] Missing-cards list per set with price to complete
+62. [x] Set completion stats and badges
+63. [x] Collection value history chart
+64. [x] Biggest price movers in your collection
+65. [x] Search across all sets
+66. [x] Card detail page with price and TCGplayer link
+67. [x] Enchanted/foil-only collecting view
+68. [x] Quick add mode (rapid +1 taps)
+69. [x] Bulk mark a whole set owned
+70. [x] Backup reminder for export
+71. [x] Share collection summary image
+72. [x] Duplicates/trade list view
+73. [x] Filter by price range
 ## Polish
-74. App icon and add-to-home-screen support
-75. Smoother screen transitions and loading skeletons
+74. [x] App icon and add-to-home-screen support
+75. [x] Smoother screen transitions and loading skeletons

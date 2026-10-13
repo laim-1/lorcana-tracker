@@ -165,3 +165,23 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Tests: `node tests/engine.test.js` 101 passed; `tests/ui-batch7.py` passed.
 - Commit: `7f69e55` (version `20261013092637`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `e0ee254` status built; version.json `20261013092637` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 8 (~2:35 AM) - tracker #60–#75
+- #60 Wishlist with running TCGplayer total (add/remove from card zoom).
+- #61 Missing-cards list per set with price to complete.
+- #62 Set completion badges (Halfway / Almost / Complete) + home done count.
+- #63 Daily collection value history chart.
+- #64 Biggest price movers vs last stored price snap.
+- #65 Search across all sets from home.
+- #66 Card zoom detail: prices + TCGplayer open action.
+- #67 Enchanted/foil collecting filters.
+- #68 Quick add mode on set view.
+- #69 Bulk mark whole set owned.
+- #70 Backup reminder for JSON export.
+- #71 Share collection summary PNG.
+- #72 Duplicates/trade list (extras beyond 1N+1F).
+- #73 Price-range filter.
+- #74 App icon + web manifest / A2HS meta.
+- #75 Enter transitions + loading skeletons.
+- Tests: tracker smoke (home actions + global search) passed; engine 101 still green from batch 7.
+- Commit: `6a602c7` (version `20261013093050`). Live: https://laim-1.github.io/lorcana-tracker/

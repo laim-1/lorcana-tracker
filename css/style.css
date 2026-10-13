@@ -570,3 +570,25 @@ header + main#app{padding-top:12px}
 .bimp{width:100%;min-height:180px;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:600;line-height:1.4}
 .pin.sm{min-height:44px;padding:0 12px;font-size:14px}
 code{font-size:12px;color:#f5c955}
+
+/* Tracker batch 8 */
+.hactions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px}
+.hact{min-height:44px;border-radius:14px;border:2px solid #5a4ea0;background:#180f36;color:#f5c955;font-weight:900;font-size:14px}
+.wishbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border-radius:14px;border:2px solid rgba(245,201,85,.45);background:linear-gradient(90deg,#3a2d7a,#241d4a);font-weight:800}
+.wishbar b{color:#f5c955}.wishbar span{color:#c6bde6;font-size:13px}
+.setbadge{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:900;margin:0 6px}
+.setbadge.done{background:#4fd18b;color:#102418}.setbadge.hot{background:#f5c955;color:#24180a}.setbadge.mid{background:#5a4ea0;color:#fff}
+.miss{display:block;font-size:12px;font-weight:800;color:#ffb4c0;margin-top:2px}.miss.ok{color:#4fd18b}
+.settools{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.qabar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:#123528;border:2px solid #4fd18b;margin:8px 0;font-weight:800}
+.qabar b{color:#4fd18b}.qabar span{flex:1;font-size:12px;color:#c6ffe0}
+.tag.wish{background:#f5c955;color:#24180a}
+.vchart{display:flex;align-items:flex-end;gap:4px;height:140px;overflow-x:auto;padding:8px 4px;margin:8px 0 12px}
+.vbar{flex:0 0 28px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+.vbar i{display:block;width:18px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#f5c955,#7b5cff)}
+.vbar small{font-size:9px;font-weight:800;color:#c6bde6}
+.skel{display:grid;gap:10px;margin:12px 0}.skel>div{height:72px;border-radius:14px;background:linear-gradient(90deg,#1a1438,#2a2158,#1a1438);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+body.enter-anim #app{animation:fadeup .28s ease-out}
+@keyframes fadeup{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:none}}
+.histrow .opt.sm{margin-top:6px}

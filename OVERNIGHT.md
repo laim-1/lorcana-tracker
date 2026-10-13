@@ -254,3 +254,7 @@ easy           -      5%      8%
 normal       83%       -     35%
 hard         93%     63%       -
 ```
+
+## Batch 18 (~2:50 AM) - sample hand inkable/cost
+- Sample opening hand shows inkable count and total ink cost; inkable drop badge on tiles.
+- Commit: `a6f4dff` (version `20261013094602`). Live: https://laim-1.github.io/lorcana-tracker/

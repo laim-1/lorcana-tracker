@@ -456,3 +456,13 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Live: https://laim-1.github.io/lorcana-tracker/ version `20261013110021`.
 - No breakage observed; Pages builds waited between pushes when needed.
 
+## Batch 49 (~5:03 AM) - AI Shift/sing/mulligan/move + Hard ladder
+- Shift vs full-cost: prefer Shift when dry / lore-up / ink-saved; penalize full play when Shift legal (Hard-weighted).
+- Singing: prefer low-lore singers; never sing away lethal; threat boost for removal songs; prefer sing over pay.
+- Mulligan: always dump 7+; dump expensive/non-inkable when lacking cheap inkables; keep curve when already good.
+- Move: race onto lore-buff locations, protect fragile, claim empty valuable locs (Hard-weighted).
+- hardChoose/hardAdj bonuses for Shift/sing/move; Normal shortlist top-2 + noise 16 to restore ladder.
+- Tests: Shift preference, low-lore singer, mulligan dump, lore-buff move. Engine **109** passed.
+- Hard vs Normal (40g): **Hard 60%**, Normal 35% (0 stalls). Normal vs Easy (24g): **Normal 79%**, Easy 13%.
+- Commit: `8a42031` (version `20261013120229`). Live verified Pages built; version.json `20261013120229`.
+

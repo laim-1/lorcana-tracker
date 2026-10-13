@@ -47,6 +47,7 @@ checks = [
     ("pausemeta", "pausemeta" in play),
     ("questable lore", "questable" in play),
     ("Support tip", "Support:" in play),
+    ("sumcopy chars", "chars ·" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

@@ -915,12 +915,14 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"histclear":if(confirm("Clear all match history on this device?")){saveHist([]);toast("History cleared")}showHistory();break
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"sumcopy":{const st=S.st,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
-      const lines=[(S.pp?PN(st.winner)+" wins":(st.winner===0?"Victory":"Defeat"))+" · Turn "+st.turnNo,
-        PN(0)+": "+st.players[0].lore+" lore · played "+(s0.play||0)+" · quests "+(s0.quest||0)+" · challenges "+(s0.challenge||0),
-        PN(1)+": "+st.players[1].lore+" lore · played "+(s1.play||0)+" · quests "+(s1.quest||0)+" · challenges "+(s1.challenge||0),
-        (S.meName||"")+" vs "+(S.oppName||"AI")];
+      const ch0=st.players[0].play.filter(x=>x.card.type==="character").length,ch1=st.players[1].play.filter(x=>x.card.type==="character").length;
+      const d0=S.last&&S.last.me&&S.last.me.name,d1=S.last&&S.last.op&&S.last.op.name;
+      const lines=[(S.pp?PN(st.winner)+" wins":(st.winner===0?"Victory":"Defeat"))+" · Turn "+st.turnNo+(SET.level&&!S.pp&&!S.gold?" · "+String(SET.level).toUpperCase():""),
+        (d0&&d1?d0+" vs "+d1:(S.meName||"")+" vs "+(S.oppName||"AI")),
+        PN(0)+": "+st.players[0].lore+" lore · "+ch0+" chars · "+st.players[0].ink.length+" ink · played "+(s0.play||0)+" · quests "+(s0.quest||0)+" · challenges "+(s0.challenge||0),
+        PN(1)+": "+st.players[1].lore+" lore · "+ch1+" chars · "+st.players[1].ink.length+" ink · played "+(s1.play||0)+" · quests "+(s1.quest||0)+" · challenges "+(s1.challenge||0)];
       const t=lines.filter(Boolean).join("\n");
-      try{navigator.clipboard.writeText(t);toast("Match summary copied")}catch(e){sheet(`<h4>Match summary</h4><textarea class="pin bimp" rows="6" readonly>${esc(t)}</textarea><button class="wide" data-a="close">Close</button>`)}break}
+      try{navigator.clipboard.writeText(t);toast("Match summary copied")}catch(e){sheet(`<h4>Match summary</h4><textarea class="pin bimp" rows="8" readonly>${esc(t)}</textarea><button class="wide" data-a="close">Close</button>`)}break}
     case"again":startGame(true);break;case"againSwap":startGame(true,true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }
 }

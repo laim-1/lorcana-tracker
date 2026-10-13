@@ -523,3 +523,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Tutorial tip for Support; end-turn confirm notes remaining questable lore.
 - ui-static-overnight **41** checks. Engine **118** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `bb69f3d` (version `20261013122701`). Live verified Pages built; version.json `20261013122701`.
+
+## Batch 57 (~5:30 AM) - Evasive trades + richer match summary
+- Challenge: value Evasive-vs-Evasive clean kills (esp. lore threats); Hard-weighted.
+- Play: slight boost for Evasive when opponent has Evasive lore threats.
+- Copy match summary includes decks, difficulty, chars left, ink.
+- ui-static-overnight **42** checks. Engine **119** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.

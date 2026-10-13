@@ -336,9 +336,9 @@ const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 
 function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
   return`<div class="hud h${pos}">${pos===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
    <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?(S.gold?"GOLDFISH":("AI · "+LEVELS[SET.level].toUpperCase()+(SET.style!=="balanced"?" · "+STYLES[SET.style].toUpperCase():""))):"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
-   <div class="chips"><div class="chip ink pile" id="ink-${pos}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
-   <div class="chip pile" id="deck-${pos}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
-   <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pos}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
+   <div class="chips"><div class="chip ink pile ${p.ink.length?"":"emptychip"}" id="ink-${pos}" title="Ink ready / total" aria-label="${p.ink.length?ink+" of "+p.ink.length+" ink ready":"Inkwell empty"}">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
+   <div class="chip pile ${p.deck.length?"":"emptychip"}" id="deck-${pos}" title="Deck" aria-label="Deck ${p.deck.length} cards">${ICO.deck}<b>${p.deck.length}</b></div>
+   <button class="chip pile disc ${p.discard.length?"":"emptychip"}" data-a="disc" data-pi="${pi}" id="disc-${pos}" aria-label="Discard pile ${p.discard.length} cards">${ICO.disc}<b>${p.discard.length}</b></button>
    ${pos===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:`<div class="chip pile" id="inkable-0" title="Inkable cards in hand">${ICO.ink}<b>${p.hand.filter(h=>h.card.inkable).length}<small> inkable</small></b></div>`}</div>
   </div>`}
 function zone(pos){const pi=pos,p=S.st.players[SEAT(pos)],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
@@ -390,7 +390,7 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const meP=st.players[ME()];
   const dryN=my?meP.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)&&!K0(x,"rush")).length:0;
   const readyN=my?meP.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
-  const sub=my?(meP.inked?"Ink used":"Ink available")+(readyN?` · ${readyN} ready`:"")+(dryN?` · ${dryN} drying`:""):(S.gold?"Pass and draw only":"AI is playing");
+  const sub=my?(meP.inked?"Ink used":"Ink available")+(readyN?` · ${readyN} ready`:"")+(dryN?` · ${dryN} drying`:"")+(S.hint?" · hints on":""):(S.gold?"Pass and draw only":"AI is playing");
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
   return`<div class="banner ${my?"mine":"theirs"} ${near?"near":""}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
    <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" aria-label="${canEnd?"End turn":"Must challenge before ending"}" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking" aria-label="Opponent thinking"><i></i><i></i><i></i></span>`}</div></div>`}

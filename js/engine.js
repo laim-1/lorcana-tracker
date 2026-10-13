@@ -1989,7 +1989,10 @@ function scoreAction(st,a){
       // Prefer inking junk over keeping a dead song we cannot cast soon
       if((c.type==="song"||c.type==="action")&&effVal(st,pi,c.onPlay,null)<=0)s+=12;
       return s}
-    case"play":{const c=x.card,effs=a.mode!=null?c.onPlay.find(e=>e.k==="modal").opts[a.mode]:c.onPlay;let s=100+c.cost*4+effVal(st,pi,effs,a.target)+(a.exerted?(p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6):0)-(a.decline?3:0);
+    case"play":{const c=x.card,effs=a.mode!=null?c.onPlay.find(e=>e.k==="modal").opts[a.mode]:c.onPlay;
+      let exertBonus=0;if(a.exerted&&c.kw.bodyguard){const H=LEVEL==="hard";const others=p.play.filter(y=>isChar(y)&&loreOf(y)>=2).length;const threats=o.play.filter(y=>isChar(y)&&!y.exerted&&strOf(y)>=2).length;
+        exertBonus=others||threats?(H?18:6)+others*4+threats*3:-8}else if(a.exerted)exertBonus=p.play.some(y=>isChar(y)&&loreOf(y)>=2)?3:-6;
+      let s=100+c.cost*4+effVal(st,pi,effs,a.target)+exertBonus-(a.decline?3:0);
       if(c.type==="character")s+=c.lore*3;if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
       if(a.shift!=null){const base=find(st,a.shift)?.inst;const loreGain=c.lore-(base?loreOf(base):0);const sc=base?shiftCost(st,pi,c,base):c.cost;const H=LEVEL==="hard";
@@ -2172,7 +2175,10 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
     if(a.shift!=null){const base=find(st,a.shift)?.inst;let b=16+c.lore*2+(c.lore-(base?loreOf(base):0))*5;
       if(base&&dry(st,base)&&!base.exerted)b+=14;return b}
     if(c.type==="character"&&c.kw.shift!=null&&legalActions(st).some(b=>b.t==="play"&&b.uid===a.uid&&b.shift!=null))return -18;
-    if(c.type==="character"&&c.kw.bodyguard&&op.play.some(y=>isChar(y)&&strOf(y)>=3))return 8;
+    if(c.type==="character"&&c.kw.bodyguard){let b=op.play.some(y=>isChar(y)&&strOf(y)>=3)?10:4;
+      if(a.exerted&&(me.play.some(y=>isChar(y)&&loreOf(y)>=2)||op.play.some(y=>isChar(y)&&!y.exerted&&strOf(y)>=2)))b+=14;
+      if(!a.exerted&&legalActions(st).some(x=>x.t==="play"&&x.uid===a.uid&&x.exerted)&&op.play.some(y=>isChar(y)&&!y.exerted&&strOf(y)>=2))b-=10;
+      return b}
     if(c.type==="character"&&c.kw.ward)return 4;
     if(c.type==="location")return 8+locPlayValue(c)/4;
     if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;

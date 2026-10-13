@@ -633,4 +633,20 @@ t("ai: when behind, still removes high-lore threat", () => {
   assert.ok(a.t === "challenge" && a.target === th.uid, "remove lore threat when behind: " + JSON.stringify(a));
 });
 
+
+t("ai: prefers Bodyguard enter exerted when protecting lore", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 5);
+  put(st, 0, C({ lore: 3, strength: 2, willpower: 4, cost: 3 })); // lore to protect
+  put(st, 1, C({ lore: 1, strength: 4, willpower: 4, cost: 3 })); // threat (ready)
+  const bg = hand(st, 0, C({ lore: 1, strength: 2, willpower: 5, cost: 3, text: "Bodyguard" }));
+  bg.card.kw.bodyguard = true;
+  const acts = E.legalActions(st).filter(a => a.t === "play" && a.uid === bg.uid);
+  assert.ok(acts.some(a => a.exerted), "exerted Bodyguard legal");
+  assert.ok(acts.some(a => !a.exerted), "ready Bodyguard legal");
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === bg.uid && a.exerted, "enter exerted: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

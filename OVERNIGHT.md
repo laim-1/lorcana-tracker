@@ -488,3 +488,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Quest scoring/hardAdj: push lore when ahead; Hard weighted.
 - Tests: ahead→quest not bad challenge; behind→remove high-lore threat. Engine **114** passed.
 - Hard vs Normal (40g): **Hard 65%**, Normal 25%. Normal vs Easy (24g): **Normal 75%**.
+
+- Commit: `1e9521b` (version `20261013121404`). Live verified Pages built; version.json `20261013121404`.
+
+## Batch 53 (~5:17 AM) - Bodyguard enter-exerted + empty chips / hints-on
+- AI prefers Bodyguard entering exerted when protecting lore-2+ or facing ready threats; penalize ready entry when exerted option exists.
+- HUD: empty ink/deck/discard get `.emptychip` + clearer aria-labels.
+- Banner subline shows "hints on" while hint mode is active.
+- ui-static-overnight **37** checks. Engine **115** passed.
+- Hard vs Normal (40g): **Hard 70%**, Normal 30%. Normal vs Easy (24g): **Normal 75%**.

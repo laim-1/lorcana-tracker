@@ -15,7 +15,7 @@ DETECT = r"""(name)=>{const out=[];const vis=e=>{if(!e.isConnected)return false;
  const I=[...root.querySelectorAll('button,a[href],input,select,[data-a]')].filter(vis).filter(e=>!modal||modal.contains(e));
  const lab=e=>(e.tagName.toLowerCase()+(e.id?'#'+e.id:'')+(e.dataset.a?'[data-a='+e.dataset.a+']':'')+'.'+[...e.classList].slice(0,2).join('.')+' "'+(e.innerText||e.value||e.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim().slice(0,18)+'"');
  const stk=e=>{for(let x=e;x&&x!==document.body;x=x.parentElement){const p=getComputedStyle(x).position;if(p==='sticky'||p==='fixed')return x!==root||root.id!=='play'?x:null}return null};
- const fan=e=>e.closest('.hand2,.fan,.stack,.ustack,.pile,.items.col');
+ const fan=e=>e.closest('.hand2,.fan,.stack,.ustack,.pile,.items.col,.pkcw');
  for(let i=0;i<I.length;i++)for(let j=i+1;j<I.length;j++){const a=I[i],b=I[j];if(a.contains(b)||b.contains(a))continue;if(!!stk(a)!==!!stk(b))continue;if(fan(a)&&fan(a)===fan(b))continue;
   const A=a.getBoundingClientRect(),B=b.getBoundingClientRect();const w=Math.min(A.right,B.right)-Math.max(A.left,B.left),h=Math.min(A.bottom,B.bottom)-Math.max(A.top,B.top);
   if(w>3&&h>3&&w*h>0.12*Math.min(A.width*A.height,B.width*B.height))out.push('OVERLAP '+lab(a)+' <> '+lab(b)+' '+Math.round(w)+'x'+Math.round(h))}
@@ -31,6 +31,7 @@ DETECT = r"""(name)=>{const out=[];const vis=e=>{if(!e.isConnected)return false;
   if(s.backgroundImage==='none'&&bg){const L1=lum(s.color),L2=lum(bg);if(L1!=null&&L2!=null){const cr=(Math.max(L1,L2)+.05)/(Math.min(L1,L2)+.05);if(cr<2.5)out.push('LOW-CONTRAST '+lab(e)+' '+cr.toFixed(1))}}
   if(s.backgroundImage!=='none'&&/gradient/.test(s.backgroundImage)&&lum(s.color)<.05&&/rgba\([^)]*0\.[0-3]\d*\)/.test(s.backgroundImage))out.push('LOW-CONTRAST '+lab(e)+' dark text on translucent gradient')}
  const fg=document.getElementById('fx-fg');if(fg){const zf=+getComputedStyle(fg).zIndex;for(const m of document.querySelectorAll('.modal,.sheet,.pk,.zoom')){if(vis(m)&&z(m)>=0&&zf>=z(m))out.push('FX-ABOVE-MODAL '+lab(m))}}
+ for(const r of root.querySelectorAll('.row.chars')){const R=r.getBoundingClientRect();if(!vis(r))continue;const cs=getComputedStyle(r);for(const t of r.querySelectorAll('.ct')){const T=t.getBoundingClientRect();if(T.top<R.top-1||T.bottom>R.bottom+1){out.push('ROW-CLIPS-CARD '+r.className+' '+Math.round(T.top)+'..'+Math.round(T.bottom)+' in '+Math.round(R.top)+'..'+Math.round(R.bottom));break}}}
  if(document.documentElement.scrollWidth>innerWidth+1)out.push('PAGE-HSCROLL '+document.documentElement.scrollWidth);
  const b=getComputedStyle(document.body);if((b.webkitTouchCallout||'none')!=='none')out.push('CALLOUT body touch-callout='+b.webkitTouchCallout);
  if(!/none/.test(b.webkitUserSelect||b.userSelect))out.push('SELECT body user-select='+(b.webkitUserSelect||b.userSelect));

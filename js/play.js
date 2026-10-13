@@ -48,13 +48,14 @@ function renderMenu(){
   const own=deckFromSel("own"),cus=decks();
   if(!/^(s\d+|own|c\d+)$/.test(String(S.deck))||(S.deck[0]==="c"&&!cus[+S.deck.slice(1)])||(S.deck[0]==="s"&&!STARTERS[+S.deck.slice(1)]))S.deck="s0";
   const opt=(id,name,sub,dis)=>`<button class="dopt ${S.deck===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
-  root.innerHTML=`<div class="phead">`+bar("Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
-  <h4>Your deck</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
+  const PPm=S.mode==="pp";root.innerHTML=`<div class="phead">`+bar(PPm?"Pass and play":"Play vs AI")+`<div class="startbar top"><button class="wide primary" data-a="start">Start game</button></div></div><div class="pbody">
+  <h4>Mode</h4><div class="opts"><button class="opt ${!PPm?"on":""}" data-a="mode" data-v="ai">Vs AI</button><button class="opt ${PPm?"on":""}" data-a="mode" data-v="pp">Pass and play (2 players)</button></div>
+  <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
-  <h4>Opponent</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
-  <h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
+  <h4>${PPm?"Player 2 deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
+  ${PPm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>`}
   <button class="wide" data-a="settings">Settings</button>
   <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
 }
@@ -87,7 +88,7 @@ function cardSheet(c,extra){
   <div class="status s-${c.status}">${STATUS_LABEL[c.status]}</div>${c.unsupported.length?`<div class="meta small">Not simulated: ${c.unsupported.map(u=>esc(u.replace(/\([^)]*\)/g,"").slice(0,90))).join(" | ")}</div>`:""}${extra||""}`;
 }
 function sheet(html){$("#sheet-body").innerHTML=html;$("#scrim").hidden=false;$("#sheet").classList.add("open");$("#sheet").setAttribute("aria-hidden","false");$("#sheet-body").onclick=onClick}
-function closeSheet(){if(S.paused&&S.screen==="board"){S.paused=false;if(S.st&&S.st.active===1)setTimeout(aiLoop,50)}$("#sheet").classList.remove("open");$("#scrim").hidden=true;$("#sheet").setAttribute("aria-hidden","true")}
+function closeSheet(){if(S.paused&&S.screen==="board"){S.paused=false;if(aiTurn())setTimeout(aiLoop,50)}$("#sheet").classList.remove("open");$("#scrim").hidden=true;$("#sheet").setAttribute("aria-hidden","true")}
 function badd(id,d){const c=byId.get(id),max=/up to 99 copies/.test(c.text)?99:4;
       if(d>0){if(fullCount(c)>=max){builderSheet(id);return}const inks=new Set(bInks());c.inks.forEach(i=>inks.add(i));if(inks.size>2){alert("A deck can use at most 2 inks.");builderSheet(id);return}}
       const k=Math.max(0,(S.build.cards[id]||0)+d);if(k)S.build.cards[id]=k;else delete S.build.cards[id];renderBuilder();builderSheet(id)}
@@ -107,24 +108,31 @@ function startGame(rematch){
   if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
   S.last={me,op};S.oppName=op.name;S.meName=me.name;
-  S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,false]});
-  E.mulligan(S.st,1,E.aiMulligan(S.st,1));S.mullSel=new Set();S.sel=null;S.tm=null;S.screen="coin";render();
+  S.pp=S.mode==="pp";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;
+  S.st=E.newGame({decks:[me.cards,op.cards],names:S.pp?S.names:["You","AI"],seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,S.pp]});
+  if(!S.pp)E.mulligan(S.st,1,E.aiMulligan(S.st,1));S.mullSel=new Set();S.sel=null;S.tm=null;S.screen="coin";render();
 }
-function renderCoin(){const f=S.st.first===0;
-  root.innerHTML=`<div class="coinwrap"><div class="coin spin"><div class="cface">${f?"YOU":"AI"}</div></div><h2 class="cres hidden">${f?"You go first":"AI goes first"}</h2>
-  <p class="meta cres hidden">${f?"The first player skips their draw on turn 1.":"You will draw a card on your first turn."}</p><button class="wide primary cres hidden" data-a="tomull">Continue</button></div>`;
+function renderCoin(){const f=S.st.first===0,fn=S.st.first;
+  root.innerHTML=`<div class="coinwrap"><div class="coin spin"><div class="cface">${S.pp?"P"+(fn+1):f?"YOU":"AI"}</div></div><h2 class="cres hidden">${S.pp?esc(PN(fn))+" goes first":f?"You go first":"AI goes first"}</h2>
+  <p class="meta cres hidden">${S.pp?"The first player skips their draw on turn 1. Each player now picks their opening hand in private.":f?"The first player skips their draw on turn 1.":"You will draw a card on your first turn."}</p><button class="wide primary cres hidden" data-a="tomull">Continue</button></div>`;
   setTimeout(()=>root.querySelectorAll(".cres").forEach(x=>x.classList.remove("hidden")),1300);sfx("flip")}
-function renderMull(){const p=S.st.players[0],n=S.mullSel.size;
-  root.innerHTML=bar("Opening hand")+`<div class="pbody"><p class="meta">Tap any cards you want to put back. They go to the bottom of your deck, you draw the same number, then your deck is shuffled.</p>
+function renderMull(){const ms=S.pp?S.mullSeat:0,p=S.st.players[ms],n=S.mullSel.size;
+  if(S.pp&&S.shown!==ms){root.innerHTML=handoff(ms,"Opening hand");return}
+  root.innerHTML=bar(S.pp?PN(ms)+": opening hand":"Opening hand")+`<div class="pbody"><p class="meta">Tap any cards you want to put back. They go to the bottom of your deck, you draw the same number, then your deck is shuffled.</p>
   <div class="bgrid">${p.hand.map(h=>`<button class="bcard ${S.mullSel.has(h.uid)?"out":""}" data-a="mtog" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${h.card.cost}</span>${S.mullSel.has(h.uid)?`<span class="sb van">PUT BACK</span>`:""}</button>`).join("")}</div>
   <button class="wide primary" data-a="mdone">${n?"Put back "+n+" and draw "+n:"Keep this hand"}</button></div>`}
 
 /* ---- board ---- */
-const myTurn=()=>S.st&&S.st.active===0&&S.st.winner==null&&!S.st.pending;
+// Viewer seat: 0 vs the AI; in pass-and-play it follows the active player (or whoever must answer a pending choice).
+const ME=()=>!S.pp||!S.st?0:(S.st.pending&&S.st.winner==null?S.st.pending.pi:S.st.active),OP=()=>1-ME();
+const SEAT=pos=>pos===0?ME():OP(); // board position (0 bottom, 1 top) -> seat
+const aiTurn=()=>!S.pp&&S.st&&S.st.active===1&&S.st.winner==null;
+const PN=i=>S.pp?(S.names||["Player 1","Player 2"])[i]:i===0?"You":"AI";
+const myTurn=()=>S.st&&S.st.active===ME()&&S.st.winner==null&&!S.st.pending;
 function legalFor(uid){return myTurn()?E.legalActions(S.st).filter(a=>a.uid===uid):[]}
 function canAct(x){return legalFor(x.uid).some(a=>a.t!=="ink")}
-function cardTile(x,pi,size){const c=x.card,st=S.st,tm=S.tm;
-  const isT=tm&&tm.targets.has(x.uid),sel=S.sel===x.uid,glow=pi===0&&!tm&&myTurn()&&canAct(x);
+function cardTile(x,pos,size){const pi=SEAT(pos);const c=x.card,st=S.st,tm=S.tm;
+  const isT=tm&&tm.targets.has(x.uid),sel=S.sel===x.uid,glow=pi===ME()&&!tm&&myTurn()&&canAct(x);
   const drying=c.type==="character"&&!E.dry(st,x)&&!K0(x,"rush");
   return`<button class="ct ${size} ${x.exerted?"ex":""} ${sel?"sel":""} ${isT?"tgt":""} ${glow?"glow":""} ${tm&&!isT?"dim":""}" data-a="tile" data-uid="${x.uid}">
    <span class="art"><img src="${esc(c.img)}" alt="${esc(c.full)}" loading="lazy"></span>
@@ -138,23 +146,23 @@ const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 
  deck:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 22h9a2 2 0 0 0 2-2V7" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
  disc:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
  hand:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="9" height="13" rx="2" transform="rotate(-12 7 12)" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="11" y="5" width="9" height="13" rx="2" transform="rotate(10 15 11)" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>'};
-function hud(pi){const p=S.st.players[pi],ink=E.inkAvail(p);
-  return`<div class="hud h${pi}">${pi===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
-   <div class="loretrk" id="lore-${pi}"><b>${p.lore}</b><div><span>${pi===1?"AI":"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
-   <div class="chips"><div class="chip ink pile" id="ink-${pi}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
-   <div class="chip pile" id="deck-${pi}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
-   <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pi}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
-   ${pi===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:""}</div>
+function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
+  return`<div class="hud h${pos}">${pos===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
+   <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?"AI":"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
+   <div class="chips"><div class="chip ink pile" id="ink-${pos}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
+   <div class="chip pile" id="deck-${pos}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
+   <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pos}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
+   ${pos===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:""}</div>
   </div>`}
-function zone(pi){const p=S.st.players[pi],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
+function zone(pos){const pi=pos,p=S.st.players[SEAT(pos)],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
   return`<div class="zone z${pi}">${pi===0&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}
-   <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||`<span class="rowlbl">${pi===0?"Your characters":"Opponent characters"}</span>`}</div>
+   <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||`<span class="rowlbl">${pi===0?(S.pp?esc(PN(ME()))+"'s characters":"Your characters"):(S.pp?esc(PN(OP()))+"'s characters":"Opponent characters")}</span>`}</div>
    ${pi===1&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}</div>`}
 function fitBoard(again){const gb=root.querySelector(".gb");if(!gb)return;
   const rowsC=[...gb.querySelectorAll(".row.chars")];rowsC.forEach(r=>{r.style.setProperty("--ch","40px");r.classList.remove("wrap")});void gb.offsetHeight; // measure free space, not current content
   if(!again)requestAnimationFrame(()=>fitBoard(true));
   for(const r of rowsC){const tiles=[...r.children].filter(x=>x.classList.contains("ct"));if(!tiles.length)continue;
-    const H=r.clientHeight-16,W=r.parentNode.clientWidth-20,g=8,n=tiles.length,exr=tiles.filter(t=>t.classList.contains("ex")).length/n,u=.716+(1-.716)*exr;
+    const cs0=getComputedStyle(r),H=r.clientHeight-(parseFloat(cs0.paddingTop)+parseFloat(cs0.paddingBottom)),W=r.clientWidth-(parseFloat(cs0.paddingLeft)+parseFloat(cs0.paddingRight))-2,g=8,n=tiles.length,exr=tiles.filter(t=>t.classList.contains("ex")).length/n,u=.716+(1-.716)*exr;
     let best=0,rows=1;for(let k=1;k<=3;k++){const per=Math.ceil(n/k),h=Math.min((H-g*(k-1))/k,(W-g*(per-1))/(per*u+.15),165);if(h>best+6){best=h;rows=k}}
     // Too tight to wrap legibly: one full-height row that scrolls sideways (wrapping rows would clip above the zone).
     let sc=false;if(best<70||rows>1&&rows*best+g*(rows-1)>H+1){const h1=Math.min(H,165);if(h1>=best||best<70){best=Math.max(56,h1);rows=1;sc=n*(best*u+g)>W+1}}
@@ -166,14 +174,14 @@ function fitBoard(again){const gb=root.querySelector(".gb");if(!gb)return;
 addEventListener("resize",()=>{if(S.screen==="board")fitBoard()});
 function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner over2">GAME OVER</div>`;
   if(S.tm)return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`;
-  const my=st.active===0;const canEnd=my&&!st.pending&&E.legalActions(st).some(a=>a.t==="end");
-  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${my?"YOUR TURN":"AI TURN"}</b><small>Turn ${st.turnNo} · ${my?(st.players[0].inked?"Ink used":"Ink available")+" · Main phase":"AI is playing"}</small></div>
-   ${my?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div>`}
+  const my=st.active===ME();const canEnd=my&&!st.pending&&E.legalActions(st).some(a=>a.t==="end");
+  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":"AI TURN"}</b><small>Turn ${st.turnNo} · ${my?(st.players[ME()].inked?"Ink used":"Ink available")+" · Main phase":"AI is playing"}</small></div>
+   ${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);
   const g=groupActs(acts);const btn=(k,l,cls="")=>`<button class="ab ${cls}" data-a="grp" data-k="${k}">${l}</button>`;
   let h="";
-  if(g.play)h+=btn("play",`Play <small>${E.costOf(S.st,0,f.inst.card)} ink</small>`,"pri");
+  if(g.play)h+=btn("play",`Play <small>${E.costOf(S.st,ME(),f.inst.card)} ink</small>`,"pri");
   if(g.quest)h+=btn("quest",`Quest <small>+${E.loreOf(f.inst)}</small>`,"pri");
   if(g.challenge)h+=btn("challenge","Challenge","red");
   if(g.shift)h+=btn("shift",`Shift <small>${f.inst.card.kw.shift} ink</small>`);
@@ -184,22 +192,23 @@ function actionBar(){
   return`<div class="abar">${h}</div>`}
 function groupActs(acts){const g={};for(const a of acts){let k=a.t;if(a.t==="play")k=a.shift!=null?"shift":a.singer!=null?"sing":a.singers?"singT":"play";(g[k]=g[k]||[]).push(a)}return g}
 function renderBoard(){
-  const st=S.st,me=st.players[0];
+  const st=S.st;if(S.pp&&st.winner==null&&S.shown!==ME()){clearFx();root.innerHTML=handoff(ME(),st.pending&&st.pending.pi!==st.active?"Your choice":"Your turn");return}
+  const me=st.players[ME()];
   const rects=snapRects();
   root.innerHTML=`<div class="gb">
    ${hud(1)}${zone(1)}
    ${banner()}
    ${zone(0)}${hud(0)}
    <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const pl=myTurn()&&!S.tm&&legalFor(h.uid).some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;
-     return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,0,h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
+     return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    <div id="toast" class="toast"></div></div>
-   ${st.pending&&st.pending.pi===0&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  fitBoard();if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if(st.winner===0&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
+   ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
+  fitBoard();if(st.winner!=null){clearFx();st.events=[]}else animate(rects);if(window.FX)FX.mode("board");tickLore();if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0)&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
   if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
 }
 function discardPrompt(){return pickerSheet()}
 // One bottom-sheet picker for every choice the engine asks the player to make (st.pending with pi 0).
-function pickerSheet(){const st=S.st,P=st.pending,p=st.players[0];if(!P)return"";
+function pickerSheet(){const st=S.st,P=st.pending,p=st.players[ME()];if(!P)return"";
   const key=st.log.length+":"+(P.why||"")+":"+(P.src||"");if(S.pkKey!==key){S.pkKey=key;S.pkSel=[];S.pkMin=false}
   let head=P.src||"",prompt=P.why||"Make a choice",items=[],multi=false,btn="",sub="";
   const cardBtn=(c,attrs,cls,extra,i)=>`<span class="pkcw"><button class="pkc ${cls||""}" ${attrs} ${c.uid!=null?`data-zuid="${c.uid}"`:""}><img src="${esc(c.card?c.card.img:c.img)}" alt="${esc(c.card?c.card.full:c.full)}">${extra||""}</button>${i!=null?`<button class="pkz" data-a="pkz" data-i="${i}" aria-label="Zoom card"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>`:""}</span>`;
@@ -209,7 +218,7 @@ function pickerSheet(){const st=S.st,P=st.pending,p=st.players[0];if(!P)return""
       if(multi)btn=`<button class="wide primary" data-a="pkgo" ${S.pkSel.length>=min&&S.pkSel.length>0||min===0?"":"disabled"}>${S.pkSel.length?"Confirm":"Choose none"}</button>`;
       else if(min===0)btn=`<button class="wide" data-a="pkskip">Skip</button>`}
     items=P.opts.map((o,i)=>{const sel=S.pkSel.includes(i),dis=o.dis||P.reveal;
-      if(o.card){const own=o.owner!=null&&o.owner!==0?`<span class="pkown">Opponent</span>`:"";
+      if(o.card){const own=o.owner!=null&&o.owner!==ME()?`<span class="pkown">Opponent</span>`:"";
         return cardBtn(o,dis?"disabled":`data-a="pkpick" data-i="${i}"`,(sel?"sel ":"")+(o.dis?"out":""),`${own}${o.label?`<span class="pklab">${esc(o.label)}</span>`:""}`,i)}
       return`<button class="pkopt ${sel?"sel":""}" ${dis?"disabled":`data-a="pkpick" data-i="${i}"`}>${esc(o.label)}</button>`})}
   else if(P.kind==="dig"||P.kind==="free"){const cards=(P.kind==="dig"?P.top.map(u=>p.deck.find(d=>d.uid===u)):P.opts.map(u=>p.hand.find(h=>h.uid===u))).filter(Boolean);
@@ -223,10 +232,11 @@ function pickerSheet(){const st=S.st,P=st.pending,p=st.players[0];if(!P)return""
     <button class="pkbar" data-a="pkmin">${S.pkMin?"Show choice":"Hide to see the board"}</button>
     ${thumb}${head?`<div class="pksrc">${esc(head)}</div>`:""}<div class="pkq">${esc(prompt.charAt(0).toUpperCase()+prompt.slice(1))}</div>${sub?`<div class="pksub">${esc(sub)}</div>`:""}
     <div class="${lab?"pkopts":"pkgrid"}">${items.join("")}</div>${btn}</div>`}
-function endScreen(){const st=S.st,w=st.winner===0,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
+function handoff(seat,what){return`<div class="handoff"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2><p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p><button class="wide primary" data-a="handoff" data-v="${seat}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
+function endScreen(){const st=S.st,w=S.pp||st.winner===0,s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];
   const rowS=(l,a,b)=>`<tr><td>${l}</td><td>${a||0}</td><td>${b||0}</td></tr>`;
-  return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${w?"VICTORY":"DEFEAT"}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${w?"Victory":"Defeat"}</h2><p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
-  <table class="stt"><tr><th></th><th>You</th><th>AI</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
+  return`<div class="modal end ${w?"won":"lost"}"><div class="cine" aria-hidden="true"><div class="rays"></div><div class="ctitle">${w?"VICTORY":"DEFEAT"}</div></div><div class="mbox"><h2 class="${w?"win":"lose"}">${S.pp?esc(PN(st.winner))+" wins":w?"Victory":"Defeat"}</h2><p class="meta">${esc(st.log[st.log.length-1]||"")}</p>
+  <table class="stt"><tr><th></th><th>${esc(PN(0))}</th><th>${esc(PN(1))}</th></tr>${rowS("Lore",st.players[0].lore,st.players[1].lore)}${rowS("Cards played",s0.play,s1.play)}${rowS("Quests",s0.quest,s1.quest)}${rowS("Challenges",s0.challenge,s1.challenge)}${rowS("Characters banished",s0.banished,s1.banished)}<tr><td>Turns</td><td colspan="2">${st.turnNo}</td></tr></table>
   <button class="wide primary" data-a="again">Rematch</button><button class="wide" data-a="tomenu">Change decks</button></div></div>`}
 /* ---- animation & feedback ---- */
 function snapRects(){const m=new Map();root.querySelectorAll("[data-uid]").forEach(e=>{m.set(+e.dataset.uid,{r:e.getBoundingClientRect(),html:e.querySelector("img")?.outerHTML||"",ex:e.classList.contains("ex"),dmg:+(e.querySelector(".dtok")?.textContent||0),hand:e.classList.contains("hc")})});
@@ -271,10 +281,10 @@ function animate(old){const evs=(S.st.events||[]).splice(0);const slow=SET.speed
     if(e.t==="banish"){const o=old.get(e.uid);if(o&&window.FX)setTimeout(()=>FX.burst(o.r.left+o.r.width/2,o.r.top+o.r.height/2,{n:30,colors:[FX.COL.ink,"60,40,140"],speed:1.6,gravity:-.03,size:3,smoke:true}),350*slow);
       if(o&&!elOf(e.uid)){const to=document.getElementById("disc-"+e.pi)?.getBoundingClientRect();if(L){const g=ghost(o.r,o.html,"ban");g.animate([{opacity:1},{opacity:0}],{duration:400,fill:"forwards"})}else shatter(o,to,slow)}sfx("ban")}
     if(e.t==="draw"){const el=elOf(e.uid),dk=old.get("deck-"+e.pi)?.r||document.getElementById("deck-"+e.pi)?.getBoundingClientRect();
-      if(e.pi===0&&el){if(L||!dk){el.classList.add("drawn")}else{const to=el.getBoundingClientRect();el.style.visibility="hidden";const a=flyGhost({left:dk.left,top:dk.top,width:to.width*.45,height:to.height*.45},to,BACK,{dur:380*slow,t1:"rotateY(90deg)"});
+      if(e.pi===ME()&&el){if(L||!dk){el.classList.add("drawn")}else{const to=el.getBoundingClientRect();el.style.visibility="hidden";const a=flyGhost({left:dk.left,top:dk.top,width:to.width*.45,height:to.height*.45},to,BACK,{dur:380*slow,t1:"rotateY(90deg)"});
         a.onfinish=()=>{a.effect.target.remove();el.style.visibility="";el.animate([{transform:"rotateY(-90deg)"},{transform:"rotateY(0)"}],{duration:260*slow,easing:"ease-out"})}}}
       if(e.pi===1&&!L&&dk){const h=document.getElementById("hand-1")?.getBoundingClientRect();if(h){const a=flyGhost({left:dk.left,top:dk.top,width:28,height:39},{left:h.left,top:h.top,width:28,height:39},BACK,{dur:420*slow});a.onfinish=()=>a.effect.target.remove()}}}
-    if(e.t==="turn"){const b=root.querySelector(".banner");if(b){b.classList.remove("sweep");void b.offsetWidth;b.classList.add("sweep")}b&&b.animate([{transform:"scaleX(.6)",opacity:.2},{transform:"none",opacity:1}],{duration:400});turnSweep(e.pi===0);sfx("turn")}
+    if(e.t==="turn"){const b=root.querySelector(".banner");if(b){b.classList.remove("sweep");void b.offsetWidth;b.classList.add("sweep")}b&&b.animate([{transform:"scaleX(.6)",opacity:.2},{transform:"none",opacity:1}],{duration:400});turnSweep(e.pi===ME());sfx("turn")}
   }}
 let AC=null;function sfx(k){if(!SET.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();
   const f={play:440,ink:330,quest:660,hit:160,ban:110,turn:520,flip:600}[k]||400;o.frequency.value=f;o.type=k==="hit"||k==="ban"?"square":"sine";g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.25);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+.26)}catch(e){}}
@@ -282,7 +292,7 @@ function toast(msg){const t=document.getElementById("toast");if(!t)return;t.text
 function describe(a,st){const n=u=>E.find(st,u)?.inst.card.full||"";switch(a.t){case"ink":return"AI puts a card into its inkwell";case"play":return a.singer!=null?`AI sings ${n(a.uid)}`:a.shift!=null?`AI shifts ${n(a.uid)}`:`AI plays ${n(a.uid)}`;
   case"quest":return`AI quests with ${n(a.uid)}`;case"challenge":return`AI challenges ${n(a.target)} with ${n(a.uid)}`;case"move":return`AI moves ${n(a.uid)} to ${n(a.loc)}`;case"act":return`AI uses ${n(a.uid)}'s ability`;case"boost":return`AI boosts ${n(a.uid)}`;case"end":return"AI ends its turn";case"discard":return"AI discards a card"}return""}
 /* ---- player interaction ---- */
-function doAct(a){S.sel=null;S.tm=null;closeSheet();try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}renderBoard();if(S.st.active===1&&S.st.winner==null)aiLoop()}
+function doAct(a){S.sel=null;S.tm=null;closeSheet();try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}renderBoard();if(aiTurn()&&S.st.winner==null)aiLoop()}
 function startTargeting(list,key,label){
   if(list.length===1&&(list[0][key]==null)){doAct(list[0]);return}
   const withT=list.filter(a=>a[key]!=null);if(!withT.length){doAct(list[0]);return}
@@ -299,8 +309,8 @@ function runGroup(k){const acts=groupActs(legalFor(S.sel))[k];if(!acts)return;co
   if(k==="sing")return startTargeting(acts,"singer",`Choose a character to sing ${c.name}`);
   if(k==="singT")return doAct(acts[0]);
   if(k==="act"){const idx=[...new Set(acts.map(a=>a.i))];if(idx.length>1)return choose("Which ability?",idx.map(i=>({label:(E.actsOf(f.inst)[i].ink?E.actsOf(f.inst)[i].ink+" ink: ":"")+"Ability "+(i+1),fn:()=>effectFlow(acts.filter(a=>a.i===i),c)})));return effectFlow(acts,c)}
-  if(k==="quest"){if(c.kw.support&&S.st.players[0].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).length){const base=acts[0];
-      return startTargeting(S.st.players[0].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).map(x=>({...base,support:x.uid})),"support",`Support: choose a character to get +${E.strOf(f.inst)} strength`)}
+  if(k==="quest"){if(c.kw.support&&S.st.players[ME()].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).length){const base=acts[0];
+      return startTargeting(S.st.players[ME()].play.filter(x=>x.card.type==="character"&&x.uid!==S.sel).map(x=>({...base,support:x.uid})),"support",`Support: choose a character to get +${E.strOf(f.inst)} strength`)}
     return effectFlow(acts,c)}
   if(k==="play"){const ex=acts.filter(a=>a.exerted),rd=acts.filter(a=>!a.exerted);
     if(ex.length)return choose(`${c.name} has Bodyguard`,[{label:"Enter play ready",fn:()=>effectFlow(rd,c),cls:"primary"},{label:"Enter play exerted (protects your other characters)",fn:()=>effectFlow(ex,c)}]);
@@ -329,7 +339,7 @@ function instState(f){const x=f.inst,st=S.st,c=x.card,out=[];if(f.zone!=="play")
   return out}
 function zoom(uid,from,withActs){const f=E.find(S.st,uid);if(!f)return;const x=f.inst,c=x.card;
   from=from||elOf(uid);const live=f.zone==="play"?{str:E.strOf(x),wil:E.wilOf(x)-x.damage,lore:E.loreOf(x)}:null;
-  const actions=[];if(withActs){const g=groupActs(legalFor(uid));const L={play:["Play",`${E.costOf(S.st,0,c)} ink`,"pri"],quest:["Quest",`+${E.loreOf(x)}`,"pri"],challenge:["Challenge","","red"],shift:["Shift",`${c.kw.shift} ink`,""],sing:["Sing","",""],singT:["Sing together","",""],act:["Ability","",""],move:["Move","",""],boost:["Boost",String(c.kw.boost||""),""],ink:["Ink it","","ink"]};
+  const actions=[];if(withActs){const g=groupActs(legalFor(uid));const L={play:["Play",`${E.costOf(S.st,ME(),c)} ink`,"pri"],quest:["Quest",`+${E.loreOf(x)}`,"pri"],challenge:["Challenge","","red"],shift:["Shift",`${c.kw.shift} ink`,""],sing:["Sing","",""],singT:["Sing together","",""],act:["Ability","",""],move:["Move","",""],boost:["Boost",String(c.kw.boost||""),""],ink:["Ink it","","ink"]};
     for(const k of Object.keys(L))if(g[k])actions.push({key:k,label:L[k][0],sub:L[k][1],cls:L[k][2],fn:()=>{S.sel=uid;runGroup(k)}})}
   const extra=c.status&&!["full","keywords","plain"].includes(c.status)?`<div class="meta small">${esc(STATUS_LABEL[c.status]||"")}</div>`:"";
   zoomCard(c,from,{live,state:instState(f),actions,extra,note:withActs&&!actions.length?"":null});
@@ -340,14 +350,14 @@ function tapTile(uid){
   const st=S.st;
   if(S.tm){if(S.tm.targets.has(uid)){const a=S.tm.list.find(x=>x[S.tm.key]===uid);doAct(a)}else toast("Tap a glowing card, or Cancel");return}
   const f=E.find(st,uid);if(!f)return;
-  if(f.pi!==0||!myTurn()){zoom(uid);return}
+  if(f.pi!==ME()||!myTurn()){zoom(uid);return}
   S.sel=uid;renderBoard();zoom(uid,elOf(uid),true);
 }
-function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();if(S.st.active===1&&!S.st.pending&&S.st.winner==null)aiLoop()}
+function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();if(aiTurn()&&!S.st.pending&&S.st.winner==null)aiLoop()}
 function aiLoop(){if(S.busy)return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
-    if(st.pending&&st.pending.pi===0){S.busy=false;renderBoard();return} // wait for the player's discard
-    if(st.active!==1){S.busy=false;renderBoard();return}
+    if(st.pending&&st.human[st.pending.pi]){S.busy=false;renderBoard();return} // wait for the player's discard
+    if(S.pp||st.active!==1){S.busy=false;renderBoard();return}
     const a=E.aiChoose(st,SET.level);if(!a){S.busy=false;return}
     if(a.uid!=null){const el=elOf(a.uid);if(el)el.classList.add("aifocus")}
     toast(describe(a,st));
@@ -376,11 +386,13 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
     case"bsave":{const b2=S.build,n=bCount(),inks=bInks();if(n<60||inks.length>2){if(!confirm(`This deck has ${n} cards${inks.length>2?" and too many inks":""}. Save it anyway as a draft?`))return}
       const all=decks(),d={name:b2.name||"My deck",cards:b2.cards};if(b2.idx!=null)all[b2.idx]=d;else{all.push(d);b2.idx=all.length-1}saveDecks(all);S.deck="c"+b2.idx;S.screen="menu";render();break}
     case"mtog":{const u=+b.dataset.uid;S.mullSel.has(u)?S.mullSel.delete(u):S.mullSel.add(u);renderMull();break}
-    case"mdone":{const go=()=>{E.mulligan(S.st,0,[...S.mullSel]);S.st.events=[];S.screen="board";S.tipShown=false;renderBoard();if(S.st.active===1)aiLoop()};
+    case"mdone":{const go=()=>{E.mulligan(S.st,S.pp?S.mullSeat:0,[...S.mullSel]);S.mullSel=new Set();if(S.pp&&S.mullSeat===0){S.mullSeat=1;renderMull();return}S.st.events=[];S.screen="board";S.tipShown=false;renderBoard();if(aiTurn())aiLoop()};
       if(lowA()||!S.mullSel.size){go();break}
       const outs=[...root.querySelectorAll(".bcard.out")],dk={left:innerWidth/2-30,top:innerHeight-120,width:60,height:84};
       outs.forEach((el,i)=>{const r=el.getBoundingClientRect();el.style.visibility="hidden";const a=flyGhost(r,dk,el.querySelector("img").outerHTML,{dur:520,delay:i*70,t1:"rotate(12deg)"});a.onfinish=()=>a.effect.target.remove()});
       setTimeout(()=>{const sh=document.createElement("div");sh.className="shuffle";sh.innerHTML='<i></i><i></i><i></i>';document.body.appendChild(sh);GH.add(sh);sh._t=setTimeout(()=>{sh.remove();GH.delete(sh);go()},850)},520+outs.length*70);break}
+    case"handoff":S.shown=+v;if(S.screen==="mull")renderMull();else renderBoard();break;
+    case"mode":S.mode=v;renderMenu();break;
     case"tomull":S.screen="mull";render();break;
     case"tile":if(S.lp){S.lp=false;return}tapTile(+b.dataset.uid);break;
     case"zc":zoom(+b.dataset.uid,b);break;
@@ -394,11 +406,11 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
     case"pkzoom":{const c=S.st.pending&&S.st.pending.srcCard;if(c)sheet(`<img src="${esc(c.img)}" alt="${esc(c.full)}" style="width:100%;border-radius:14px"><button class="wide" data-a="close">Close</button>`);break}
     case"fxlow":if(window.FX)FX.setLow(v==="1");if(S.paused)pauseMenu();else renderMenu();break;
     case"pkmin":S.pkMin=!S.pkMin;renderBoard();break;
-    case"ppick":E.act(S.st,{t:"pick",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
-    case"pdone":E.act(S.st,{t:"pickDone"});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
-    case"pdisc":E.act(S.st,{t:"discard",uid:+b.dataset.uid});renderBoard();if(S.st.active===1&&!S.st.pending)aiLoop();break;
+    case"ppick":E.act(S.st,{t:"pick",uid:+b.dataset.uid});renderBoard();if(aiTurn()&&!S.st.pending)aiLoop();break;
+    case"pdone":E.act(S.st,{t:"pickDone"});renderBoard();if(aiTurn()&&!S.st.pending)aiLoop();break;
+    case"pdisc":E.act(S.st,{t:"discard",uid:+b.dataset.uid});renderBoard();if(aiTurn()&&!S.st.pending)aiLoop();break;
     case"disc":{const p=S.st.players[+b.dataset.pi];sheet(`<h4>${p.name==="You"?"Your":"AI"} discard (${p.discard.length})</h4><div class="bgrid">${p.discard.slice().reverse().map(x=>`<button class="bcard" data-a="zc" data-uid="${x.uid}"><img src="${esc(x.card.img)}" alt="${esc(x.card.full)}"></button>`).join("")||`<p class="meta">Empty</p>`}</div><button class="wide" data-a="close">Close</button>`);break}
-    case"pause":pauseMenu();break;case"resume":S.paused=false;closeSheet();if(S.st.active===1)aiLoop();break;
+    case"pause":pauseMenu();break;case"resume":S.paused=false;closeSheet();if(aiTurn())aiLoop();break;
     case"set":{const k=b.dataset.k;SET[k]=k==="sound"?v==="true":v;saveSet();if(S.paused)pauseMenu();else renderMenu();break}
     case"tipsagain":SET.tips=true;saveSet();S.tipShown=false;closeSheet();S.paused=false;if(S.screen==="board")renderBoard();break;
     case"tip":tip(+b.dataset.i);break;

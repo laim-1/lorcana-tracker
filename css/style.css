@@ -408,3 +408,10 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 img{-webkit-user-drag:none;user-drag:none;-webkit-user-select:none;user-select:none;pointer-events:auto}
 .opt.on,.li.on{color:#fff3d0}
 #fx-fg{z-index:16}
+/* pass-and-play hand-off cover (hides the next player's hand until they tap) */
+.handoff{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px calc(20px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));background:radial-gradient(ellipse at 50% 35%,#2a2160,#0e0b24 70%)}
+.handoff .hbox{width:100%;max-width:360px;text-align:center}.handoff .hico{width:72px;height:72px;margin:0 auto 14px;color:#f5c955}.handoff .hico svg{width:100%;height:100%}
+.handoff h2{font-size:28px;font-weight:900;margin:0 0 10px;color:#fff3d0}.handoff .meta{margin:0 0 22px;font-size:16px;line-height:1.4}
+/* target-mode banner: Cancel never clips; prompt wraps to max 2 lines */
+.banner.tm{gap:10px}.banner.tm>span{flex:1 1 auto;min-width:0;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.banner.tm .bbtn{flex:0 0 auto;white-space:nowrap;min-width:88px;min-height:44px;padding:0 16px}

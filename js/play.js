@@ -151,7 +151,7 @@ function applyImport(text,replace){const {got,bad}=bParseImport(text);if(!got.le
 function sampleHand(){const cards=bCardsList();if(cards.length<7){toast("Need at least 7 cards");return}
   const arr=cards.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
   const hand=arr.slice(0,7),inkN=hand.filter(c=>c.inkable).length,cost=hand.reduce((a,c)=>a+(c.cost|0),0);
-  sheet(`<h4>Sample opening hand</h4><p class="meta small">${inkN}/7 inkable · total cost ${cost}</p><div class="bgrid">${hand.map(c=>`<button class="bcard" data-a="bview1" data-id="${c.id}"><img src="${esc(c.img)}" alt="${esc(c.full)}"><span class="mcost">${c.cost}</span>${c.inkable?`<span class="inkable" title="Inkable"></span>`:""}</button>`).join("")}</div>
+  sheet(`<h4>Sample opening hand</h4><p class="meta small">${inkN}/7 inkable · total cost ${cost}</p><div class="bgrid">${hand.map(c=>`<button class="bcard" data-a="bview1" data-id="${c.id}"><img src="${esc(c.img)}" alt="${esc(c.full)}"><span class="mcost">${c.cost}</span>${c.inkable?`<span class="inkable" title="Inkable"></span>`:""}</button>`).join("")}</div><button class="wide primary" data-a="bhandagain">Draw again</button>
   <button class="wide primary" data-a="bhand">Draw again</button><button class="wide" data-a="close">Close</button>`)}
 function renderBuilder(){
   const b=S.build,inks=bInks(),n=bCount(),q=b.q.toLowerCase(),val=bValidity(),pr=bPriceTotal(),own=ownedMap();
@@ -774,7 +774,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
       <button class="wide" data-a="bimportgo" data-v="replace">Replace deck</button>
       <button class="wide ghostw" data-a="close">Cancel</button>`);break;
     case"bimportgo":{const el=$("#bimptext");if(!el)break;applyImport(el.value,v==="replace");break}
-    case"bhand":sampleHand();break;
+    case"bhand":case"bhandagain":sampleHand();break;
     case"bstarter":loadStarterPicker();break;
     case"bstartergo":applyStarter(v);break;
     case"brename":{const n=prompt("Deck name",S.build.name||"My deck");if(n==null)break;S.build.name=String(n).trim().slice(0,60)||"My deck";closeSheet();renderBuilder();toast("Renamed");break}
@@ -854,6 +854,7 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"again":startGame(true);break;case"againSwap":startGame(true,true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }
 }
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const sh=document.getElementById("sheet");if(sh&&sh.classList.contains("open")){e.preventDefault();closeSheet()}}});
 window.LorcanaPlay={async open(){ensureRoot();root.hidden=false;document.body.classList.add("playing");render();await loadPool();if(S.screen==="menu"||!S.st&&S.screen!=="builder")S.screen=S.screen==="builder"?"builder":"menu";render();syncMusic()},
   close(){stopMusic();if(root){root.hidden=true;document.body.classList.remove("playing");closeSheet()}},state:()=>S,render:()=>render()};
 })();

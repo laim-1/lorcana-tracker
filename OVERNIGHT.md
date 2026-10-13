@@ -327,3 +327,9 @@ hard         93%     63%       -
 - Tracker set sorts: Closest to done (fewest missing) and Cheapest to finish (USD of missing).
 - Set row shows "N left" / "$X to finish" when those sorts are active.
 - Commit: `113ab58` (version `20261013095649`). Live: https://laim-1.github.io/lorcana-tracker/
+
+## Batch 32 (~3:00 AM) - sample hand redraw + Escape + personalities
+- Sample opening hand: Draw again button.
+- Escape key closes open sheets.
+- Personality 24g table: aggro/quester/control ~38–46% (still balanced).
+- Commit: `c556527` (version `20261013095706`). Live: https://laim-1.github.io/lorcana-tracker/

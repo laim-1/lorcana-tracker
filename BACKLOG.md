@@ -3,7 +3,7 @@
 1. [x] Card picker sheet layout on all phone sizes
 2. Small-screen busy board card sizes
 3. Hand fan with 8+ cards easier to tap
-4. Show AI difficulty again in opponent bar
+4. [x] Show AI difficulty again in opponent bar
 5. Exerted cards rotate cleanly with damage badges
 6. Zoom view never covers action buttons
 7. Fix any leftover animation copies
@@ -35,16 +35,16 @@
 32. Background music toggle
 33. Match history and win/loss stats
 34. Per-deck win rates
-35. AI personalities (aggressive, quester, control)
-36. Hard AI uses locations better
+35. [x] AI personalities (aggressive, quester, control)
+36. [x] Hard AI uses locations better
 37. Practice mode vs goldfish (no AI)
 38. Save and resume a game in progress
 39. Tutorial game with guided steps
 40. Rules reference page
-41. Lore race indicator showing who's ahead
-42. Card count of inkable cards in hand
+41. [x] Lore race indicator showing who's ahead
+42. [x] Card count of inkable cards in hand
 43. Show opponent's last played card
-44. Confirm End Turn if actions remain
+44. [x] Confirm End Turn if actions remain
 45. Concede confirmation polish
 46. Victory rewards and streak counter
 47. Daily challenge with a fixed deck

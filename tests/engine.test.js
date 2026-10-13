@@ -211,4 +211,41 @@ t("ai: Hard beats Normal more often than not", () => { assert.ok(ST.hard.wins / 
 t("decks: all official starter decks resolve to legal 60-card decks", () => { assert.ok(E.STARTER_DECKS.length >= 23); for (const d of E.STARTER_DECKS) { const x = E.deckFromList(POOL_ALL, d.list); assert.ok(x && x.length === 60, d.name); assert.equal(E.validateDeck(x), null, d.name); assert.ok(x.some(c => c.type !== "character"), d.name); } });
 t("decks: collection auto-build includes non-characters and locations", () => { const o = {}; POOL_ALL.forEach((c, i) => { if (i % 3 === 0) o[c.id] = 2 }); const b = E.bestOwnedPair(POOL_ALL, o); const d = E.buildDeck(POOL_ALL, b.inks, o); assert.ok(d && d.length === 60); const nc = d.filter(c => c.type !== "character").length; assert.ok(nc >= 12, "non-characters " + nc); assert.equal(E.validateDeck(d), null); });
 
+t("ai: takes lethal by questing instead of challenging (all levels with lookahead)", () => { for (const lv of ["normal", "hard"]) { const st = game(); st.human = [false, false]; st.players[0].lore = 18; const q = put(st, 0, C({ lore: 2, strength: 9, willpower: 9 })); const v = put(st, 1, C({ strength: 1, willpower: 1, lore: 3 })); v.exerted = true; const a = E.aiChoose(st, lv); assert.equal(a.t, "quest", lv + " chose " + JSON.stringify(a)); } });
+t("ai: removes a lore threat when the opponent can win next turn", () => { const st = game(); st.human = [false, false]; st.players[1].lore = 17; const me = put(st, 0, C({ strength: 5, willpower: 6, lore: 1 })); const th = put(st, 1, C({ strength: 1, willpower: 2, lore: 3 })); th.exerted = true; const log = []; for (let i = 0; i < 12; i++) { const a = E.aiChoose(st, "normal"); log.push(a); if (a.t === "end") break; if (a.t === "challenge" && a.target === th.uid) break; E.act(st, a); } assert.ok(log.some(a => a.t === "challenge" && a.target === th.uid), JSON.stringify(log)); });
+const TABLE = require("child_process").execFileSync("node", [__dirname + "/../tools/ai-table.js", "30", "easy", "normal", "hard"]).toString();
+const cell = (r, c) => { const L = TABLE.trim().split("\n"); const hdr = L[1].trim().split(/\s+/); const row = L.find(l => l.trim().split(/\s+/)[0] === r).trim().split(/\s+/); return parseInt(row[1 + hdr.indexOf(c)]); };
+t("ai: difficulty ladder holds in AI-vs-AI (Normal and Hard beat Easy, Hard >= Normal)", () => { assert.ok(cell("normal", "easy") >= 70, TABLE); assert.ok(cell("hard", "easy") >= 80, TABLE); assert.ok(cell("hard", "normal") >= 45, TABLE); });
+t("ai: personalities differ (quester challenges less than aggro)", () => { const a = JSON.parse(require("child_process").execFileSync("node", [__dirname + "/../tools/ai-stats.js", "16", "normal:aggro"]).toString().split("\n")[0]), q = JSON.parse(require("child_process").execFileSync("node", [__dirname + "/../tools/ai-stats.js", "16", "normal:quester"]).toString().split("\n")[0]); assert.ok(q.challenge < a.challenge, q.challenge + " vs " + a.challenge); });
+
+
+t("ai: Hard moves an exerted character onto a lore-buffing location", () => {
+  const st = game(); st.human = [false, false];
+  const tower = put(st, 0, REAL("The Sorcerer's Tower - Wondrous Workspace"));
+  const ch = put(st, 0, C({ lore: 2, strength: 3, willpower: 5, cost: 3 }));
+  ch.exerted = true; // can't quest; move is the useful play
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 4);
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "move", "expected move, got " + JSON.stringify(a));
+  assert.equal(a.loc, tower.uid);
+  assert.equal(a.uid, ch.uid);
+});
+t("ai: Hard plays a valuable location when already inked", () => {
+  const st = game(); st.human = [false, false];
+  put(st, 0, C({ lore: 2, strength: 3, willpower: 5, cost: 3 }));
+  ink(st, 0, 5); st.players[0].inked = true;
+  st.players[0].hand = [];
+  const loc = hand(st, 0, REAL("Fang - River City"));
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "play", "expected play location, got " + JSON.stringify(a));
+  assert.equal(a.uid, loc.uid);
+});
+t("ai: personality tag is accepted (normal:control)", () => {
+  const st = game(); st.human = [false, false];
+  put(st, 0, C({ lore: 1, strength: 2, willpower: 4 }));
+  const a = E.aiChoose(st, "normal:control");
+  assert.ok(a && a.t, JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

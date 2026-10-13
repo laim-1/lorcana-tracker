@@ -55,7 +55,8 @@ function renderMenu(){
   ${cus.map((d,i)=>opt("c"+i,d.name,Object.values(d.cards).reduce((a,b)=>a+b,0)+" cards · custom")).join("")}
   <button class="wide" data-a="builder">Deck builder</button>
   <h4>${PPm?"Player 2 deck":"Opponent"}</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${esc(p.name)}</button>`).join("")}</div>
-  ${PPm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>`}
+  ${PPm?"":`<h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
+  <h4>AI style</h4><div class="opts">${Object.entries(STYLES).map(([k,l])=>`<button class="opt ${SET.style===k?"on":""}" data-a="sty" data-v="${k}">${l}</button>`).join("")}</div>`}
   <button class="wide" data-a="settings">Settings</button>
   <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
 }
@@ -98,8 +99,10 @@ function builderSheet(id,from){const c0=byId.get(id);if(window.Zoom&&c0){const k
   sheet(cardSheet(c,`<div class="stepper big2"><button class="big" data-a="badd" data-id="${id}" data-d="-1">&minus;</button><b>${k}</b><button class="big plus" data-a="badd" data-id="${id}" data-d="1" ${f>=max?"disabled":""}>+</button></div><div class="meta small">Max ${max} copies of ${esc(c.full)} (you have ${f}).</div><button class="wide" data-a="close">Done</button>`))}
 /* game */
 const SKEY2="lorcanaPlaySettings.v1";
-const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,tips:true};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
-  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";r.sound=!!r.sound;r.tips=r.tips!==false;return r})();
+const STYLES={balanced:"Balanced",aggro:"Aggressive",quester:"Quester",control:"Control"};
+const AILV=()=>SET.level+(SET.style&&SET.style!=="balanced"?":"+SET.style:"");
+const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,tips:true,style:"balanced"};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
+  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.tips=r.tips!==false;return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
 const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard"};
@@ -148,11 +151,11 @@ const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 
  hand:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="9" height="13" rx="2" transform="rotate(-12 7 12)" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="11" y="5" width="9" height="13" rx="2" transform="rotate(10 15 11)" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>'};
 function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
   return`<div class="hud h${pos}">${pos===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
-   <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?"AI":"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
+   <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?"AI · "+LEVELS[SET.level].toUpperCase()+(SET.style!=="balanced"?" · "+STYLES[SET.style].toUpperCase():""):"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
    <div class="chips"><div class="chip ink pile" id="ink-${pos}" title="Ink ready / total">${ICO.ink}<b>${ink}<small>/${p.ink.length}</small></b></div>
    <div class="chip pile" id="deck-${pos}" title="Deck">${ICO.deck}<b>${p.deck.length}</b></div>
    <button class="chip pile disc" data-a="disc" data-pi="${pi}" id="disc-${pos}" aria-label="Discard pile">${ICO.disc}<b>${p.discard.length}</b></button>
-   ${pos===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:""}</div>
+   ${pos===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:`<div class="chip pile" id="inkable-0" title="Inkable cards in hand">${ICO.ink}<b>${p.hand.filter(h=>h.card.inkable).length}<small> inkable</small></b></div>`}</div>
   </div>`}
 function zone(pos){const pi=pos,p=S.st.players[SEAT(pos)],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
   return`<div class="zone z${pi}">${pi===0&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}
@@ -175,7 +178,8 @@ addEventListener("resize",()=>{if(S.screen==="board")fitBoard()});
 function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner over2">GAME OVER</div>`;
   if(S.tm)return`<div class="banner tm"><span>${esc(S.tm.label)}</span><button class="bbtn" data-a="cancel">Cancel</button></div>`;
   const my=st.active===ME();const canEnd=my&&!st.pending&&E.legalActions(st).some(a=>a.t==="end");
-  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":"AI TURN"}</b><small>Turn ${st.turnNo} · ${my?(st.players[ME()].inked?"Ink used":"Ink available")+" · Main phase":"AI is playing"}</small></div>
+  const ml=st.players[ME()].lore,ol=st.players[OP()].lore,race=ml===ol?"Tied "+ml+"–"+ol:ml>ol?(S.pp?esc(PN(ME())):"You")+" ahead "+ml+"–"+ol:(S.pp?esc(PN(OP())):"AI")+" ahead "+ol+"–"+ml;
+  return`<div class="banner ${my?"mine":"theirs"}"><div><b>${S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":"AI TURN"}</b><small>Turn ${st.turnNo} · ${race} · ${my?(st.players[ME()].inked?"Ink used":"Ink available"):"AI is playing"}</small></div>
    ${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);
@@ -358,7 +362,7 @@ function aiLoop(){if(S.busy)return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
     if(st.pending&&st.human[st.pending.pi]){S.busy=false;renderBoard();return} // wait for the player's discard
     if(S.pp||st.active!==1){S.busy=false;renderBoard();return}
-    const a=E.aiChoose(st,SET.level);if(!a){S.busy=false;return}
+    const a=E.aiChoose(st,AILV());if(!a){S.busy=false;return}
     if(a.uid!=null){const el=elOf(a.uid);if(el)el.classList.add("aifocus")}
     toast(describe(a,st));
     setTimeout(()=>{try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
@@ -367,6 +371,7 @@ const TIPS=["Your side is at the bottom: characters, then items and locations, t
 function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}sheet(`<h4>Tip ${i+1} of ${TIPS.length}</h4><p class="tiptext">${TIPS[i]}</p><button class="wide primary" data-a="tip" data-i="${i+1}">${i+1<TIPS.length?"Next":"Got it"}</button><button class="wide ghostw" data-a="tip" data-i="99">Skip tips</button>`)}
 function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on":""}" data-a="set" data-k="${k}" data-v="${v}">${l}</button>`;
   return`<h4>AI difficulty</h4><div class="opts">${pill("level","easy","Easy")}${pill("level","normal","Normal")}${pill("level","hard","Hard")}</div>
+  <h4>AI style</h4><div class="opts">${Object.entries(STYLES).map(([k,l])=>pill("style",k,l)).join("")}</div>
   <h4>AI speed</h4><div class="opts">${pill("speed","slow","Slow")}${pill("speed","normal","Normal")}${pill("speed","fast","Fast")}</div>
   <h4>Effects</h4><div class="opts"><button class="opt ${window.FX&&!FX.low?"on":""}" data-a="fxlow" data-v="0">Full</button><button class="opt ${window.FX&&FX.low?"on":""}" data-a="fxlow" data-v="1">Low power</button></div>
   <h4>Sound</h4><div class="opts">${pill("sound",false,"Off")}${pill("sound",true,"On")}</div>
@@ -393,6 +398,7 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
       setTimeout(()=>{const sh=document.createElement("div");sh.className="shuffle";sh.innerHTML='<i></i><i></i><i></i>';document.body.appendChild(sh);GH.add(sh);sh._t=setTimeout(()=>{sh.remove();GH.delete(sh);go()},850)},520+outs.length*70);break}
     case"handoff":S.shown=+v;if(S.screen==="mull")renderMull();else renderBoard();break;
     case"mode":S.mode=v;renderMenu();break;
+    case"sty":SET.style=v;saveSet();renderMenu();break;
     case"tomull":S.screen="mull";render();break;
     case"tile":if(S.lp){S.lp=false;return}tapTile(+b.dataset.uid);break;
     case"zc":zoom(+b.dataset.uid,b);break;
@@ -416,7 +422,12 @@ function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]'
     case"tip":tip(+b.dataset.i);break;
     case"concede":if(confirm("Concede this game?")){S.paused=false;closeSheet();S.st.winner=1;S.st.phase="over";S.st.log.push("You conceded.");renderBoard()}break;
     case"quitgame":S.paused=false;closeSheet();S.screen="menu";S.st=null;render();break;
-    case"end":doAct({t:"end"});break;
+    case"end":{const acts=E.legalActions(S.st).filter(a=>a.t!=="end");
+      const remain=acts.filter(a=>a.t==="quest"||a.t==="challenge"||a.t==="play"||a.t==="act"||a.t==="move"||a.t==="ink");
+      if(remain.length&&!S.skipEndConfirm){const kinds=[...new Set(remain.map(a=>a.t==="play"?"play a card":a.t==="act"?"use an ability":a.t==="ink"?"ink a card":a.t))];
+        sheet(`<h4>End your turn?</h4><p class="tiptext">You can still ${kinds.slice(0,3).join(", ")}${kinds.length>3?", …":""}.</p><button class="wide primary" data-a="endforce">End turn</button><button class="wide ghostw" data-a="close">Keep playing</button>`);break}
+      S.skipEndConfirm=false;doAct({t:"end"});break}
+    case"endforce":S.skipEndConfirm=true;closeSheet();doAct({t:"end"});break;
     case"log":sheet(`<h4>Game log</h4><div class="logfull">${S.st.log.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join("")}</div><button class="wide" data-a="close">Close</button>`);break;
     case"close":closeSheet();break;case"settings":sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);break;
     case"again":startGame(true);break;case"tomenu":S.screen="menu";S.st=null;render();break;

@@ -604,4 +604,33 @@ t("ai: values clean-killing a Ward character", () => {
   assert.ok(a.t === "challenge" && a.target === ward.uid, "challenge Ward: " + JSON.stringify(a));
 });
 
+
+t("ai: when ahead, prefers quest over bad challenge with high-lore attacker", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  st.players[0].lore = 14; st.players[1].lore = 10;
+  ink(st, 0, 0);
+  const atk = put(st, 0, C({ lore: 3, strength: 2, willpower: 3, cost: 3 }));
+  atk.playedOn = st.turnNo - 1;
+  const def = put(st, 1, C({ lore: 1, strength: 4, willpower: 4, cost: 3 }));
+  def.exerted = true;
+  // challenge would be a bad trade (we die, maybe don't kill); quest is safe lore
+  const a = E.aiChoose(st, "hard");
+  assert.equal(a.t, "quest", "quest when ahead, not bad fight: " + JSON.stringify(a));
+  assert.equal(a.uid, atk.uid);
+});
+
+t("ai: when behind, still removes high-lore threat", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  st.players[0].lore = 8; st.players[1].lore = 15;
+  ink(st, 0, 0);
+  const atk = put(st, 0, C({ lore: 1, strength: 5, willpower: 6, cost: 3 }));
+  atk.playedOn = st.turnNo - 1;
+  const th = put(st, 1, C({ lore: 3, strength: 1, willpower: 3, cost: 3 }));
+  th.exerted = true;
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "challenge" && a.target === th.uid, "remove lore threat when behind: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

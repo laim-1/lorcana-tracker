@@ -480,3 +480,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hint button: clearer toast (Highlighted… / No plays left → End turn); tips off toast.
 - Tutorial tip for Bodyguard (must challenge) and Ward (challenge, not target with actions).
 - ui-static-overnight **35** checks. CSS: `.endboard`, `.hdecks`.
+- Commit: `05c89b1` (version `20261013121103`). Live verified Pages built; version.json `20261013121103`.
+
+## Batch 52 (~5:14 AM) - lore-race challenge restraint + quest push
+- When ahead by 3+ lore: avoid bad/even trades with high-lore attackers; devalue chipping.
+- When behind or opponent near 20: extra value killing their lore-2+ characters.
+- Quest scoring/hardAdj: push lore when ahead; Hard weighted.
+- Tests: ahead→quest not bad challenge; behind→remove high-lore threat. Engine **114** passed.
+- Hard vs Normal (40g): **Hard 65%**, Normal 25%. Normal vs Easy (24g): **Normal 75%**.

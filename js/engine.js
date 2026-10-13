@@ -2049,9 +2049,21 @@ function scoreAction(st,a){
           if(ok&&!od){if(loreOf(ox)<loreOf(x))v-=(loreOf(x)-loreOf(ox))*mul;if(LEVEL==="hard"&&instVal(ox)+2<instVal(x))v-=6}}}
       if(CTX.lethal&&!K(x,'reckless')&&!isLoc(d))return -1; // we win by questing this turn: don't exert questers to fight
       if(CTX.threat&&kills&&dl>0)v+=40+dl*10; // they can reach 20 next turn: remove their questers
+      // Lore race: when clearly ahead, avoid bad or even trades that spend high-lore attackers
+      if(!CTX.threat&&p.lore>=o.lore+3&&!K(x,'reckless')){
+        if(dies&&!kills)v-=(LEVEL==="hard"?30:12);
+        if(dies&&kills&&loreOf(x)>=2)v-=(LEVEL==="hard"?14:5);
+        if(!kills&&loreOf(x)>=2)v-=(LEVEL==="hard"?18:6);
+        if(kills&&!dies&&dl<=1&&loreOf(x)>=2&&p.lore>=16)v-=(LEVEL==="hard"?10:3)}
+      // When behind / close race, prefer removing their lore over chipping low-lore
+      if((p.lore+2<=o.lore||o.lore>=14)&&kills&&dl>=2)v+=(LEVEL==="hard"?12:4);
       if(PERS==="aggro")v+=15;else if(PERS==="control")v+=6;else if(PERS==="quester")v-=10;
       if(K(x,'reckless'))v+=50;return v>0?70+v:(K(x,'reckless')?10+v/100:-1)}
-    case"quest":return 50+loreOf(x)*6+(p.lore+loreOf(x)>=20?500:0)+(CTX.lethal?900:0)+(PERS==="quester"?12:PERS==="aggro"?-5:0);
+    case"quest":{let qs=50+loreOf(x)*6+(p.lore+loreOf(x)>=20?500:0)+(CTX.lethal?900:0)+(PERS==="quester"?12:PERS==="aggro"?-5:0);
+      // Race: push lore when ahead or when we can outpace without threat removal
+      if(!CTX.threat&&p.lore>=o.lore)qs+=(LEVEL==="hard"?10:3)+(loreOf(x)>=2?(LEVEL==="hard"?6:2):0);
+      if(!CTX.threat&&p.lore+loreOf(x)>=o.lore+4)qs+=(LEVEL==="hard"?8:2);
+      return qs}
     case"move":{if(!LEVEL||LEVEL==="easy")return -1;const l=find(st,a.loc).inst,mc=moveCost(st,pi,x,l),ben=locBenefit(l);
       // Prefer parking high-lore / fragile characters on protective or lore-buffing locations.
       const loreHere=l.card.statics.some(z=>z.here&&z.stat==="lore");
@@ -2128,7 +2140,11 @@ function aiChoose(st,level){
 function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove questers when behind/threat
   const pi=st.active,me=st.players[pi],op=st.players[opp(pi)];if(s<0)return 0;
   if(a.t==="quest"&&CTX.lethal)return 48;
-  if(a.t==="quest"&&me.lore>=op.lore)return 14;
+  if(a.t==="quest"&&me.lore>=op.lore){const ch=find(st,a.uid)?.inst;return 16+(ch&&loreOf(ch)>=2?6:0)+(me.lore>=op.lore+3?8:0)}
+  if(a.t==="challenge"&&!CTX.threat&&me.lore>=op.lore+3){const at=find(st,a.uid)?.inst,d=find(st,a.target)?.inst;
+    if(at&&d&&isChar(d)&&loreOf(at)>=2){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);
+      const dies=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))>=wilOf(at);
+      if(dies||!kills)return -16}}
   if(a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;
     if(d&&isChar(d)){let b=0;if(at){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);
       if(kills&&live){b+=24; // clean kill

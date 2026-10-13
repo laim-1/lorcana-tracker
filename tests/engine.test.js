@@ -828,4 +828,31 @@ t("ai: does not ink Singer when hand has a song they can sing", () => {
   assert.ok(a.t === "ink" && a.uid === junk.uid, "ink junk instead: " + JSON.stringify(a) + " junk=" + junk.uid);
 });
 
+
+t("ai: values action damage that triggers Vanish as a kill", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true; ink(st, 0, 3);
+  const vanish = put(st, 1, C({ lore: 2, strength: 2, willpower: 6, text: "Vanish" }));
+  const tank = put(st, 1, C({ lore: 1, strength: 2, willpower: 6 }));
+  const zapV = hand(st, 0, C({ type: ["Action"], cost: 1, text: "Deal 1 damage to chosen character.", inkwell: true }));
+  zapV.card.type = "action"; zapV.card.onPlay = [{ k: "dmg", n: 1, t: { kind: "char", opp: true } }];
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === zapV.uid && a.target === vanish.uid,
+    "chip Vanish: " + JSON.stringify(a) + " vanish=" + vanish.uid + " tank=" + tank.uid);
+});
+
+t("ai: Hard prefers Boost when under-payoff exists", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true; ink(st, 0, 4);
+  const booster = put(st, 0, C({ lore: 1, strength: 2, willpower: 4, cost: 3, text: "Boost 1 {I}" }));
+  booster.playedOn = -1;
+  // Simulate under-payoff onQuest (parser may not catch all while-under text)
+  booster.card.onQuest = [{ k: "gainLore", n: 1 }];
+  assert.ok(booster.card.kw.boost != null, "parsed boost");
+  const acts = E.legalActions(st);
+  assert.ok(acts.some(a => a.t === "boost" && a.uid === booster.uid), "boost legal: " + JSON.stringify(acts));
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "boost" && a.uid === booster.uid, "boost under-payoff: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

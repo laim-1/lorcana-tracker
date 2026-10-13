@@ -585,3 +585,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `8154edc` (version `20261013130921`). Live verified Pages built; version.json `20261013130921`.
+
+## Batch 64 (~6:12 AM) - Vanish chip scoring + Boost preference + tips
+- `effVal` dmg: Vanish targets count as kills when any damage lands (action/ability).
+- Boost: Hard/Normal value under-payoffs (statics/onQuest/onUnder); prefer Boost over questing low-lore bodies.
+- Tutorial tips for Vanish and Boost.
+- ui-static-overnight **50** checks. Engine **128** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 33%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `5efd928` (version `20261013131228`). Live verified Pages built; version.json `20261013131228`.

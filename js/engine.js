@@ -1938,7 +1938,7 @@ function effVal(st,pi,effs,tgt){
       case"draw":{const hand=st.players[pi].hand.length;v+=e.n*(4+(hand<=2?5:hand<=4?2:0)+(LEVEL==="hard"&&hand<=3?3:0));break}
       case"drawAll":v+=1;break;case"gainLore":v+=e.n*6;break;case"oppLose":v+=e.n*5;break;
       case"dmgAllOpp":v+=st.players[opp(pi)].play.filter(isChar).length*e.n*2;break;
-      case"dmg":if(x)v+=mine?-20:(x.damage+Math.max(0,e.n-(K(x,'resist')||0))>=wilOf(x)?instVal(x):e.n);break;
+      case"dmg":if(x){const dn=Math.max(0,e.n-(K(x,'resist')||0));const kill=!mine&&(x.damage+dn>=wilOf(x)||(K(x,'vanish')&&dn>0));v+=mine?-20:(kill?instVal(x)*(K(x,'vanish')&&x.damage+dn<wilOf(x)?1.15:1):dn)};break;
       case"banish":case"bounce":if(x)v+=mine?-30:instVal(x)*(e.k==="bounce"?0.7:1);break;
       case"exert":if(x)v+=mine?-5:x.exerted?0:x.card.lore*3;break;
       case"heal":if(x)v+=mine?Math.min(x.damage,e.n)*2:-3;break;
@@ -2126,7 +2126,11 @@ function scoreAction(st,a){
       if(empty&&ben>=12)s+=(H?8:2); // claim valuable empty location
       if(x.at!=null){const cur=find(st,x.at);const curB=cur?locBenefit(cur.inst):0;if(ben<=curB+2)return -1;s-=4} // switching only when clearly better
       if(PERS==="control")s+=4;if(PERS==="quester"&&loreHere)s+=10;
-      return s>0?16+s:-1}case"boost":return x.card.statics.some(s=>s.cond==="under")||x.card.onQuest.length?45:-1;
+      return s>0?16+s:-1}case"boost":{const H=LEVEL==="hard";const under=x.card.statics.some(s=>s.cond==="under"||typeof s.cond==="function"||!!s.count)||(x.card.onQuest&&x.card.onQuest.length)||(x.card.onUnder&&x.card.onUnder.length);
+      const inkLeft=inkAvail(p)-(x.card.kw.boost||0);let s=(under?48:10)+(H?16:LEVEL==="normal"?5:0)+(under&&H?12:0)+(inkLeft>=2?(H?6:2):0)+(p.lore+2<=o.lore&&under?(H?8:2):0);
+      // Prefer boost over questing a low-lore body when under-payoff is strong
+      if(under&&loreOf(x)<=1&&!CTX.lethal)s+=(H?14:4);
+      return s}
     case"end":return 0;
   }
   return -1;
@@ -2157,6 +2161,7 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
       if(a.singers){const ids=String(a.singers).split(",").map(Number);const lb=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);v+=Math.max(0,6-lb)}}
     if(HDEEP&&a.t==="play"&&a.shift!=null){const base=find(st,a.shift)?.inst;if(base&&dry(st,base)&&!base.exerted)v+=16;const c=find(st,a.uid)?.inst?.card;if(c&&base&&c.lore>loreOf(base))v+=10}
     if(HDEEP&&a.t==="move"){const l=find(st,a.loc)?.inst;if(l&&l.card.statics.some(z=>z.here&&z.stat==="lore"))v+=14;if(l&&!hereChars(st,l).length&&locBenefit(l)>=12)v+=6}
+    if(HDEEP&&a.t==="boost"){const bx=find(st,a.uid)?.inst;if(bx&&(bx.card.statics.some(s=>s.cond==="under"||typeof s.cond==="function"||!!s.count)||(bx.card.onQuest&&bx.card.onQuest.length)))v+=16}
     if(HDEEP&&a.t==="ink"){const c=find(st,a.uid)?.inst?.card;if(c&&c.type==="character"&&c.lore>=2)v-=12;if(c&&c.kw&&c.kw.shift!=null)v-=8}
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&K(d,"ward"))v+=10;if(d&&K(d,"bodyguard"))v+=6}}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
     try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(v>bs){bs=v;best=a}}
@@ -2247,6 +2252,9 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
   if(a.t==="move"){const l=find(st,a.loc).inst;let b=8+locBenefit(l)/3;
     if(l.card.statics.some(z=>z.here&&z.stat==="lore"))b+=12+(me.lore<=op.lore?8:0);
     if(!hereChars(st,l).length&&locBenefit(l)>=12)b+=7;return b}
+  if(a.t==="boost"){const at=find(st,a.uid)?.inst;if(!at)return 0;
+    const under=at.card.statics.some(s=>s.cond==="under"||typeof s.cond==="function"||!!s.count)||(at.card.onQuest&&at.card.onQuest.length)||(at.card.onUnder&&at.card.onUnder.length);
+    return under?22+(loreOf(at)<=1?8:0):4}
   if(a.t==="act"){const at=find(st,a.uid)?.inst;if(!at)return 0;
     if(CTX.lethal&&isChar(at)&&!at.exerted&&dry(st,at)&&loreOf(at)>0)return -40;
     if(isChar(at)&&loreOf(at)>=2&&!CTX.threat&&me.lore>=op.lore)return -10;

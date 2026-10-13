@@ -566,3 +566,12 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
 
 - Commit: `9e212e6` (version `20261013130058`). Live verified Pages built; version.json `20261013130058`.
+
+## Batch 62 (~6:04 AM) - Challenger play/challenge scoring + tip
+- Play: Challenger +N boosted when exerted targets become clean kills with the bonus.
+- Challenge: extra value when Challenger bonus is what enables the kill.
+- Tutorial tip for Challenger.
+- ui-static-overnight **47** checks. Engine **124** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 30%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `0a29652` (version `20261013130450`). Live verified Pages built; version.json `20261013130450`.

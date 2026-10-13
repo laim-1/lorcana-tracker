@@ -786,4 +786,16 @@ t("ai: values draw songs more when hand is empty", () => {
   assert.ok(a.t === "play" && a.uid === song.uid, "prefer draw song with thin hand: " + JSON.stringify(a) + " song=" + song.uid + " junk=" + junk.uid);
 });
 
+
+t("ai: prefers playing Challenger that enables a clean kill", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].inked = true; ink(st, 0, 4);
+  const threat = put(st, 1, C({ lore: 3, strength: 1, willpower: 5 })); threat.exerted = true;
+  // Challenger +2 turns 3-str into a 5-damage kill; plain 3-str cannot finish
+  const chal = hand(st, 0, C({ lore: 1, strength: 3, willpower: 3, cost: 3, text: "Challenger +2" }));
+  const plain = hand(st, 0, C({ lore: 1, strength: 3, willpower: 4, cost: 3 }));
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "play" && a.uid === chal.uid, "prefer Challenger: " + JSON.stringify(a) + " chal=" + chal.uid + " plain=" + plain.uid);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

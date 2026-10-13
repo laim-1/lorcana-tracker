@@ -52,6 +52,7 @@ checks = [
     ("near 20 banner", "near 20" in play),
     ("Reckless tip", "Reckless characters cannot quest" in play),
     ("banner hand", "in hand" in play),
+    ("Challenger tip", "Challenger characters get +Strength" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

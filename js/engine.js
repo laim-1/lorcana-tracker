@@ -2000,7 +2000,12 @@ function scoreAction(st,a){
       if(c.type==="character"){s+=c.lore*3;
         const oppEv=o.play.some(y=>isChar(y)&&K(y,"evasive")&&loreOf(y)>=2);
         if(c.kw.evasive&&oppEv)s+=(LEVEL==="hard"?10:3);if(c.kw.evasive)s+=(LEVEL==="hard"?4:1);
-        if(c.kw.alert&&oppEv)s+=(LEVEL==="hard"?12:4);if(c.kw.alert)s+=(LEVEL==="hard"?3:1)}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
+        if(c.kw.alert&&oppEv)s+=(LEVEL==="hard"?12:4);if(c.kw.alert)s+=(LEVEL==="hard"?3:1)
+        // Challenger: value when ready exerted targets would become clean kills with the +N
+        if(c.kw.challenger){const n=+c.kw.challenger||0;const H=LEVEL==="hard";
+          const kills=o.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+n-(K(y,"resist")||0))>=wilOf(y)).length;
+          const near=o.play.filter(y=>isChar(y)&&y.exerted&&loreOf(y)>=2).length;
+          s+=(H?6:2)+n*(H?2:1)+(kills?(H?14:5)+kills*4:0)+(near&&n?(H?6:2):0)}}if(c.type==="location"){s+=locPlayValue(c)+(LEVEL==="hard"?10:LEVEL==="normal"?4:0)+(PERS==="control"?8:0);if(p.play.some(isChar)&&!p.play.some(isLoc))s+=8}
       if(c.type==="item"){const H=LEVEL==="hard";s+=(H?6:2)+(p.ink.length<=3?(H?10:4):0)+(p.hand.length<=3?(H?6:2):0)+(PERS==="control"?6:0);
         if(!p.play.some(isItem))s+=(H?5:2)}
       // Shift vs play: prefer Shift when lore rises, base is dry (can quest), or ink-tight; prefer full play when board is thin
@@ -2082,6 +2087,9 @@ function scoreAction(st,a){
         if(kills&&!dies&&dl<=1&&loreOf(x)>=2&&p.lore>=16)v-=(LEVEL==="hard"?10:3)}
       // When behind / close race, prefer removing their lore over chipping low-lore
       if((p.lore+2<=o.lore||o.lore>=14)&&kills&&dl>=2)v+=(LEVEL==="hard"?12:4);
+      // Challenger +N: extra when the bonus is what enables the clean kill
+      {const ch=K(x,"challenger")||0;if(ch&&kills){const baseKill=d.damage+Math.max(0,strOf(x)-(K(d,"resist")||0))>=wilOf(d);
+        if(!baseKill)v+=(LEVEL==="hard"?16:6)+(dl>=2?6:0);else v+=(LEVEL==="hard"?4:1)}}
       // Rush: value using the free challenge the turn played on clean kills
       if(K(x,"rush")&&!dry(st,x)&&kills)v+=(LEVEL==="hard"?14:5)+(dies?0:6)+(dl>=2?6:0);
       if(PERS==="aggro")v+=15;else if(PERS==="control")v+=6;else if(PERS==="quester")v-=10;
@@ -2210,6 +2218,9 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
       if(!a.exerted&&legalActions(st).some(x=>x.t==="play"&&x.uid===a.uid&&x.exerted)&&op.play.some(y=>isChar(y)&&!y.exerted&&strOf(y)>=2))b-=10;
       return b}
     if(c.type==="character"&&c.kw.ward)return 4;
+    if(c.type==="character"&&c.kw.challenger){const n=+c.kw.challenger||0;
+      const kills=op.play.filter(y=>isChar(y)&&y.exerted&&y.damage+Math.max(0,(c.str||0)+n-(K(y,"resist")||0))>=wilOf(y)).length;
+      return 6+n*2+(kills?12+kills*5:0)+(op.play.some(y=>isChar(y)&&y.exerted&&loreOf(y)>=2)?8:0)}
     if(c.type==="location")return 8+locPlayValue(c)/4;
     if(c.type==="song"||c.type==="action"){let b=4+(CTX.threat?8:0);if(a.singer!=null||a.singers){b+=14;
         if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)b+=8}

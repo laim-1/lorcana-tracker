@@ -242,7 +242,8 @@ function showHistory(){S.histFilter=S.histFilter||"all";const H=histStats();cons
     return`<div class="histrow ${r.won?"win":(r.mode==="ai"||r.mode==="daily"?"loss":"")}"><b>${esc(res)}</b><span>${esc(r.me||"You")} vs ${esc(r.opp||"?")}</span><small>${fmt(r.t)} · ${r.turns||"?"} turns · lore ${(r.lore||[]).join("–")}${r.deckName?" · "+r.deckName:""}${r.level?" · "+r.level:""}${r.streak?" · streak "+r.streak:""}${r.reward?" · "+r.reward:""}</small></div>`}).join("")||`<p class="meta">No matches in this filter.</p>`;
   const rates=deckRates().map(d=>{const n=d.w+d.l,pct=n?Math.round(100*d.w/n):0;return`<div class="histrow"><b>${esc(d.name)}</b><span>${d.w}W – ${d.l}L</span><small>${pct}% win rate · ${n} games</small></div>`}).join("")||`<p class="meta">Play AI games to track per-deck rates.</p>`;
   const chips=[["all","All"],["ai","AI"],["pp","Pass & play"],["gold","Practice"],["daily","Daily"]].map(([k,l])=>`<button class="opt ${f===k?"on":""}" data-a="histf" data-v="${k}">${l}</button>`).join("");
-  sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}</span></div><div class="opts">${chips}</div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent (${shown.length})</h4><div class="histlist">${rows}</div><button class="wide" data-a="histexp">Export history text</button><button class="wide" data-a="histclear">Clear history</button><button class="wide" data-a="close">Close</button>`)}
+  const dailyLine=(H.dailyW||H.dailyL)?` · Daily ${H.dailyW}W–${H.dailyL}L`:"";
+  sheet(`<h4>Match history</h4><div class="histsum"><b>${H.w}W – ${H.l}L</b><span>${H.streak?"Current streak "+H.streak:"No active streak"}${H.best>1?" · Best "+H.best:""}${dailyLine}</span></div><div class="opts">${chips}</div><h4>Per-deck win rates</h4><div class="histlist">${rates}</div><h4>Recent (${shown.length})</h4><div class="histlist">${rows}</div><button class="wide" data-a="histexp">Export history text</button><button class="wide" data-a="histclear">Clear history</button><button class="wide" data-a="close">Close</button>`)}
 /* #33 Match history */ const HKEY="lorcanaMatchHistory.v1";
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HKEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function saveHist(a){try{localStorage.setItem(HKEY,JSON.stringify(a.slice(0,80)))}catch(e){}}
@@ -255,7 +256,10 @@ function recordMatch(st){if(!st||st._recorded)return;st._recorded=true;const w=s
   h.unshift(row);saveHist(h);S.lastResult=row}
 function deckRates(){const m={};for(const r of loadHist().filter(x=>x.mode==="ai"||x.mode==="daily")){const k=r.deckName||r.deckId||"Unknown";if(!m[k])m[k]={w:0,l:0,name:k};if(r.won)m[k].w++;else m[k].l++}
   return Object.values(m).sort((a,b)=>(b.w+b.l)-(a.w+a.l))}
-function histStats(){const h=loadHist().filter(x=>x.mode==="ai");let w=0,l=0,st=0;for(const x of h){if(x.won)w++;else l++}for(const x of h){if(x.won)st=x.streak||st;else break}return{w,l,n:h.length,streak:st,rows:loadHist()}}
+function histStats(){const h=loadHist().filter(x=>x.mode==="ai"||x.mode==="daily");let w=0,l=0,st=0,best=0,dw=0,dl=0;
+  for(const x of h){if(x.won)w++;else l++;if((x.streak||0)>best)best=x.streak||0;if(x.mode==="daily"){if(x.won)dw++;else dl++}}
+  for(const x of h){if(x.won)st=x.streak||st;else break}
+  return{w,l,n:h.length,streak:st,best,dailyW:dw,dailyL:dl,rows:loadHist()}}
 /* #27 Action log with card images */ function pushLog(ev){if(!ev)return;S.alog=S.alog||[];const imgOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.img:""};
   const nameOf=u=>{const f=E.find(S.st,u);return f&&f.inst&&f.inst.card?f.inst.card.full:(ev.name||"")};
   let row=null;const who=pi=>S.pp?PN(pi):(pi===ME()?"You":"AI");
@@ -310,12 +314,13 @@ function cardTile(x,pos,size){const pi=SEAT(pos);const c=x.card,st=S.st,tm=S.tm;
   const picked=tm&&tm.mode==="singT"&&tm.sel.has(x.uid);
   const sel=S.sel===x.uid,glow=pi===ME()&&!tm&&myTurn()&&canAct(x);
   const hint=S.hint&&glow;const drying=c.type==="character"&&!E.dry(st,x)&&!K0(x,"rush");
+  const readyChip=c.type==="character"&&!x.exerted&&E.dry(st,x)&&pi===st.active&&myTurn()&&!tm;
   const kind=tm&&isT?(tm.kind||tm.key||""):"";
   const moveBadge=(tm&&tm.key==="loc"&&isT&&tm.moveOf)?`<span class="mcostb">${tm.moveOf.get(x.uid)??"?"} ink</span>`:"";
   const singMark=picked?`<span class="singmark">SING</span>`:"";
-  return`<button class="ct ${size} ${x.exerted?"ex":""} ${sel?"sel":""} ${isT?"tgt":""} ${kind==="shift"||tm&&tm.key==="shift"?"tgt-shift":""} ${kind==="loc"||tm&&tm.key==="loc"?"tgt-move":""} ${picked?"tgt-sing":""} ${glow?"glow":""} ${hint?"hint":""} ${tm&&!isT?"dim":""}" data-a="tile" data-uid="${x.uid}">
+  return`<button class="ct ${size} ${x.exerted?"ex":""} ${sel?"sel":""} ${isT?"tgt":""} ${kind==="shift"||tm&&tm.key==="shift"?"tgt-shift":""} ${kind==="loc"||tm&&tm.key==="loc"?"tgt-move":""} ${picked?"tgt-sing":""} ${glow?"glow":""} ${hint?"hint":""} ${tm&&!isT?"dim":""} ${readyChip?"rdy":""}" data-a="tile" data-uid="${x.uid}">
    <span class="art"><img src="${esc(c.img)}" alt="${esc(c.full)}" loading="lazy"></span>
-   ${x.damage?`<span class="dtok">${x.damage}</span>`:""}${drying&&pi===st.active?`<span class="dry">DRYING</span>`:""}${moveBadge}${singMark}
+   ${x.damage?`<span class="dtok">${x.damage}</span>`:""}${drying&&pi===st.active?`<span class="dry" aria-label="Drying">DRYING</span>`:(readyChip?`<span class="rdyb" aria-label="Ready">READY</span>`:"")}${moveBadge}${singMark}
    ${c.type==="character"?`<span class="stats"><b>${E.strOf(x)}</b><i>${c.wil-x.damage}</i></span>`:c.type==="location"?`<span class="stats"><i>${c.wil-x.damage}</i></span>`:""}
    ${x.at?`<span class="atl">AT ${esc((E.find(st,x.at)?.inst.card.name||"").slice(0,10).toUpperCase())}</span>`:""}${x.under&&x.under.length?`<span class="und">+${x.under.length}</span>`:""}</button>`}
 const K0=(x,k)=>E.K?E.K(x,k):x.card.kw[k];
@@ -337,9 +342,12 @@ function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
    ${pos===1?`<div class="chip pile" id="hand-1" title="Hand">${ICO.hand}<b>${p.hand.length}</b></div>`:`<div class="chip pile" id="inkable-0" title="Inkable cards in hand">${ICO.ink}<b>${p.hand.filter(h=>h.card.inkable).length}<small> inkable</small></b></div>`}</div>
   </div>`}
 function zone(pos){const pi=pos,p=S.st.players[SEAT(pos)],ch=p.play.filter(x=>x.card.type==="character"),it=p.play.filter(x=>x.card.type!=="character");
-  return`<div class="zone z${pi}">${pi===0&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}
-   <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||`<span class="rowlbl">${pi===0?(S.pp?esc(PN(ME()))+"'s characters":"Your characters"):(S.pp?esc(PN(OP()))+"'s characters":"Opponent characters")}</span>`}</div>
-   ${pi===1&&it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:""}</div>`}
+  const who=pi===0?(S.pp?esc(PN(ME())):"You"):(S.pp?esc(PN(OP())):"Opponent");
+  const emptyCh=`<span class="rowlbl zempty" role="status">${who}${pi===0?" · no characters yet":" · empty board"}</span>`;
+  const strip=it.length?`<div class="strip">${it.map(x=>cardTile(x,pi,"sm")).join("")}</div>`:(ch.length?`<div class="strip emptystrip" role="status"><span class="zempty">${pi===0?"No items or locations":"No opposing items / locations"}</span></div>`:"");
+  return`<div class="zone z${pi}">${pi===0?strip:""}
+   <div class="row chars r${pi}">${ch.map(x=>cardTile(x,pi,"lg")).join("")||emptyCh}</div>
+   ${pi===1?strip:""}</div>`}
 function fitBoard(again){const gb=root.querySelector(".gb");if(!gb)return;
   // #2: shrink hand when the board is full so character rows stay usable on short phones
   const nChars=(S.st?S.st.players.reduce((a,p)=>a+p.play.filter(x=>x.card.type==="character").length,0):0);
@@ -456,8 +464,14 @@ function pickerSheet(){const st=S.st,P=st.pending,p=st.players[ME()];if(!P)retur
     ${thumb}${head?`<div class="pksrc">${esc(head)}</div>`:""}<div class="pkq">${esc(prompt.charAt(0).toUpperCase()+prompt.slice(1))}</div>${sub?`<div class="pksub">${esc(sub)}</div>`:""}
     <div class="${lab?"pkopts":"pkgrid"}">${items.join("")}</div>${btn}</div>`}
 function handoff(seat,what){const st=S.st,l0=st?st.players[0].lore:0,l1=st?st.players[1].lore:0,tn=st?st.turnNo:"";
+  const P=st?st.players[seat]:null;
+  const dryN=P?P.play.filter(x=>x.card.type==="character"&&!E.dry(st,x)).length:0;
+  const readyN=P?P.play.filter(x=>x.card.type==="character"&&!x.exerted&&E.dry(st,x)).length:0;
+  const inkN=P?E.inkAvail(P):0;const inkT=P?P.ink.length:0;
+  const boardBits=[inkT?`${inkN}/${inkT} ink ready`:null,readyN?`${readyN} ready`:null,dryN?`${dryN} drying`:null].filter(Boolean).join(" · ");
   return`<div class="handoff" role="dialog" aria-label="Pass the phone"><div class="hbox"><div class="hico">${ICO.hand}</div><h2>Pass to ${esc(PN(seat))}</h2>
   <p class="hscore" aria-live="polite">${esc(PN(0))} ${l0} – ${l1} ${esc(PN(1))}${tn?` · Turn ${tn}`:""}</p>
+  ${boardBits?`<p class="hboard" aria-live="polite">${esc(PN(seat))}: ${esc(boardBits)}</p>`:""}
   <p class="meta">${esc(what)}. ${esc(PN(1-seat))}, look away while ${esc(PN(seat))} takes the phone.</p>
   <button class="wide primary" data-a="handoff" data-v="${seat}" aria-label="Show cards for ${esc(PN(seat))}">I'm ${esc(PN(seat))}, show my cards</button></div></div>`}
 function endScreen(){const st=S.st,w=S.pp?(st.winner===ME()):(st.winner===0),s0=(st.stats||[{},{}])[0],s1=(st.stats||[{},{}])[1];

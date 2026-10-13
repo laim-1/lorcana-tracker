@@ -27,6 +27,10 @@ checks = [
     ("drying banner", "drying" in play),
     ("playerConfirm", "playerConfirm" in play),
     ("end drying note", "still drying" in play),
+    ("ready chip", "rdyb" in play),
+    ("empty strip", "emptystrip" in play),
+    ("handoff board", "hboard" in play),
+    ("hist best/daily", "dailyW" in play and "Best " in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

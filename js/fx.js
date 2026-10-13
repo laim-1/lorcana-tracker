@@ -2,7 +2,7 @@
    pauses when hidden, honours prefers-reduced-motion and a low-power setting. */
 (function(){
 const KEY="lorcanaFx.v1",rm=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)");
-let cfg={low:false};try{cfg={...cfg,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch(e){}
+let cfg={low:false};try{const o=JSON.parse(localStorage.getItem(KEY)||"{}");if(o&&typeof o==="object")cfg.low=o.low===true}catch(e){}
 const reduced=()=>!!(rm&&rm.matches),low=()=>cfg.low||reduced();
 const bg=document.createElement("canvas"),fg=document.createElement("canvas");bg.id="fx-bg";fg.id="fx-fg";
 bg.setAttribute("aria-hidden","true");fg.setAttribute("aria-hidden","true");

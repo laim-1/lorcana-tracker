@@ -6,7 +6,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const STARTERS=[["Amber","Amethyst"],["Ruby","Sapphire"],["Emerald","Steel"],["Amber","Steel"],["Amethyst","Ruby"],["Emerald","Sapphire"]];
 const STATUS_LABEL={full:"Fully simulated",keywords:"Keywords simulated",plain:"No abilities",partial:"Partly simulated",vanilla:"Ability not simulated"};
-let pool=null,byId=new Map(),source="snapshot",root,S={screen:"menu",sel:"s0",opp:"random",build:null,st:null,busy:false,mullSel:new Set()};
+let pool=null,byId=new Map(),source="snapshot",root,S={screen:"menu",sel:null,deck:"s0",opp:"random",build:null,st:null,busy:false,mullSel:new Set()};
 
 function ensureRoot(){if(root)return;root=document.createElement("div");root.id="play";root.hidden=true;document.body.appendChild(root);
   root.addEventListener("click",onClick);root.addEventListener("input",onInput);
@@ -28,23 +28,26 @@ async function refreshLive(){ // try to replace the snapshot with live Lorcast d
     if(out.length>=pool.length*0.9){setPool(out);source="live"}}catch(e){}
 }
 const mainPool=()=>pool;
-const decks=()=>JSON.parse(localStorage.getItem(DKEY)||"[]");
+const decks=()=>{let d;try{d=JSON.parse(localStorage.getItem(DKEY)||"[]")}catch(e){d=[]}if(!Array.isArray(d))d=[];
+  const ok=d.filter(x=>x&&typeof x==="object"&&x.cards&&typeof x.cards==="object"&&!Array.isArray(x.cards)).map(x=>({name:typeof x.name==="string"&&x.name.trim()?x.name:"My deck",cards:Object.fromEntries(Object.entries(x.cards).filter(([k,n])=>typeof k==="string"&&Number.isFinite(+n)&&+n>0).map(([k,n])=>[k,Math.min(99,Math.floor(+n))]))}));
+  if(ok.length!==d.length||JSON.stringify(ok)!==JSON.stringify(d))try{localStorage.setItem(DKEY,JSON.stringify(ok))}catch(e){}return ok};
 const saveDecks=d=>localStorage.setItem(DKEY,JSON.stringify(d));
-function ownedMap(){const col=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}"),m={};for(const[id,v]of Object.entries(col))m[id]=(v.n||0)+(v.f||0);return m}
-function deckFromSel(sel){
+function ownedMap(){const col=(()=>{try{const o=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})(),m={};for(const[id,v]of Object.entries(col))m[id]=(v.n||0)+(v.f||0);return m}
+function deckFromSel(sel){if(typeof sel!=="string"||!/^(s\d+|own|c\d+)$/.test(sel)||(sel[0]==="s"&&!STARTERS[+sel.slice(1)]))sel="s0";
   if(sel[0]==="s"){const p=STARTERS[+sel.slice(1)];return{name:p.join(" / "),cards:E.buildDeck(mainPool(),p)}}
   if(sel==="own"){const o=ownedMap(),b=E.bestOwnedPair(pool,o);const d=b&&b.n>=60?E.buildDeck(pool,b.inks,o):null;return{name:"My collection"+(b?" ("+b.inks.join(" / ")+")":""),cards:d,need:b?b.n:0}}
   if(sel[0]==="c"){const d=decks()[+sel.slice(1)];if(!d)return{cards:null};const cards=[];for(const[id,n]of Object.entries(d.cards)){const c=byId.get(id);if(c)for(let i=0;i<n;i++)cards.push(c)}return{name:d.name,cards:cards.length>=60&&!E.validateDeck(cards)?cards:null}}
 }
 /* ---------- rendering ---------- */
 function bar(title,right=""){return`<div class="pbar"><button class="pbtn ghost" data-a="quit">${S.screen==="menu"?"Close":"Back"}</button><div class="ptitle">${esc(title)}</div>${right}</div>`}
-function render(){clearFx();if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
+function render(){if(root)root.classList.toggle("onboard",S.screen==="board");clearFx();if(window.FX)FX.mode(S.screen==="board"?"board":"tracker");
   if(!pool){root.innerHTML=bar("Play")+`<p class="empty">Loading all cards...</p>`;return}
   ({menu:renderMenu,builder:renderBuilder,mull:renderMull,board:renderBoard,coin:renderCoin}[S.screen])();
 }
 function renderMenu(){
   const own=deckFromSel("own"),cus=decks();
-  const opt=(id,name,sub,dis)=>`<button class="dopt ${S.sel===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
+  if(!/^(s\d+|own|c\d+)$/.test(String(S.deck))||(S.deck[0]==="c"&&!cus[+S.deck.slice(1)])||(S.deck[0]==="s"&&!STARTERS[+S.deck.slice(1)]))S.deck="s0";
+  const opt=(id,name,sub,dis)=>`<button class="dopt ${S.deck===id?"on":""}" data-a="sel" data-v="${id}" ${dis?"disabled":""}><b>${esc(name)}</b><span>${esc(sub)}</span></button>`;
   root.innerHTML=bar("Play vs AI")+`<div class="pbody">
   <h4>Your deck</h4>${STARTERS.map((p,i)=>opt("s"+i,p.join(" / "),"Starter deck · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
@@ -52,7 +55,8 @@ function renderMenu(){
   <button class="wide" data-a="builder">Deck builder</button>
   <h4>Opponent</h4><div class="opts"><button class="opt ${S.opp==="random"?"on":""}" data-a="opp" data-v="random">Random starter</button>${STARTERS.map((p,i)=>`<button class="opt ${S.opp==="s"+i?"on":""}" data-a="opp" data-v="s${i}">${p.join("/")}</button>`).join("")}</div>
   <h4>AI difficulty</h4><div class="opts">${["easy","normal","hard"].map(l=>`<button class="opt ${SET.level===l?"on":""}" data-a="lvl" data-v="${l}">${LEVELS[l]}</button>`).join("")}</div>
-  <button class="wide primary" data-a="start">Start game</button><button class="wide" data-a="settings">Settings</button>
+  <button class="wide" data-a="settings">Settings</button>
+  <div class="startbar"><button class="wide primary" data-a="start">Start game</button></div>
   <p class="meta small">${pool.length} main-set cards loaded (${source=="live"?"live from Lorcast":"snapshot"}). ${coverageLine()}</p></div>`;
 }
 function coverageLine(){const c=E.coverage(pool).byStatus;return`Ability simulation: ${c.full||0} full, ${c.keywords||0} keyword-only, ${c.plain||0} no-text, ${c.partial||0} partial, ${c.vanilla||0} vanilla fallback.`}
@@ -94,13 +98,14 @@ function builderSheet(id,from){const c0=byId.get(id);if(window.Zoom&&c0){const k
   sheet(cardSheet(c,`<div class="stepper big2"><button class="big" data-a="badd" data-id="${id}" data-d="-1">&minus;</button><b>${k}</b><button class="big plus" data-a="badd" data-id="${id}" data-d="1" ${f>=max?"disabled":""}>+</button></div><div class="meta small">Max ${max} copies of ${esc(c.full)} (you have ${f}).</div><button class="wide" data-a="close">Done</button>`))}
 /* game */
 const SKEY2="lorcanaPlaySettings.v1";
-const SET=Object.assign({level:"normal",speed:"normal",sound:false,tips:true},JSON.parse(localStorage.getItem(SKEY2)||"{}"));
+const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,tips:true};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
+  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";r.sound=!!r.sound;r.tips=r.tips!==false;return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
 const LEVELS={easy:"Easy",normal:"Normal",hard:"Hard"};
 function startGame(rematch){
   let me,op;
-  if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.sel);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
+  if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
   S.last={me,op};S.oppName=op.name;S.meName=me.name;
   S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,false]});
@@ -359,14 +364,14 @@ function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limi
 function onClick(e){if(S.lp&&e.target.closest&&!e.target.closest('[data-a=tile]')){S.lp=false;e.preventDefault();return}const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
   switch(a){
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
-    case"sel":S.sel=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
-    case"builder":{const sel=S.sel;if(sel[0]==="c"){const d=decks()[+sel.slice(1)];bInit({...d,idx:+sel.slice(1)})}else bInit();S.screen="builder";render();break}
+    case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
+    case"builder":{const sel=String(S.deck||"");if(sel[0]==="c"&&decks()[+sel.slice(1)]){const d=decks()[+sel.slice(1)];bInit({...d,idx:+sel.slice(1)})}else bInit();S.screen="builder";render();break}
     case"bview":S.build.view=v;renderBuilder();break;case"bink":S.build.ink=v;S.build.limit=60;renderBuilder();break;case"btype":S.build.type=v;S.build.limit=60;renderBuilder();break;
     case"bmore":S.build.limit+=60;renderBuilder();break;case"bclear":if(confirm("Remove all cards from this deck?")){S.build.cards={};renderBuilder()}break;
     case"bview1":builderSheet(b.dataset.id,b);break;
     case"badd":badd(b.dataset.id,+b.dataset.d);break;
     case"bsave":{const b2=S.build,n=bCount(),inks=bInks();if(n<60||inks.length>2){if(!confirm(`This deck has ${n} cards${inks.length>2?" and too many inks":""}. Save it anyway as a draft?`))return}
-      const all=decks(),d={name:b2.name||"My deck",cards:b2.cards};if(b2.idx!=null)all[b2.idx]=d;else{all.push(d);b2.idx=all.length-1}saveDecks(all);S.sel="c"+b2.idx;S.screen="menu";render();break}
+      const all=decks(),d={name:b2.name||"My deck",cards:b2.cards};if(b2.idx!=null)all[b2.idx]=d;else{all.push(d);b2.idx=all.length-1}saveDecks(all);S.deck="c"+b2.idx;S.screen="menu";render();break}
     case"mtog":{const u=+b.dataset.uid;S.mullSel.has(u)?S.mullSel.delete(u):S.mullSel.add(u);renderMull();break}
     case"mdone":{const go=()=>{E.mulligan(S.st,0,[...S.mullSel]);S.st.events=[];S.screen="board";S.tipShown=false;renderBoard();if(S.st.active===1)aiLoop()};
       if(lowA()||!S.mullSel.size){go();break}

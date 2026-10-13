@@ -107,7 +107,7 @@ body.playing{overflow:hidden}
 .icon-btn.play{border-color:#d4a73c;background:#d4a73c;color:#14112a;padding:0 12px}
 .board{height:100%}.zone{flex:1;min-height:140px}.tile{flex:0 0 90px}.tile img{width:90px;height:126px}
 /* ---- Play v2: playmat board ---- */
-#play{overflow:hidden}
+#play.onboard{overflow:hidden}
 .gb{position:relative;display:flex;flex-direction:column;height:100dvh;background:radial-gradient(ellipse at 50% 30%,#2a2160 0%,#17123a 55%,#100c28 100%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 .ohead{display:flex;align-items:center;gap:8px;padding:2px 8px 0}
 .mbtn{min-height:44px;min-width:60px;border-radius:12px;border:2px solid #5a4ea0;background:#241d4a;font-size:14px}
@@ -391,3 +391,7 @@ h1{font-size:15px}
 @keyframes spin{to{transform:rotate(360deg)}}@keyframes cineout{to{opacity:0}}
 .lowfx .modal.end .cine{display:none}.lowfx .modal.end .mbox{animation:none}
 @media (prefers-reduced-motion:reduce){.modal.end .cine{display:none}.tsweep,.shuffle{display:none}}
+
+.startbar{position:sticky;bottom:0;z-index:5;margin:12px -14px 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(14,11,36,0),rgba(14,11,36,.92) 30%)}
+.startbar .wide{margin:0}
+#play:not(.onboard){overflow-y:auto;-webkit-overflow-scrolling:touch}

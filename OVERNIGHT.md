@@ -65,4 +65,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   effect choices. Needs an engine-level freeze (rng state + deep pending) before it is safe.
 - Tests: `node tests/engine.test.js` 86 passed; new `tests/ui-batch3.py` (375×667 + 390×844)
   for layout peek/dtok/hint/last-play/concede/game-speed; `ui-ai-style.py` + `ui-start.py` passed.
-- Commit: `67bf55e` (version `20261013083143`). Live: https://laim-1.github.io/lorcana-tracker/
+- Commit: `c2d869d` (version `20261013083143`). Live: https://laim-1.github.io/lorcana-tracker/

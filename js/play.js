@@ -79,6 +79,7 @@ function renderMenu(){
   ${!PPm&&!GLm&&HS.n?`<div class="histbar" data-a="history"><b>${HS.w}W – ${HS.l}L</b><span>${HS.streak?("Win streak "+HS.streak):"Tap for match history"}</span></div>`:""}
   ${(()=>{const sv=loadSavedMeta();return sv?`<button class="wide primary" data-a="resumeSave">Resume saved game <small>${new Date(sv.meta.savedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></button>`:""})()}
   ${!PPm&&!GLm?`<button class="wide" data-a="daily">Daily challenge <small>${phoenixDateKey()}</small></button>`:""}
+  <button class="wide" data-a="tutorial">Tutorial <small>guided first game</small></button>
   <button class="wide ghostw" data-a="rules">Rules reference</button>
   <h4>${PPm?"Player 1 deck":"Your deck"}</h4>${STARTERS.map((p,i)=>opt("s"+i,p.name,p.title+" · official starter · 60 cards")).join("")}
   ${opt("own","Build from my collection",own.cards?own.name+" · 60 cards":`Need 60 owned cards in two inks (best: ${own.need})`,!own.cards)}
@@ -120,7 +121,7 @@ function cardSheet(c,extra){
   return`<img class="big-img" src="${esc(c.imgLarge||c.img)}" alt="${esc(c.full)}"><div class="sname2">${esc(c.full)}</div><div class="meta">${st}${c.inkable?" · inkable":""}</div>
   <div class="status s-${c.status}">${STATUS_LABEL[c.status]}</div>${c.unsupported.length?`<div class="meta small">Not simulated: ${c.unsupported.map(u=>esc(u.replace(/\([^)]*\)/g,"").slice(0,90))).join(" | ")}</div>`:""}${extra||""}`;
 }
-function sheet(html){$("#sheet-body").innerHTML=html;$("#scrim").hidden=false;$("#sheet").classList.add("open");$("#sheet").setAttribute("aria-hidden","false");$("#sheet-body").onclick=onClick}
+function sheet(html){$("#sheet-body").innerHTML=html;$("#scrim").hidden=false;$("#sheet").classList.add("open");$("#sheet").setAttribute("aria-hidden","false");$("#sheet-body").onclick=onClick;$("#sheet-body").oninput=onInput}
 function closeSheet(){if(S.paused&&S.screen==="board"){S.paused=false;if(aiTurn())setTimeout(aiLoop,50)}$("#sheet").classList.remove("open");$("#scrim").hidden=true;$("#sheet").setAttribute("aria-hidden","true")}
 function badd(id,d){const c=byId.get(id),max=/up to 99 copies/.test(c.text)?99:4;
       if(d>0){if(fullCount(c)>=max){builderSheet(id);return}const inks=new Set(bInks());c.inks.forEach(i=>inks.add(i));if(inks.size>2){alert("A deck can use at most 2 inks.");builderSheet(id);return}}
@@ -133,8 +134,8 @@ function builderSheet(id,from){const c0=byId.get(id);if(window.Zoom&&c0){const k
 const SKEY2="lorcanaPlaySettings.v1";
 const STYLES={balanced:"Balanced",aggro:"Aggressive",quester:"Quester",control:"Control"};
 const AILV=()=>SET.level+(SET.style&&SET.style!=="balanced"?":"+SET.style:"");
-const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,tips:true,style:"balanced"};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
-  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.tips=r.tips!==false;return r})();
+const SET=(()=>{const d={level:"normal",speed:"normal",sound:false,volume:70,music:false,tips:true,style:"balanced"};let o={};try{o=JSON.parse(localStorage.getItem(SKEY2)||"{}")||{}}catch(e){}
+  if(typeof o!=="object"||Array.isArray(o))o={};const r={...d,...o};if(!["easy","normal","hard"].includes(r.level))r.level="normal";if(!["slow","normal","fast"].includes(r.speed))r.speed="normal";if(!STYLES[r.style])r.style="balanced";r.sound=!!r.sound;r.music=!!r.music;r.tips=r.tips!==false;r.volume=Math.max(0,Math.min(100,Number(r.volume)||70));return r})();
 const saveSet=()=>localStorage.setItem(SKEY2,JSON.stringify(SET));
 const SPEED={slow:1500,normal:950,fast:450};
 /* #33 Match history */ const HKEY="lorcanaMatchHistory.v1";
@@ -171,8 +172,8 @@ function startGame(rematch){
   let me,op;
   if(rematch&&S.last){me=S.last.me;op=S.last.op}else{me=deckFromSel(S.deck);if(!me||!me.cards){alert("That deck isn't ready (needs 60 legal cards).");return}
     const os=S.opp==="random"?"s"+Math.floor(Math.random()*STARTERS.length):S.opp;op=deckFromSel(os)}
-  S.daily=false;S.last={me,op};S.oppName=op.name;S.meName=me.name;
-  S.pp=S.mode==="pp";S.gold=S.mode==="gold";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;
+  S.daily=false;S.tut=null;S.tutLock=false;S.last={me,op};S.oppName=op.name;S.meName=me.name;
+  S.pp=S.mode==="pp";S.gold=S.mode==="gold";S.names=["Player 1","Player 2"];S.shown=null;S.mullSeat=0;clearUndo();
   const oppHuman=S.pp,oppLabel=S.pp?S.names:S.gold?["You","Goldfish"]:["You","AI"];
   S.st=E.newGame({decks:[me.cards,op.cards],names:S.pp?S.names:oppLabel,seed:Date.now()%1e9,first:Math.random()<.5?0:1,human:[true,oppHuman]});
   if(!S.pp){if(S.gold)E.mulligan(S.st,1,[]);else E.mulligan(S.st,1,E.aiMulligan(S.st,1))}
@@ -220,7 +221,8 @@ const ICO={menu:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 
  disc:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
  hand:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="9" height="13" rx="2" transform="rotate(-12 7 12)" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="11" y="5" width="9" height="13" rx="2" transform="rotate(10 15 11)" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
  hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
- log:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'};
+ log:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ undo:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8H5V4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8a7 7 0 1 1 2 9.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>'};
 function hud(pos){const pi=SEAT(pos),p=S.st.players[pi],ink=E.inkAvail(p);
   return`<div class="hud h${pos}">${pos===1?`<button class="mbtn" data-a="pause" aria-label="Menu">${ICO.menu}</button>`:""}
    <div class="loretrk" id="lore-${pos}"><b>${p.lore}</b><div><span>${S.pp?esc(PN(pi)).toUpperCase():pos===1?(S.gold?"GOLDFISH":("AI · "+LEVELS[SET.level].toUpperCase()+(SET.style!=="balanced"?" · "+STYLES[SET.style].toUpperCase():""))):"YOUR LORE"}</span><div class="pips">${lorePips(p.lore)}</div></div></div>
@@ -269,11 +271,12 @@ function banner(){const st=S.st;if(st.winner!=null)return`<div class="banner ove
   const my=st.active===ME();const acts=my&&!st.pending?E.legalActions(st):[];const canEnd=acts.some(a=>a.t==="end");
   const ml=st.players[ME()].lore,ol=st.players[OP()].lore,race=ml===ol?"Tied "+ml+"–"+ol:ml>ol?(S.pp?esc(PN(ME())):"You")+" ahead "+ml+"–"+ol:(S.pp?esc(PN(OP())):"AI")+" ahead "+ol+"–"+ml;
   const hintBtn=my&&!S.tm?`<button class="hintbtn ${S.hint?"on":""}" data-a="hint" aria-label="${S.hint?"Hide hints":"Show legal moves"}" title="Legal moves">${ICO.hint}</button>`:"";
+  const undoBtn=canUndo()?`<button class="hintbtn" data-a="undo" aria-label="Undo last action" title="Undo">${ICO.undo}</button>`:"";
   const turnLab=S.pp?esc(PN(st.active)).toUpperCase()+"'S TURN":my?"YOUR TURN":(S.gold?"GOLDFISH TURN":"AI TURN");
   const sub=my?(st.players[ME()].inked?"Ink used":"Ink available"):(S.gold?"Pass and draw only":"AI is playing");
   const logBtn=`<button class="hintbtn" data-a="alog" aria-label="Action log" title="Action log">${ICO.log}</button>`;
   return`<div class="banner ${my?"mine":"theirs"}"><div><b>${turnLab}</b><small>Turn ${st.turnNo} · ${race} · ${sub}</small></div>
-   <div class="bacts">${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
+   <div class="bacts">${undoBtn}${logBtn}${hintBtn}${my||S.pp?`<button class="endbtn" data-a="end" ${canEnd?"":"disabled"}>${canEnd?"End turn":"Must challenge"}</button>`:`<span class="thinking"><i></i><i></i><i></i></span>`}</div></div>`}
 function actionBar(){
   if(!S.sel||S.tm)return"";const f=E.find(S.st,S.sel);if(!f)return"";const acts=legalFor(S.sel);
   const g=groupActs(acts);const btn=(k,l,cls="")=>`<button class="ab ${cls}" data-a="grp" data-k="${k}">${l}</button>`;
@@ -305,11 +308,12 @@ function renderBoard(){
    <div class="handwrap">${actionBar()}<div class="hand2">${me.hand.map(h=>{const acts=myTurn()&&!S.tm?legalFor(h.uid):[];const pl=acts.some(a=>a.t==="play");const ik=myTurn()&&!S.tm&&!me.inked&&h.card.inkable;const hint=S.hint&&acts.length>0;
      return`<button class="hc ${pl?"play":""} ${S.sel===h.uid?"sel":""} ${hint?"hint":""} ${S.tm?"dim":""}" data-a="tile" data-uid="${h.uid}"><img src="${esc(h.card.img)}" alt="${esc(h.card.full)}"><span class="mcost">${E.costOf(st,ME(),h.card)}</span>${h.card.inkable?`<span class="inkable" title="Inkable"></span>`:""}${badge(h.card)}${ik&&!pl?"":""}</button>`}).join("")}</div></div>
    ${lastPlayHtml()}<div id="toast" class="toast"></div></div>
-   ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}`;
-  fitBoard();if(st.winner!=null){noteEvents(st.events||[]);clearFx();st.events=[];recordMatch(st);closeSheet()}else animate(rects);if(window.FX)FX.mode("board");tickLore();
-  if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0||S.gold)&&window.FX)setTimeout(FX.celebrate,300)}if(st.winner==null)S.celebrated=false;
-  if(SET.tips&&!S.tipShown&&st.winner==null){S.tipShown=true;setTimeout(()=>tip(0),400)}
+   ${st.pending&&st.pending.pi===ME()&&st.human[st.pending.pi]&&st.winner==null?discardPrompt():""}${st.winner!=null?endScreen():""}${S.tut&&st.winner==null?tutHtml():""}`;
+  fitBoard();if(st.winner!=null){noteEvents(st.events||[]);clearFx();st.events=[];recordMatch(st);closeSheet();if(S.tut){S.tut=null}}else animate(rects);if(window.FX)FX.mode("board");tickLore();
+  if(st.winner!=null&&!S.celebrated){S.celebrated=true;if((S.pp||st.winner===0||S.gold)&&window.FX)setTimeout(FX.celebrate,300);sfx("win")}if(st.winner==null)S.celebrated=false;
+  if(SET.tips&&!S.tipShown&&st.winner==null&&!S.tut){S.tipShown=true;setTimeout(()=>tip(0),400)}
   if(goldTurn()&&!S.busy)goldLoop();
+  advanceTut();
 }
 function lastPlayHtml(){const lp=S.lastOpp;if(!lp||!lp.img)return"";const age=Date.now()-(lp.at||0);if(age>4200){return""}
   return`<div class="lastplay ${age>3400?"out":""}" aria-live="polite"><img src="${esc(lp.img)}" alt=""><div><small>${S.pp?esc(PN(OP())):"Opponent"} played</small><b>${esc(lp.name||"Card")}</b></div></div>`}
@@ -405,22 +409,57 @@ function animate(old){const evs=(S.st.events||[]).splice(0);const slow=SET.speed
       if(e.pi===1&&!L&&dk){const h=document.getElementById("hand-1")?.getBoundingClientRect();if(h){const a=flyGhost({left:dk.left,top:dk.top,width:28,height:39},{left:h.left,top:h.top,width:28,height:39},BACK,{dur:420*slow});a.onfinish=()=>a.effect.target.remove()}}}
     if(e.t==="turn"){const b=root.querySelector(".banner");if(b){b.classList.remove("sweep");void b.offsetWidth;b.classList.add("sweep")}b&&b.animate([{transform:"scaleX(.6)",opacity:.2},{transform:"none",opacity:1}],{duration:400});turnSweep(e.pi===ME());sfx("turn")}
   }}
-let AC=null;function sfx(k){if(!SET.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();
-  const f={play:440,ink:330,quest:660,hit:160,ban:110,turn:520,flip:600}[k]||400;o.frequency.value=f;o.type=k==="hit"||k==="ban"?"square":"sine";g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.25);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+.26)}catch(e){}}
+/* #31/#32 Sound pack + volume + background music (Web Audio, no external files) */
+let AC=null,MUS={on:false,t:null,nodes:[]};
+function audioCtx(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();return AC}catch(e){return null}}
+function volN(){return Math.max(0,Math.min(1,(+SET.volume||0)/100))}
+function sfx(k){if(!SET.sound||volN()<=0)return;const ctx=audioCtx();if(!ctx)return;
+  try{const t0=ctx.currentTime,V=volN()*.22;
+    const tone=(type,f,dur,g0,toF)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(f,t0);if(toF)o.frequency.exponentialRampToValueAtTime(Math.max(.01,toF),t0+dur*.9);g.gain.setValueAtTime(Math.max(.0001,g0*V),t0);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g).connect(ctx.destination);o.start(t0);o.stop(t0+dur+.02)};
+    const noise=(dur,g0,bp)=>{const n=Math.max(1,Math.floor(ctx.sampleRate*dur)),buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.6);const src=ctx.createBufferSource();src.buffer=buf;const g=ctx.createGain(),f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=bp||800;f.Q.value=0.7;g.gain.setValueAtTime(g0*V,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);src.connect(f).connect(g).connect(ctx.destination);src.start(t0);src.stop(t0+dur+.02)};
+    if(k==="play"){tone("triangle",523,.18,.55,784);tone("sine",784,.22,.25,1046)}
+    else if(k==="ink"){tone("sine",220,.28,.5,110);noise(.2,.35,180)}
+    else if(k==="quest"){tone("sine",660,.16,.5,990);tone("triangle",990,.22,.3,1320)}
+    else if(k==="hit"){noise(.18,.7,220);tone("square",140,.14,.4,70)}
+    else if(k==="ban"){noise(.32,.8,140);tone("sawtooth",90,.3,.45,40)}
+    else if(k==="turn"){tone("sine",392,.12,.4);setTimeout(()=>{try{const c=audioCtx();if(!c||!SET.sound)return;const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=523;g.gain.value=.35*volN()*.22;g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.18);o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+.2)}catch(e){}},90)}
+    else if(k==="flip"){tone("triangle",600,.2,.45,900)}
+    else if(k==="ui"){tone("sine",880,.06,.25)}
+    else if(k==="win"){tone("sine",523,.2,.5,784);setTimeout(()=>sfx("quest"),120)}
+    else tone("sine",400,.15,.35)
+  }catch(e){}}
+function stopMusic(){MUS.on=false;if(MUS.t){clearTimeout(MUS.t);MUS.t=null}for(const n of MUS.nodes){try{n.stop()}catch(e){}}MUS.nodes=[];}
+function musicTick(){if(!MUS.on||!SET.music||volN()<=0){stopMusic();return}const ctx=audioCtx();if(!ctx)return;
+  try{const t0=ctx.currentTime,V=volN()*.045,notes=[196,246.94,293.66,392,493.88,392,329.63,246.94];
+    notes.forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain();
+      o.type="sine";o.frequency.value=f;lfo.frequency.value=0.15+i*.02;lg.gain.value=6;lfo.connect(lg).connect(o.frequency);
+      const st=t0+i*.42;g.gain.setValueAtTime(.0001,st);g.gain.linearRampToValueAtTime(V,st+.08);g.gain.linearRampToValueAtTime(.0001,st+.55);
+      o.connect(g).connect(ctx.destination);o.start(st);o.stop(st+.6);lfo.start(st);lfo.stop(st+.6);MUS.nodes.push(o,lfo)});
+    MUS.t=setTimeout(musicTick,notes.length*420)}catch(e){MUS.t=setTimeout(musicTick,2000)}}
+function syncMusic(){if(SET.music&&SET.sound&&volN()>0){if(!MUS.on){MUS.on=true;musicTick()}}else stopMusic()}
+function setVol(n){SET.volume=Math.max(0,Math.min(100,+n||0));saveSet();if(SET.volume<=0){stopMusic()}else syncMusic()}
 function toast(msg){const t=document.getElementById("toast");if(!t)return;t.textContent=msg;t.classList.remove("show");void t.offsetWidth;t.classList.add("show")}
 function describe(a,st){const n=u=>E.find(st,u)?.inst.card.full||"";switch(a.t){case"ink":return"AI puts a card into its inkwell";case"play":return a.singer!=null?`AI sings ${n(a.uid)}`:a.shift!=null?`AI shifts ${n(a.uid)}`:`AI plays ${n(a.uid)}`;
   case"quest":return`AI quests with ${n(a.uid)}`;case"challenge":return`AI challenges ${n(a.target)} with ${n(a.uid)}`;case"move":return`AI moves ${n(a.uid)} to ${n(a.loc)}`;case"act":return`AI uses ${n(a.uid)}'s ability`;case"boost":return`AI boosts ${n(a.uid)}`;case"end":return"AI ends its turn";case"discard":return"AI discards a card"}return""}
 /* ---- player interaction ---- */
-function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}renderBoard();if(aiTurn()&&S.st.winner==null)aiLoop();else if(goldTurn())goldLoop()}
+/* #26 One-step undo: snapshot via freezeState before a human main action (no pending). Thaw restores even if that action opened a choice. Cleared when AI/gold acts or a new game starts. */
+function clearUndo(){S.undo=null}
+function snapUndo(){if(!S.st||S.st.winner!=null||S.st.pending||(S.st.pq&&S.st.pq.length))return;const fr=E.freezeState(S.st);if(fr&&!fr.error)S.undo=fr}
+function canUndo(){return!!(S.undo&&S.st&&S.st.winner==null&&!S.busy&&S.screen==="board"&&!S.tutLock)}
+function doUndo(){if(!canUndo()){toast("Nothing to undo");return}try{const st=E.thawState(S.undo,pool);S.st=st;S.undo=null;S.sel=null;S.tm=null;S.hint=false;S.pkSel=[];closeSheet();sfx("ui");toast("Undid last action");renderBoard();advanceTut()}catch(e){console.error(e);clearUndo();toast("Undo failed")}}
+function doAct(a){if(S._tapLock&&Date.now()<S._tapLock&&a&&a.t!=="end"){return}S._tapLock=Date.now()+280;S.sel=null;S.tm=null;S.hint=false;closeSheet();
+  if(!S.st.pending&&!(S.st.pq&&S.st.pq.length))snapUndo();
+  try{E.act(S.st,a)}catch(e){console.error(e);toast("That move is not allowed")}
+  renderBoard();advanceTut();if(aiTurn()&&S.st.winner==null)aiLoop();else if(goldTurn())goldLoop()}
 function goldLoop(){if(S.busy||!S.st||S.screen!=="board")return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||!S.gold||st.winner!=null||st.active!==1){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
     if(st.pending){ // auto-resolve goldfish choices: skip / first option / discard last
-      const P=st.pending;try{if(P.kind==="ask"){if(P.min===0||P.reveal)E.act(st,{t:"askDone"});else E.act(st,{t:"ask",i:0});if(st.pending===P)E.act(st,{t:"askDone"})}
+      const P=st.pending;clearUndo();try{if(P.kind==="ask"){if(P.min===0||P.reveal)E.act(st,{t:"askDone"});else E.act(st,{t:"ask",i:0});if(st.pending===P)E.act(st,{t:"askDone"})}
         else if(P.kind==="dig"||P.kind==="free")E.act(st,{t:"pickDone"});
         else if(P.n){const h=st.players[1].hand;if(h.length)E.act(st,{t:"discard",uid:h[h.length-1].uid})}
         else E.act(st,{t:"askDone"})}catch(e){try{E.act(st,{t:"end"})}catch(_){ }}
       renderBoard();setTimeout(step,SPEED[SET.speed]*.35);return}
-    try{E.act(st,{t:"end"})}catch(e){console.error(e)}renderBoard();S.busy=false};
+    clearUndo();try{E.act(st,{t:"end"})}catch(e){console.error(e)}renderBoard();S.busy=false};
   setTimeout(step,SPEED[SET.speed]*.4)}
 function startTargeting(list,key,label){
   if(list.length===1&&(list[0][key]==null)){doAct(list[0]);return}
@@ -498,7 +537,7 @@ function tapTile(uid){
   if(f.pi!==ME()||!myTurn()){zoom(uid);return}
   S.sel=uid;renderBoard();zoom(uid,elOf(uid),true);
 }
-function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();if(aiTurn()&&!S.st.pending&&S.st.winner==null)aiLoop()}
+function afterPick(){S.pkSel=[];S.pkMin=false;if(S.screen!=="board")return;renderBoard();advanceTut();if(aiTurn()&&!S.st.pending&&S.st.winner==null)aiLoop()}
 function aiLoop(){if(S.busy)return;S.busy=true;
   const step=()=>{const st=S.st;if(!st||S.screen!=="board"||st.winner!=null||S.paused){S.busy=false;if(st&&S.screen==="board")renderBoard();return}
     if(st.pending&&st.human[st.pending.pi]){S.busy=false;renderBoard();return} // wait for the player's discard
@@ -506,7 +545,7 @@ function aiLoop(){if(S.busy)return;S.busy=true;
     const a=E.aiChoose(st,AILV());if(!a){S.busy=false;return}
     if(a.uid!=null){const el=elOf(a.uid);if(el)el.classList.add("aifocus")}
     toast(describe(a,st));
-    setTimeout(()=>{try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
+    setTimeout(()=>{clearUndo();try{E.act(st,a)}catch(e){console.error(e);try{E.act(st,{t:"end"})}catch(_){}}renderBoard();setTimeout(step,a.t==="end"?SPEED[SET.speed]*.6:SPEED[SET.speed])},SPEED[SET.speed]*.45)};
   setTimeout(step,SPEED[SET.speed]*.6)}
 const TIPS=["Your side is at the bottom: characters, then items and locations, then your lore, inkwell, deck and discard.","Cards in your hand that glow gold can be played now. The small drop icon means a card is inkable: select it and tap Ink it (once per turn).","Tap one of your characters to select it, then choose Quest or Challenge. Legal targets glow red; tap one to confirm.","Characters that are drying (just played) can't quest or challenge until your next turn. First to 20 lore wins. Hold a card or tap Details to read it."];
 function tip(i){if(i>=TIPS.length){SET.tips=false;saveSet();closeSheet();return}sheet(`<h4>Tip ${i+1} of ${TIPS.length}</h4><p class="tiptext">${TIPS[i]}</p><button class="wide primary" data-a="tip" data-i="${i+1}">${i+1<TIPS.length?"Next":"Got it"}</button><button class="wide ghostw" data-a="tip" data-i="99">Skip tips</button>`)}
@@ -516,7 +555,10 @@ function settingsHtml(){const pill=(k,v,l)=>`<button class="opt ${SET[k]===v?"on
   <h4>Game speed</h4><div class="opts">${pill("speed","slow","Slow")}${pill("speed","normal","Normal")}${pill("speed","fast","Fast")}</div>
   <p class="meta small">Controls AI thinking pauses and board animations.</p>
   <h4>Effects</h4><div class="opts"><button class="opt ${window.FX&&!FX.low?"on":""}" data-a="fxlow" data-v="0">Full</button><button class="opt ${window.FX&&FX.low?"on":""}" data-a="fxlow" data-v="1">Low power</button></div>
-  <h4>Sound</h4><div class="opts">${pill("sound",false,"Off")}${pill("sound",true,"On")}</div>
+  <h4>Sound effects</h4><div class="opts">${pill("sound",false,"Off")}${pill("sound",true,"On")}</div>
+  <h4>Volume <small>${SET.volume|0}%</small></h4><div class="volrow"><input type="range" min="0" max="100" step="5" value="${SET.volume|0}" data-a="vol" id="volrange" aria-label="Volume"><span class="vollbl">${SET.volume|0}%</span></div>
+  <h4>Background music</h4><div class="opts">${pill("music",false,"Off")}${pill("music",true,"On")}</div>
+  <p class="meta small">Music uses soft generated tones (no downloads). Requires Sound effects On.</p>
   <h4>Tips</h4><div class="opts"><button class="opt" data-a="tipsagain">Show tips again</button></div>`}
 function pauseMenu(){S.paused=true;const canSave=S.st&&S.st.winner==null&&!S.st.pending&&!(S.st.pq&&S.st.pq.length)&&S.st.phase==="main";
   sheet(`<h4>Game paused</h4><button class="wide primary" data-a="resume">Resume</button>${canSave?`<button class="wide" data-a="savegame">Save game</button>`:`<p class="meta small">Save is available between actions (not mid-choice).</p>`}${settingsHtml()}<button class="wide" data-a="concede">Concede</button><button class="wide ghostw" data-a="quitgame">Quit to menu</button>`)}
@@ -537,8 +579,8 @@ function startDaily(){if(!pool||!pool.length){toast("Cards still loading");retur
   const key=phoenixDateKey(),seed=dailySeed(key),i=seed%STARTERS.length,j=(seed>>>8)%STARTERS.length;
   const me=deckFromSel("s"+i),op=deckFromSel("s"+((j===i?(j+1)%STARTERS.length:j)));
   if(!me.cards||!op.cards){toast("Daily decks not ready");return}
-  S.daily=true;S.mode="ai";S.pp=false;S.gold=false;S.deck="s"+i;S.last={me,op};S.meName=me.name+" (Daily)";S.oppName=op.name;
-  S.names=["You","AI"];S.shown=null;S.mullSeat=0;
+  S.daily=true;S.mode="ai";S.pp=false;S.gold=false;S.tut=null;S.deck="s"+i;S.last={me,op};S.meName=me.name+" (Daily)";S.oppName=op.name;
+  S.names=["You","AI"];S.shown=null;S.mullSeat=0;clearUndo();
   S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:seed,first:seed%2,human:[true,false]});
   E.mulligan(S.st,1,E.aiMulligan(S.st,1));
   S.mullSel=new Set();S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.screen="coin";render();
@@ -553,8 +595,40 @@ function rulesHtml(){return`<h4>Rules reference</h4><div class="rules">
 <h5>Shift</h5><p>Play a Floodborn onto another character with the same name (or matching Shift text) paying the Shift cost. It keeps damage, exerted state, and drying.</p>
 <h5>Locations</h5><p>Pay the shown move cost to move a character onto a location. Locations can be challenged.</p>
 </div><button class="wide" data-a="close">Close</button>`}
+
+/* #39 Tutorial game with guided steps */
+const TUT_STEPS=[
+  {id:"welcome",title:"Welcome to Lorcana",body:"This short tutorial walks you through inking, playing a character, ending your turn, and questing. Tap Next when you are ready — the board stays interactable.",auto:false},
+  {id:"ink",title:"Ink a card",body:"Once per turn you may put an inkable card from your hand into your inkwell. Cards with a gold drop can be inked. Select an inkable hand card, then tap Ink it.",check:st=>{const p=st.players[0];return p.inked||p.ink.length>0}},
+  {id:"play",title:"Play a character",body:"Spend ready ink to play a character from your hand. Glowing hand cards are playable — tap one, then Play. New characters are drying and cannot quest this turn.",check:st=>st.players[0].play.some(x=>x.card.type==="character")},
+  {id:"end",title:"End your turn",body:"When you are done, tap End turn. Your opponent (Easy AI) will take a short turn.",check:st=>st.turnNo>=2||(st.active===1&&!st.pending)},
+  {id:"quest",title:"Quest for lore",body:"On your next turn, ready dry characters can quest. Tap a ready character that is not drying, then Quest to gain lore. First to 20 wins!",check:st=>st.players[0].lore>0||(S.alog||[]).some(r=>r.t==="quest"&&r.pi===0)},
+  {id:"done",title:"You're ready!",body:"Great work. Keep playing this game, or quit to the menu and try Daily challenge or a full AI match. Use the undo button (curved arrow) to take back your last action when it is available.",auto:false}
+];
+function tutHtml(){if(!S.tut)return"";const step=TUT_STEPS[S.tut.i];if(!step)return"";
+  const n=S.tut.i+1,tot=TUT_STEPS.length;
+  return`<div class="tut" role="dialog" aria-label="Tutorial"><div class="tutcard"><div class="tuthead"><b>Tutorial ${n}/${tot}</b><button class="tutx" data-a="tutskip" aria-label="Skip tutorial">Skip</button></div>
+  <h4>${esc(step.title)}</h4><p>${esc(step.body)}</p>
+  <div class="tutacts">${S.tut.i<TUT_STEPS.length-1?`<button class="wide primary" data-a="tutnext">${step.check?"I did it — Next":"Next"}</button>`:`<button class="wide primary" data-a="tutdone">Finish tutorial</button>`}</div></div></div>`}
+function advanceTut(){if(!S.tut||S.st==null)return;const step=TUT_STEPS[S.tut.i];if(!step||!step.check)return;
+  try{if(step.check(S.st)){S.tut.i=Math.min(S.tut.i+1,TUT_STEPS.length-1);S.tut.seen=S.tut.seen||{};S.tut.seen[step.id]=true;if(S.screen==="board")renderBoard()}}catch(e){}}
+function startTutorial(){if(!pool||!pool.length){toast("Cards still loading");return}
+  const me=deckFromSel("s0"),op=deckFromSel("s1");
+  if(!me.cards||!op.cards){toast("Tutorial decks not ready");return}
+  SET.level="easy";SET.style="balanced";saveSet();
+  S.daily=false;S.mode="ai";S.pp=false;S.gold=false;S.deck="s0";S.opp="s1";S.last={me,op};
+  S.meName=me.name+" (Tutorial)";S.oppName="Tutorial AI";S.names=["You","AI"];S.shown=null;S.mullSeat=0;clearUndo();
+  S.tut={i:0,seen:{}};S.tutLock=false;
+  S.st=E.newGame({decks:[me.cards,op.cards],names:["You","AI"],seed:42,first:0,human:[true,false]});
+  E.mulligan(S.st,1,[]); // goldfish-like empty mull for AI simplicity
+  S.mullSel=new Set();S.sel=null;S.tm=null;S.alog=[];S.celebrated=false;S.tipShown=true;S.screen="coin";render();
+  toast("Tutorial started — Easy AI");syncMusic()}
+
 /* events */
-function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");q.focus();q.setSelectionRange(pos,pos)}if(e.target.id==="bname")S.build.name=e.target.value}
+function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");q.focus();q.setSelectionRange(pos,pos)}
+  if(e.target.id==="bname")S.build.name=e.target.value;
+  if(e.target.id==="volrange"){setVol(e.target.value);const lbl=e.target.parentNode&&e.target.parentNode.querySelector(".vollbl");if(lbl)lbl.textContent=(SET.volume|0)+"%";
+    const h=e.target.closest("#sheet-body");if(h){const hs=[...h.querySelectorAll("h4")].find(x=>/Volume/.test(x.textContent));if(hs)hs.innerHTML="Volume <small>"+(SET.volume|0)+"%</small>"}}}
 function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();return}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
   // #15 Prevent double-taps from firing twice on board actions only (not menu/nav)
@@ -566,7 +640,9 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
   switch(a){
     case"quit":if(S.screen==="builder"||S.screen==="mull"){S.screen="menu";render()}else if(S.screen==="board"&&S.st.winner==null&&!confirm("Quit this game?"))return;else if(S.screen==="board"){S.screen="menu";S.st=null;render()}else location.hash="";break;
     case"sel":S.deck=v;renderMenu();break;case"opp":S.opp=v;renderMenu();break;case"start":startGame();break;
-    case"daily":startDaily();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;
+    case"daily":startDaily();break;case"tutorial":startTutorial();break;case"rules":sheet(rulesHtml());break;case"resumeSave":resumeSaved();break;
+    case"undo":doUndo();break;case"tutnext":if(S.tut){S.tut.i=Math.min(S.tut.i+1,TUT_STEPS.length-1);renderBoard()}break;
+    case"tutdone":case"tutskip":S.tut=null;if(S.screen==="board")renderBoard();toast(a==="tutskip"?"Tutorial skipped":"Tutorial complete");break;
     case"savegame":saveGameNow();break;case"singtok":{if(!S.tm||S.tm.mode!=="singT")break;const set=[...S.tm.sel].join(",");
       const acts=E.legalActions(S.st).filter(a=>a.t==="play"&&a.uid===S.tm.uid&&a.singers===set);if(!acts.length){toast("Those singers don't meet Sing Together "+S.tm.need);break}
       doAct(acts[0]);break}
@@ -604,7 +680,10 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"pdisc":E.act(S.st,{t:"discard",uid:+b.dataset.uid});renderBoard();if(aiTurn()&&!S.st.pending)aiLoop();break;
     case"disc":{const p=S.st.players[+b.dataset.pi];sheet(`<h4>${p.name==="You"?"Your":"AI"} discard (${p.discard.length})</h4><div class="bgrid">${p.discard.slice().reverse().map(x=>`<button class="bcard" data-a="zc" data-uid="${x.uid}"><img src="${esc(x.card.img)}" alt="${esc(x.card.full)}"></button>`).join("")||`<p class="meta">Empty</p>`}</div><button class="wide" data-a="close">Close</button>`);break}
     case"pause":pauseMenu();break;case"resume":S.paused=false;closeSheet();if(aiTurn())aiLoop();break;
-    case"set":{const k=b.dataset.k;SET[k]=k==="sound"?v==="true":v;saveSet();if(S.paused)pauseMenu();else renderMenu();break}
+    case"set":{const k=b.dataset.k;if(k==="sound"||k==="music")SET[k]=v==="true";else SET[k]=v;saveSet();syncMusic();if(k==="sound"&&SET.sound)sfx("ui");
+      if(S.paused)pauseMenu();else if($("#sheet")&&$("#sheet").classList.contains("open"))sheet(settingsHtml()+`<button class="wide" data-a="close">Done</button>`);
+      else if(S.screen==="menu")renderMenu();break}
+    case"vol":break;
     case"tipsagain":SET.tips=true;saveSet();S.tipShown=false;closeSheet();S.paused=false;if(S.screen==="board")renderBoard();break;
     case"tip":tip(+b.dataset.i);break;
     case"concede":sheet(`<h4>Concede?</h4><p class="conwarn">You will lose this game. This cannot be undone.</p><button class="wide primary" data-a="concedeok" style="background:#c4163a;border-color:#ff4d6a">Concede and lose</button><button class="wide ghostw" data-a="pause">Keep playing</button>`);break;
@@ -629,6 +708,6 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"again":startGame(true);break;case"tomenu":S.screen="menu";S.st=null;render();break;
   }
 }
-window.LorcanaPlay={async open(){ensureRoot();root.hidden=false;document.body.classList.add("playing");render();await loadPool();if(S.screen==="menu"||!S.st&&S.screen!=="builder")S.screen=S.screen==="builder"?"builder":"menu";render()},
-  close(){if(root){root.hidden=true;document.body.classList.remove("playing");closeSheet()}},state:()=>S,render:()=>render()};
+window.LorcanaPlay={async open(){ensureRoot();root.hidden=false;document.body.classList.add("playing");render();await loadPool();if(S.screen==="menu"||!S.st&&S.screen!=="builder")S.screen=S.screen==="builder"?"builder":"menu";render();syncMusic()},
+  close(){stopMusic();if(root){root.hidden=true;document.body.classList.remove("playing");closeSheet()}},state:()=>S,render:()=>render()};
 })();

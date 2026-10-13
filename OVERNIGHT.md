@@ -130,3 +130,19 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
 - Tests: `node tests/engine.test.js` 99 passed; `node tools/audit.js` 104/104.
 - Commit: `ee7f55f` (version `20261013090024`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `ee7f55f` status built; version.json `20261013090024` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 6 (~2:20 AM) - undo, sound pack, music, tutorial
+- #26 Undo last action: before each human main action (no pending), snapshot via
+  `freezeState`; banner curved-arrow button thaws it. Works even if the action
+  opened a pending choice (restores the pre-action board). Cleared when AI/goldfish
+  acts or a new game/daily/tutorial starts. One step only.
+- #31 Sound effects pack: richer Web Audio tones/noise for play/ink/quest/hit/banish/
+  turn/flip/ui/win (no external assets). Volume slider 0–100% in Settings (saved).
+- #32 Background music toggle: soft generated arpeggio pad; requires Sound On;
+  respects volume; stops when Play closes or music/sound off.
+- #39 Tutorial: menu "Tutorial" starts Easy AI with The First Chapter starters,
+  seed 42, first player you; guided overlay steps (welcome → ink → play → end turn
+  → quest → done) with Skip/Next; auto-advances when check passes.
+- Tests: `node tests/engine.test.js` 101 passed; `tests/ui-batch6.py` passed
+  (settings sound/volume/music, tutorial overlay, ink+undo).
+- Commit: (pending stamp/push)

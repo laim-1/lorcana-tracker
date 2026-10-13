@@ -535,3 +535,18 @@ header + main#app{padding-top:12px}
 .rules h5{margin:14px 0 4px;font-size:15px;font-weight:900;color:#f5c955}
 .rules p{margin:0 0 6px;font-size:14px;line-height:1.4;font-weight:600;color:#e8e0ff}
 .histlist .histrow b{font-size:14px}
+
+/* #31 volume + #39 tutorial */
+.volrow{display:flex;align-items:center;gap:12px;margin:8px 0 14px;padding:0 4px}
+.volrow input[type=range]{flex:1;height:44px;accent-color:#f5c955;min-width:0}
+.volrow .vollbl{min-width:44px;font-weight:800;color:#f5c955;font-size:15px}
+.tut{position:absolute;left:8px;right:8px;bottom:calc(118px + env(safe-area-inset-bottom,0px));z-index:40;pointer-events:none;display:flex;justify-content:center}
+.tutcard{pointer-events:auto;width:100%;max-width:420px;background:linear-gradient(180deg,#2a2158,#1a1438);border:2px solid rgba(245,201,85,.65);border-radius:16px;padding:14px 14px 12px;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.tuthead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.tuthead b{font-size:12px;letter-spacing:.4px;color:#f5c955;font-weight:900;text-transform:uppercase}
+.tutx{min-width:44px;min-height:44px;padding:0 12px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:transparent;color:#e8e0ff;font-weight:800}
+.tutcard h4{margin:4px 0 6px;font-size:18px;font-weight:900;color:#fff}
+.tutcard p{margin:0 0 10px;font-size:15px;line-height:1.35;color:#d6cfff;font-weight:600}
+.tutacts{display:flex;flex-direction:column;gap:8px}
+.hintbtn[disabled]{opacity:.35}
+.gb.crowded .tut{bottom:calc(96px + env(safe-area-inset-bottom,0px))}

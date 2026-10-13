@@ -366,4 +366,31 @@ t("moveCost reflects location move and is exported", () => {
   assert.equal(E.moveCost(st, 0, ch, loc), 2);
 });
 
+
+t("#26 freeze/thaw undo restores ink and play after action", () => {
+  const st = game(); st.human = [true, false];
+  st.players[0].deck = []; st.players[0].hand = []; st.players[0].discard = []; st.players[0].ink = []; st.players[0].play = [];
+  st.players[1].deck = []; st.players[1].hand = []; st.players[1].discard = []; st.players[1].ink = []; st.players[1].play = [];
+  const real = E.normCard(window.LORCANA_GAME_CARDS.cards.find(x => x.name === "Mickey Mouse" && /^\d+$/.test(String(x.set))));
+  const inkable = E.normCard(window.LORCANA_GAME_CARDS.cards.find(x => x.inkwell && x.name && /^\d+$/.test(String(x.set))));
+  put(st, 0, real, {}); ink(st, 0, 3); st.players[0].lore = 2; st.phase = "main"; st.active = 0;
+  // Put inkable in hand for inking
+  const h = {uid:st.uid++, card:inkable, owner:0, damage:0, exerted:false, playedOn:0, turnPlayed:0, under:[], grants:[]};
+  st.players[0].hand.push(h);
+  const snap = E.freezeState(st);
+  assert.ok(snap && !snap.error);
+  // Perform ink via act
+  E.act(st, {t:"ink", uid:h.uid});
+  assert.ok(st.players[0].inked || st.players[0].ink.length >= 4);
+  const st2 = E.thawState(snap, []);
+  assert.equal(st2.players[0].lore, 2);
+  assert.equal(st2.players[0].ink.length, 3);
+  assert.ok(!st2.players[0].inked);
+  assert.ok(st2.players[0].hand.some(x => x.card.id === inkable.id || x.card.full === inkable.full));
+});
+t("#26 freeze refused with pending cannot undo mid-choice snapshot", () => {
+  const st = game(); st.pending = { kind:"ask", pi:0, items:[], opts:[], n:1, min:1, sel:[] };
+  assert.equal(E.freezeState(st).error, "pending");
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

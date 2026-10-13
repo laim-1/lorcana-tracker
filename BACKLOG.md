@@ -26,20 +26,20 @@
 24. [x] Shift target highlight clarity
 25. [x] End-of-game when both reach 20 handled
 ## Game features
-26. Undo last action before confirming
+26. [x] Undo last action before confirming
 27. [x] Action log with card images
 28. [x] Hint button showing legal moves
 29. [x] Pass-and-play 2-player mode
 30. [x] Game speed settings for animations
-31. Sound effects pack with volume slider
-32. Background music toggle
+31. [x] Sound effects pack with volume slider
+32. [x] Background music toggle
 33. [x] Match history and win/loss stats
 34. [x] Per-deck win rates
 35. [x] AI personalities (aggressive, quester, control)
 36. [x] Hard AI uses locations better
 37. [x] Practice mode vs goldfish (no AI)
 38. [x] Save and resume a game in progress
-39. Tutorial game with guided steps
+39. [x] Tutorial game with guided steps
 40. [x] Rules reference page
 41. [x] Lore race indicator showing who's ahead
 42. [x] Card count of inkable cards in hand

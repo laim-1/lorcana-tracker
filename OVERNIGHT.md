@@ -96,4 +96,4 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   #38 save/resume and #46 rewards left for later (streak shipped with #33).
 - Tests: `node tests/engine.test.js` 86 passed; `tests/ui-batch4.py` passed;
   `ui-batch3.py`, `ui-start.py`, `ui-ai-style.py` passed.
-- Commit: (pending) version `20261013084440`. Live: https://laim-1.github.io/lorcana-tracker/
+- Commit: `079b40f` (version `20261013084440`). Live: https://laim-1.github.io/lorcana-tracker/

@@ -863,8 +863,10 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
     case"quitgame":S.paused=false;closeSheet();S.screen="menu";S.st=null;render();break;
     case"end":{const acts=E.legalActions(S.st).filter(a=>a.t!=="end");
       const remain=acts.filter(a=>a.t==="quest"||a.t==="challenge"||a.t==="play"||a.t==="act"||a.t==="move"||a.t==="ink");
-      if(remain.length&&!S.skipEndConfirm){const kinds=[...new Set(remain.map(a=>a.t==="play"?"play a card":a.t==="act"?"use an ability":a.t==="ink"?"ink a card":a.t))];
-        sheet(`<h4>End your turn?</h4><p class="tiptext">You can still ${kinds.slice(0,3).join(", ")}${kinds.length>3?", …":""}.</p><button class="wide primary" data-a="endforce">End turn</button><button class="wide ghostw" data-a="close">Keep playing</button>`);break}
+      if(remain.length&&!S.skipEndConfirm){const kinds=[...new Set(remain.map(a=>a.t==="play"?"play a card":a.t==="act"?"use an ability":a.t==="ink"?"ink a card":a.t==="quest"?"quest":a.t==="challenge"?"challenge":a.t))];
+        const meP=S.st.players[ME()];const dryN=meP.play.filter(x=>x.card.type==="character"&&!E.dry(S.st,x)&&!K0(x,"rush")).length;
+        const extra=(!meP.inked?" Ink still available.":"")+(dryN?` ${dryN} character${dryN>1?"s are":" is"} still drying.`:"");
+        sheet(`<h4>End your turn?</h4><p class="tiptext">You can still ${kinds.slice(0,4).join(", ")}${kinds.length>4?", …":""}.${extra}</p><button class="wide primary" data-a="endforce" aria-label="End turn anyway">End turn</button><button class="wide ghostw" data-a="close" aria-label="Keep playing">Keep playing</button>`);break}
       S.skipEndConfirm=false;doAct({t:"end"});break}
     case"endforce":S.skipEndConfirm=true;closeSheet();doAct({t:"end"});break;
     case"log":sheet(`<h4>Game log</h4><div class="logfull">${S.st.log.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join("")}</div><button class="wide" data-a="close">Close</button>`);break;

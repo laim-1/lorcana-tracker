@@ -395,3 +395,8 @@ hard         93%     63%       -
 - Engine test: Hard still takes lethal quest after a Normal `aiChoose` (LEVEL leak regression).
 - ui-static-overnight: playerConfirm check (20 passed).
 - Engine **103** passed.
+
+## Batch 43 (~3:44 AM) - end-turn confirm ink/dry reminders
+- End-turn confirm sheet lists quest/challenge explicitly and notes ink still available + drying count.
+- Aria-labels on End turn / Keep playing.
+- Static overnight +1 check (21 passed).

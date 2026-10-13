@@ -26,6 +26,7 @@ checks = [
     ("expanded tips", "Sing Together" in play and play.count("const TIPS=")==1),
     ("drying banner", "drying" in play),
     ("playerConfirm", "playerConfirm" in play),
+    ("end drying note", "still drying" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

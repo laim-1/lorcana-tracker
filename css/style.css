@@ -550,3 +550,23 @@ header + main#app{padding-top:12px}
 .tutacts{display:flex;flex-direction:column;gap:8px}
 .hintbtn[disabled]{opacity:.35}
 .gb.crowded .tut{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+
+/* Deck builder stats (#48–#59) */
+.bnotes{min-height:64px;resize:vertical;font-size:15px;font-weight:600;line-height:1.35}
+.bbadge{margin:8px 0 10px;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:800;line-height:1.3;border:2px solid #5a4ea0;background:#180f36;color:#e8e0ff}
+.bbadge.ok{border-color:#4fd18b;background:#123528;color:#b8ffd4}
+.bbadge.bad{border-color:#ff4d6a;background:#3a1630;color:#ffd0d8}
+.bstats{margin:8px 0 12px;padding:10px;border-radius:14px;background:rgba(20,14,48,.75);border:1px solid rgba(245,201,85,.25)}
+.curve{display:flex;align-items:flex-end;gap:6px;height:88px;margin:4px 0 10px}
+.cbar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;min-width:0;height:100%}
+.cbar i{display:block;width:100%;max-width:28px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#f5c955,#a07820)}
+.cbar b{font-size:11px;font-weight:900;color:#f5c955}
+.cbar small{font-size:10px;font-weight:800;color:#c6bde6}
+.bsplit{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.bsplit small{font-size:11px;font-weight:900;letter-spacing:.4px;color:#f5c955;text-transform:uppercase}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:14px;background:#2a2158;border:1px solid #5a4ea0;font-size:13px;font-weight:800;color:#e8e0ff}
+.warn{color:#ffb4c0;font-weight:900}
+.bimp{width:100%;min-height:180px;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:600;line-height:1.4}
+.pin.sm{min-height:44px;padding:0 12px;font-size:14px}
+code{font-size:12px;color:#f5c955}

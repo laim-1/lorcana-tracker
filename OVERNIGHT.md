@@ -147,3 +147,20 @@ Each batch: tests run, stamped, committed, pushed, verified live. Backlog: BACKL
   (settings sound/volume/music, tutorial overlay, ink+undo).
 - Commit: `b9aa5f9` (version `20261013091902`). Live: https://laim-1.github.io/lorcana-tracker/
 - Live verified: Pages build `b9aa5f9` status built; version.json `20261013091902` on https://laim-1.github.io/lorcana-tracker/.
+
+## Batch 7 (~2:25 AM) - deck builder #48–#59
+- #48 Import/export Dreamborn-style text lists (`N Card Name - Version` per line);
+  merge or replace; unmatched lines listed.
+- #49 Cost curve bar chart (0–6, 7+) on the builder.
+- #50 Ink split + type breakdown pills.
+- #51 Inkable count with low-% warning (<30%).
+- #52 Est. deck price from snapshot TCGplayer USD (Lorcast/snapshot).
+- #53 Sample opening hand (reshuffle/redraw).
+- #54 Duplicate deck (Tools); rename via deck name field on Save.
+- #55 Deck notes (saved with deck, 500-char cap).
+- #56 Filters: keyword/text, classification, cost, set, plus existing ink/type/search.
+- #57 Sort by cost / type / name / set.
+- #58 Validity badge with reasons (count, inks, copy limits, inkable).
+- #59 Only-owned-cards toggle.
+- Tests: `node tests/engine.test.js` 101 passed; `tests/ui-batch7.py` passed.
+- Commit: `7f69e55` (version `20261013092637`). Live: https://laim-1.github.io/lorcana-tracker/

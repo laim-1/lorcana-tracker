@@ -53,7 +53,7 @@ async function refreshLive(){ // try to replace the snapshot with live Lorcast d
 }
 const mainPool=()=>pool;
 const decks=()=>{let d;try{d=JSON.parse(localStorage.getItem(DKEY)||"[]")}catch(e){d=[]}if(!Array.isArray(d))d=[];
-  const ok=d.filter(x=>x&&typeof x==="object"&&x.cards&&typeof x.cards==="object"&&!Array.isArray(x.cards)).map(x=>({name:typeof x.name==="string"&&x.name.trim()?x.name:"My deck",cards:Object.fromEntries(Object.entries(x.cards).filter(([k,n])=>typeof k==="string"&&Number.isFinite(+n)&&+n>0).map(([k,n])=>[k,Math.min(99,Math.floor(+n))]))}));
+  const ok=d.filter(x=>x&&typeof x==="object"&&x.cards&&typeof x.cards==="object"&&!Array.isArray(x.cards)).map(x=>({name:typeof x.name==="string"&&x.name.trim()?x.name:"My deck",notes:typeof x.notes==="string"?x.notes.slice(0,500):"",cards:Object.fromEntries(Object.entries(x.cards).filter(([k,n])=>typeof k==="string"&&Number.isFinite(+n)&&+n>0).map(([k,n])=>[k,Math.min(99,Math.floor(+n))]))}));
   if(ok.length!==d.length||JSON.stringify(ok)!==JSON.stringify(d))try{localStorage.setItem(DKEY,JSON.stringify(ok))}catch(e){}return ok};
 const saveDecks=d=>localStorage.setItem(DKEY,JSON.stringify(d));
 function ownedMap(){const col=(()=>{try{const o=JSON.parse(localStorage.getItem("lorcanaCollection.v1")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})(),m={};for(const[id,v]of Object.entries(col))m[id]=v&&typeof v==="object"?(Math.max(0,+v.n||0)+Math.max(0,+v.f||0)):0;return m}
@@ -95,26 +95,104 @@ function renderMenu(){
 }
 function coverageLine(){const c=E.coverage(pool).byStatus;return`Ability simulation: ${c.full||0} full, ${c.keywords||0} keyword-only, ${c.plain||0} no-text, ${c.partial||0} partial, ${c.vanilla||0} vanilla fallback.`}
 /* deck builder */
-function bInit(d){S.build={name:d?d.name:"My deck",cards:d?{...d.cards}:{},idx:d?d.idx:null,q:"",ink:"",type:"",limit:60,view:"all"}}
+function bInit(d){S.build={name:d?d.name:"My deck",notes:d&&d.notes||"",cards:d?{...d.cards}:{},idx:d?d.idx:null,q:"",ink:"",type:"",kw:"",cls:"",set:"",cost:"",sort:"cost",ownedOnly:false,limit:60,view:"all"}}
 const bCount=()=>Object.values(S.build.cards).reduce((a,b)=>a+b,0);
 function bInks(){const s=new Set();for(const id of Object.keys(S.build.cards))(byId.get(id)?.inks||[]).forEach(i=>s.add(i));return[...s]}
 function fullCount(c){let n=0;for(const[id,k]of Object.entries(S.build.cards))if(byId.get(id)?.full===c.full)n+=k;return n}
+function bCardsList(){const out=[];for(const[id,n]of Object.entries(S.build.cards)){const c=byId.get(id);if(c)for(let i=0;i<n;i++)out.push(c)}return out}
+function bValidity(){const cards=bCardsList(),n=cards.length,inks=bInks(),reasons=[];
+  if(n<60)reasons.push((60-n)+" more cards needed");else if(n>60)reasons.push((n-60)+" over 60 (still playable as draft)");
+  if(inks.length>2)reasons.push("Too many inks ("+inks.join(", ")+")");
+  const v=cards.length?E.validateDeck(cards):"Deck must have at least 60 cards";
+  if(v&&!reasons.some(r=>r.includes("inks")||r.includes("more cards")))reasons.push(v);
+  const inkable=cards.filter(c=>c.inkable).length,pct=n?Math.round(100*inkable/n):0;
+  if(n>=20&&pct<30)reasons.push("Low inkable count ("+inkable+"/"+n+", "+pct+"%)");
+  return{ok:!reasons.length&&n>=60&&inks.length<=2,reasons,n,inks,inkable,pct}}
+function priceMap(){const m=new Map();try{const Snp=window.LORCANA_SNAPSHOT;if(!Snp||!Snp.cards)return m;const bag=Snp.cards;
+  const add=c=>{if(c&&c.id!=null&&c.usd!=null&&!isNaN(+c.usd))m.set(c.id,+c.usd)};
+  if(Array.isArray(bag))bag.forEach(add);else for(const arr of Object.values(bag))if(Array.isArray(arr))arr.forEach(add);
+}catch(e){}return m}
+function bPriceTotal(){const pm=priceMap();let t=0,miss=0;for(const[id,n]of Object.entries(S.build.cards)){const u=pm.get(id);if(u==null){miss+=n;continue}t+=u*n}return{t,miss}}
+function bCurveHtml(){const cards=bCardsList(),bins=[0,0,0,0,0,0,0,0]; // 0..6, 7+
+  for(const c of cards){const k=Math.min(7,Math.max(0,c.cost|0));bins[k]++}
+  const mx=Math.max(1,...bins);
+  return`<div class="curve" aria-label="Cost curve">${bins.map((n,i)=>`<div class="cbar"><i style="height:${Math.round(100*n/mx)}%"></i><b>${i===7?"7+":i}</b><small>${n}</small></div>`).join("")}</div>`}
+function bSplitHtml(){const cards=bCardsList(),ink={},typ={};
+  for(const c of cards){(c.inks||[]).forEach(i=>ink[i]=(ink[i]||0)+1);const t=c.type||"?";typ[t]=(typ[t]||0)+1}
+  const inkRow=Object.entries(ink).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="pill">${esc(k)} ${v}</span>`).join("")||`<span class="meta">No cards</span>`;
+  const typRow=Object.entries(typ).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="pill">${esc(k)} ${v}</span>`).join("");
+  return`<div class="bsplit"><div><small>Ink</small><div class="pills">${inkRow}</div></div><div><small>Types</small><div class="pills">${typRow}</div></div></div>`}
+function bExportText(){const by=new Map();for(const[id,n]of Object.entries(S.build.cards)){const c=byId.get(id);if(!c)continue;by.set(c.full,(by.get(c.full)||0)+n)}
+  return[...by.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,n])=>n+" "+name).join("\n")}
+function bParseImport(text){const lines=String(text||"").split(/\r?\n/),got=[],bad=[];
+  const byFull=new Map();for(const c of pool){const k=nzName(c.full);if(!byFull.has(k))byFull.set(k,c);
+    // also comma form "Name, Version"
+    if(c.version){const alt=nzName(c.name+", "+c.version);if(!byFull.has(alt))byFull.set(alt,c)}}
+  for(let raw of lines){raw=raw.trim();if(!raw||/^#/.test(raw)||/^\/\//.test(raw)||/^total\b/i.test(raw)||/^sideboard\b/i.test(raw)||/^\[/.test(raw))continue;
+    let m=raw.match(/^(\d+)\s*[xX]?\s+(.+)$/)||raw.match(/^(\d+)x?\s+(.+)$/);
+    let n=1,name=raw;if(m){n=Math.min(99,+m[1]||1);name=m[2].trim()}
+    name=name.replace(/\s*\*[EeFf]\*\s*$/,"").trim();
+    const c=byFull.get(nzName(name))||byFull.get(nzName(name.replace(/,/g," - ")));
+    if(!c){bad.push(raw);continue}got.push({c,n})}
+  return{got,bad}}
+const nzName=s=>String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\u2010-\u2015]/g,"-").replace(/[\u2018\u2019]/g,"'").toLowerCase().replace(/\s+/g," ").trim();
+function applyImport(text,replace){const {got,bad}=bParseImport(text);if(!got.length){toast("No cards matched");return}
+  if(replace)S.build.cards={};
+  for(const {c,n} of got){const max=/up to 99 copies/.test(c.text)?99:4;const have=fullCount(c);const add=Math.min(n,Math.max(0,max-have));
+    if(add>0)S.build.cards[c.id]=(S.build.cards[c.id]||0)+add}
+  toast("Imported "+got.reduce((a,x)=>a+x.n,0)+" cards"+(bad.length?" · "+bad.length+" unmatched":""));
+  closeSheet();renderBuilder();
+  if(bad.length)sheet(`<h4>Unmatched lines</h4><div class="logfull">${bad.map(x=>`<div>${esc(x)}</div>`).join("")}</div><button class="wide" data-a="close">Close</button>`)}
+function sampleHand(){const cards=bCardsList();if(cards.length<7){toast("Need at least 7 cards");return}
+  const arr=cards.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
+  const hand=arr.slice(0,7);
+  sheet(`<h4>Sample opening hand</h4><div class="bgrid">${hand.map(c=>`<button class="bcard" data-a="bview1" data-id="${c.id}"><img src="${esc(c.img)}" alt="${esc(c.full)}"><span class="mcost">${c.cost}</span></button>`).join("")}</div>
+  <button class="wide primary" data-a="bhand">Draw again</button><button class="wide" data-a="close">Close</button>`)}
 function renderBuilder(){
-  const b=S.build,inks=bInks(),n=bCount(),q=b.q.toLowerCase();
-  let list=b.view==="deck"?Object.keys(b.cards).map(id=>byId.get(id)).filter(Boolean):pool.filter(c=>(!q||c.full.toLowerCase().includes(q))&&(!b.ink||c.inks.includes(b.ink))&&(!b.type||c.type===b.type));
-  list.sort((x,y)=>x.cost-y.cost||x.name.localeCompare(y.name));const total=list.length;list=list.slice(0,b.limit);
-  const warn=n<60?`${60-n} more needed`:inks.length>2?"Too many inks":"Legal deck";
+  const b=S.build,inks=bInks(),n=bCount(),q=b.q.toLowerCase(),val=bValidity(),pr=bPriceTotal(),own=ownedMap();
+  let list=b.view==="deck"?Object.keys(b.cards).map(id=>byId.get(id)).filter(Boolean):pool.filter(c=>{
+    if(q&&!c.full.toLowerCase().includes(q)&&!(c.text||"").toLowerCase().includes(q))return false;
+    if(b.ink&&!c.inks.includes(b.ink))return false;
+    if(b.type&&c.type!==b.type)return false;
+    if(b.ownedOnly&&!(own[c.id]>0))return false;
+    if(b.kw){const kw=(c.kw&&Object.keys(c.kw).filter(k=>c.kw[k]).join(" ")||"")+" "+(c.text||"");if(!kw.toLowerCase().includes(b.kw.toLowerCase()))return false}
+    if(b.cls){const cls=(c.cls||[]).join(" ").toLowerCase();if(!cls.includes(b.cls.toLowerCase()))return false}
+    if(b.set&&String(c.set)!==String(b.set))return false;
+    if(b.cost!==""&&b.cost!=null){const mx=b.cost==="7+"?99:+b.cost;const mn=b.cost==="7+"?7:+b.cost;if(c.cost<mn||c.cost>mx)return false}
+    return true});
+  const sortFn={cost:(x,y)=>x.cost-y.cost||x.name.localeCompare(y.name),type:(x,y)=>x.type.localeCompare(y.type)||x.cost-y.cost||x.name.localeCompare(y.name),name:(x,y)=>x.name.localeCompare(y.name)||x.cost-y.cost,set:(x,y)=>String(x.set).localeCompare(String(y.set))||x.cost-y.cost};
+  list.sort(sortFn[b.sort]||sortFn.cost);const total=list.length;list=list.slice(0,b.limit);
+  const sets=[...new Set(pool.map(c=>String(c.set)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const money=v=>v==null?"—":"$"+v.toFixed(2);
   root.innerHTML=bar("Deck builder",`<button class="pbtn" data-a="bsave">Save</button>`)+`<div class="pbody">
-  <div class="bstat ${n>=60&&inks.length<=2?"ok":""}"><b>${n}/60</b><span>${inks.join(" / ")||"No inks yet"} · ${warn}</span></div>
+  <div class="bstat ${val.ok?"ok":""}"><b>${n}/60</b><span>${inks.join(" / ")||"No inks yet"} · ${val.ok?"Legal deck":(val.reasons[0]||"Draft")}</span></div>
+  <div class="bbadge ${val.ok?"ok":"bad"}">${val.ok?"Valid":"Issues"}: ${val.ok?"60 cards · ≤2 inks · copy limits OK":esc(val.reasons.join(" · "))}</div>
   <input class="pin" id="bname" value="${esc(b.name)}" placeholder="Deck name">
-  <div class="row2"><button class="opt ${b.view==="all"?"on":""}" data-a="bview" data-v="all">All cards</button><button class="opt ${b.view==="deck"?"on":""}" data-a="bview" data-v="deck">This deck</button><button class="opt" data-a="bclear">Clear</button></div>
-  ${b.view==="all"?`<input class="pin" id="bq" type="search" value="${esc(b.q)}" placeholder="Search ${pool.length} main-set cards">
+  <textarea class="pin bnotes" id="bnotes" rows="2" placeholder="Deck notes (optional)">${esc(b.notes||"")}</textarea>
+  <div class="bstats">${bCurveHtml()}${bSplitHtml()}
+  <div class="meta small">Inkable ${val.inkable}/${n||0} (${val.pct||0}%)${n&&val.pct<30?' · <b class="warn">low</b>':''} · Est. price ${money(pr.t)}${pr.miss?` · ${pr.miss} without price`:""}</div></div>
+  <div class="row2"><button class="opt ${b.view==="all"?"on":""}" data-a="bview" data-v="all">All cards</button><button class="opt ${b.view==="deck"?"on":""}" data-a="bview" data-v="deck">This deck</button><button class="opt" data-a="btools">Tools</button></div>
+  ${b.view==="all"?`<input class="pin" id="bq" type="search" value="${esc(b.q)}" placeholder="Search name or text">
   <div class="opts">${["",...E.INKS].map(i=>`<button class="opt sm ${b.ink===i?"on":""}" data-a="bink" data-v="${i}">${i||"Any ink"}</button>`).join("")}</div>
-  <div class="opts">${["","character","action","song","item","location"].map(i=>`<button class="opt sm ${b.type===i?"on":""}" data-a="btype" data-v="${i}">${i?i[0].toUpperCase()+i.slice(1):"Any type"}</button>`).join("")}</div>`:""}
+  <div class="opts">${["","character","action","song","item","location"].map(i=>`<button class="opt sm ${b.type===i?"on":""}" data-a="btype" data-v="${i}">${i?i[0].toUpperCase()+i.slice(1):"Any type"}</button>`).join("")}</div>
+  <div class="opts"><button class="opt sm ${b.ownedOnly?"on":""}" data-a="bowned">Only owned</button>
+  ${["","0","1","2","3","4","5","6","7+"].map(i=>`<button class="opt sm ${String(b.cost)===i?"on":""}" data-a="bcost" data-v="${i}">${i===""?"Any cost":i}</button>`).join("")}</div>
+  <div class="opts"><input class="pin sm" id="bkw" value="${esc(b.kw||"")}" placeholder="Keyword / text filter" style="flex:1;min-width:140px">
+  <input class="pin sm" id="bcls" value="${esc(b.cls||"")}" placeholder="Classification" style="flex:1;min-width:120px"></div>
+  <div class="opts">${[`<button class="opt sm ${!b.set?"on":""}" data-a="bset" data-v="">Any set</button>`].concat(sets.slice(0,16).map(i=>`<button class="opt sm ${b.set===i?"on":""}" data-a="bset" data-v="${esc(i)}">Set ${esc(i)}</button>`)).join("")}</div>`:""}
+  <div class="opts"><span class="meta small">Sort</span>${[["cost","Cost"],["type","Type"],["name","Name"],["set","Set"]].map(([k,l])=>`<button class="opt sm ${b.sort===k?"on":""}" data-a="bsort" data-v="${k}">${l}</button>`).join("")}</div>
   <div class="meta small">${total} cards${total>b.limit?`, showing ${b.limit}`:""}</div>
   <div class="bgrid">${list.map(c=>{const k=b.cards[c.id]||0;return`<button class="bcard ${k?"in":""}" data-a="bview1" data-id="${c.id}"><img loading="lazy" src="${esc(c.img)}" alt="${esc(c.full)}">${k?`<span class="cnt">${k}</span>`:""}${badge(c)}</button>`}).join("")}</div>
   ${total>b.limit?`<button class="wide" data-a="bmore">Show more</button>`:""}</div>`;
 }
+function builderTools(){sheet(`<h4>Deck tools</h4>
+  <button class="wide primary" data-a="bexport">Export Dreamborn list</button>
+  <button class="wide" data-a="bimport">Import Dreamborn / text list</button>
+  <button class="wide" data-a="bhand">Sample opening hand</button>
+  <button class="wide" data-a="bdup">Duplicate deck</button>
+  <button class="wide" data-a="bclear">Clear all cards</button>
+  <button class="wide ghostw" data-a="close">Close</button>`)}
+
 function badge(c){return c.status==="partial"?`<span class="sb part">PARTIAL</span>`:c.status==="vanilla"?`<span class="sb van">TEXT OFF</span>`:""}
 function cardSheet(c,extra){
   const st=c.type==="character"?`${c.cost} ink · ${c.str} STR · ${c.wil} WIL · ${c.lore} lore`:c.type==="location"?`${c.cost} ink · ${c.wil} WIL · ${c.lore} lore · move ${c.move??"-"}`:`${c.cost} ink · ${c.type}`;
@@ -625,10 +703,16 @@ function startTutorial(){if(!pool||!pool.length){toast("Cards still loading");re
   toast("Tutorial started — Easy AI");syncMusic()}
 
 /* events */
-function onInput(e){if(e.target.id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");q.focus();q.setSelectionRange(pos,pos)}
-  if(e.target.id==="bname")S.build.name=e.target.value;
-  if(e.target.id==="volrange"){setVol(e.target.value);const lbl=e.target.parentNode&&e.target.parentNode.querySelector(".vollbl");if(lbl)lbl.textContent=(SET.volume|0)+"%";
-    const h=e.target.closest("#sheet-body");if(h){const hs=[...h.querySelectorAll("h4")].find(x=>/Volume/.test(x.textContent));if(hs)hs.innerHTML="Volume <small>"+(SET.volume|0)+"%</small>"}}}
+function onInput(e){const id=e.target.id;
+  if(id==="bq"){S.build.q=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bq");if(q){q.focus();q.setSelectionRange(pos,pos)}}
+  if(id==="bname")S.build.name=e.target.value;
+  if(id==="bnotes")S.build.notes=e.target.value.slice(0,500);
+  if(id==="bkw"){S.build.kw=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bkw");if(q){q.focus();q.setSelectionRange(pos,pos)}}
+  if(id==="bcls"){S.build.cls=e.target.value;S.build.limit=60;const pos=e.target.selectionStart;renderBuilder();const q=$("#bcls");if(q){q.focus();q.setSelectionRange(pos,pos)}}
+  if(id==="volrange"){setVol(e.target.value);const lbl=e.target.parentNode&&e.target.parentNode.querySelector(".vollbl");if(lbl)lbl.textContent=(SET.volume|0)+"%";
+    const h=e.target.closest("#sheet-body");if(h){const hs=[...h.querySelectorAll("h4")].find(x=>/Volume/.test(x.textContent));if(hs)hs.innerHTML="Volume <small>"+(SET.volume|0)+"%</small>"}}
+  if(id==="bimptext"){/* live textarea — no-op */}
+}
 function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();return}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
   // #15 Prevent double-taps from firing twice on board actions only (not menu/nav)
@@ -648,11 +732,30 @@ function onClick(e){if(S.lp){S.lp=false;e.preventDefault();e.stopPropagation();r
       doAct(acts[0]);break}
     case"builder":{const sel=String(S.deck||"");if(sel[0]==="c"&&decks()[+sel.slice(1)]){const d=decks()[+sel.slice(1)];bInit({...d,idx:+sel.slice(1)})}else bInit();S.screen="builder";render();break}
     case"bview":S.build.view=v;renderBuilder();break;case"bink":S.build.ink=v;S.build.limit=60;renderBuilder();break;case"btype":S.build.type=v;S.build.limit=60;renderBuilder();break;
-    case"bmore":S.build.limit+=60;renderBuilder();break;case"bclear":if(confirm("Remove all cards from this deck?")){S.build.cards={};renderBuilder()}break;
+    case"bmore":S.build.limit+=60;renderBuilder();break;
+    case"bclear":if(confirm("Remove all cards from this deck?")){S.build.cards={};closeSheet();renderBuilder()}break;
+    case"btools":builderTools();break;
+    case"bowned":S.build.ownedOnly=!S.build.ownedOnly;S.build.limit=60;renderBuilder();break;
+    case"bcost":S.build.cost=v;S.build.limit=60;renderBuilder();break;
+    case"bset":S.build.set=v;S.build.limit=60;renderBuilder();break;
+    case"bsort":S.build.sort=v;renderBuilder();break;
+    case"bexport":{const t=bExportText();sheet(`<h4>Export (Dreamborn)</h4><p class="meta small">Copy this list into Dreamborn, Pixelborn, or a friend.</p><textarea class="pin bimp" id="bexptext" rows="12" readonly>${esc(t)}</textarea>
+      <button class="wide primary" data-a="bcopy">Copy to clipboard</button><button class="wide" data-a="close">Close</button>`);break}
+    case"bcopy":{const el=$("#bexptext")||$("#bimptext");if(!el)break;el.select();try{navigator.clipboard.writeText(el.value);toast("Copied")}catch(e){toast("Select and copy manually")}break}
+    case"bimport":sheet(`<h4>Import deck list</h4><p class="meta small">Paste a Dreamborn / Pixelborn list: <code>4 Elsa - Spirit of Winter</code> per line.</p>
+      <textarea class="pin bimp" id="bimptext" rows="12" placeholder="4 Mickey Mouse - True Friend&#10;3 Friends on the Other Side"></textarea>
+      <button class="wide primary" data-a="bimportgo" data-v="merge">Add to deck</button>
+      <button class="wide" data-a="bimportgo" data-v="replace">Replace deck</button>
+      <button class="wide ghostw" data-a="close">Cancel</button>`);break;
+    case"bimportgo":{const el=$("#bimptext");if(!el)break;applyImport(el.value,v==="replace");break}
+    case"bhand":sampleHand();break;
+    case"bdup":{const b2=S.build;if(!bCount()){toast("Deck is empty");break}
+      const all=decks(),d={name:(b2.name||"My deck")+" copy",notes:b2.notes||"",cards:{...b2.cards}};all.push(d);saveDecks(all);
+      bInit({...d,idx:all.length-1});toast("Duplicated");closeSheet();renderBuilder();break}
     case"bview1":builderSheet(b.dataset.id,b);break;
     case"badd":badd(b.dataset.id,+b.dataset.d);break;
     case"bsave":{const b2=S.build,n=bCount(),inks=bInks();if(n<60||inks.length>2){if(!confirm(`This deck has ${n} cards${inks.length>2?" and too many inks":""}. Save it anyway as a draft?`))return}
-      const all=decks(),d={name:b2.name||"My deck",cards:b2.cards};if(b2.idx!=null)all[b2.idx]=d;else{all.push(d);b2.idx=all.length-1}saveDecks(all);S.deck="c"+b2.idx;S.screen="menu";render();break}
+      const all=decks(),d={name:b2.name||"My deck",notes:b2.notes||"",cards:b2.cards};if(b2.idx!=null)all[b2.idx]=d;else{all.push(d);b2.idx=all.length-1}saveDecks(all);S.deck="c"+b2.idx;S.screen="menu";render();break}
     case"mtog":{const u=+b.dataset.uid;S.mullSel.has(u)?S.mullSel.delete(u):S.mullSel.add(u);renderMull();break}
     case"mdone":{const go=()=>{E.mulligan(S.st,S.pp?S.mullSeat:0,[...S.mullSel]);S.mullSel=new Set();if(S.pp&&S.mullSeat===0){S.mullSeat=1;renderMull();return}S.st.events=[];S.screen="board";S.tipShown=false;renderBoard();if(aiTurn())aiLoop()};
       if(lowA()||!S.mullSel.size){go();break}

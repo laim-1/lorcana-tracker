@@ -49,18 +49,18 @@
 46. [x] Victory rewards and streak counter
 47. [x] Daily challenge with a fixed deck
 ## Deck builder
-48. Import/export deck codes (Dreamborn/Inkable format)
-49. Cost curve chart
-50. Ink split and type breakdown
-51. Inkable count warning
-52. Deck price total from TCGplayer
-53. Sample opening hand draw
-54. Duplicate and rename decks
-55. Deck notes
-56. Filter by keyword, classification, cost, set
-57. Sort deck list by cost/type
-58. Deck validity badge with reasons
-59. Only-owned-cards toggle
+48. [x] Import/export deck codes (Dreamborn/Inkable format)
+49. [x] Cost curve chart
+50. [x] Ink split and type breakdown
+51. [x] Inkable count warning
+52. [x] Deck price total from TCGplayer
+53. [x] Sample opening hand draw
+54. [x] Duplicate and rename decks
+55. [x] Deck notes
+56. [x] Filter by keyword, classification, cost, set
+57. [x] Sort deck list by cost/type
+58. [x] Deck validity badge with reasons
+59. [x] Only-owned-cards toggle
 ## Tracker
 60. Wishlist with total cost
 61. Missing-cards list per set with price to complete

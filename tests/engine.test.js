@@ -755,4 +755,20 @@ t("ai: avoids 0-damage challenge into high Resist when can quest", () => {
   assert.equal(a.t, "quest", "quest not 0-dmg into Resist: " + JSON.stringify(a));
 });
 
+
+t("ai: Reckless prefers clean-killing high-lore over low-lore", () => {
+  const st = game(); st.human = [false, false];
+  st.players[0].hand = []; st.players[0].inked = true;
+  ink(st, 0, 0);
+  const rk = put(st, 0, C({ lore: 1, strength: 5, willpower: 5, cost: 3, text: "Reckless" }));
+  rk.card.kw.reckless = true;
+  rk.playedOn = st.turnNo - 1;
+  const low = put(st, 1, C({ lore: 1, strength: 1, willpower: 3, cost: 2 }));
+  low.exerted = true;
+  const hi = put(st, 1, C({ lore: 3, strength: 1, willpower: 4, cost: 3 }));
+  hi.exerted = true;
+  const a = E.aiChoose(st, "hard");
+  assert.ok(a.t === "challenge" && a.target === hi.uid, "Reckless hits high lore: " + JSON.stringify(a));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

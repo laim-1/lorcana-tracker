@@ -548,3 +548,11 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 - Banner subline notes when you / AI / both are near 20 lore.
 - ui-static-overnight **44** checks. Engine **121** passed.
 - Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.
+
+- Commit: `ea2eb32` (version `20261013123654`). Live verified Pages built; version.json `20261013123654`.
+
+## Batch 60 (~5:40 AM) - Reckless target pick + tip
+- Reckless challenges: prefer clean kills on high-lore; devalue weak chips.
+- Tutorial tip for Reckless (must challenge, cannot quest).
+- ui-static-overnight **45** checks. Engine **122** passed.
+- Hard vs Normal (40g): **Hard 73%**, Normal 35%. Normal vs Easy (24g): **Normal 79%**.

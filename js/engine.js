@@ -2084,7 +2084,8 @@ function scoreAction(st,a){
       // Rush: value using the free challenge the turn played on clean kills
       if(K(x,"rush")&&!dry(st,x)&&kills)v+=(LEVEL==="hard"?14:5)+(dies?0:6)+(dl>=2?6:0);
       if(PERS==="aggro")v+=15;else if(PERS==="control")v+=6;else if(PERS==="quester")v-=10;
-      if(K(x,'reckless'))v+=50;return v>0?70+v:(K(x,'reckless')?10+v/100:-1)}
+      if(K(x,'reckless')){v+=50;if(kills)v+=10+dl*4;if(kills&&!dies)v+=8;if(!kills&&dmg<=1)v-=6}
+      return v>0?70+v:(K(x,'reckless')?10+v/100:-1)}
     case"quest":{let qs=50+loreOf(x)*6+(p.lore+loreOf(x)>=20?500:0)+(CTX.lethal?900:0)+(PERS==="quester"?12:PERS==="aggro"?-5:0);
       // Race: push lore when ahead or when we can outpace without threat removal
       if(!CTX.threat&&p.lore>=o.lore)qs+=(LEVEL==="hard"?10:3)+(loreOf(x)>=2?(LEVEL==="hard"?6:2):0);

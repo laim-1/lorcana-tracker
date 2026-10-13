@@ -50,6 +50,7 @@ checks = [
     ("sumcopy chars", "chars ·" in play),
     ("Evasive tip", "Evasive characters can only be challenged" in play),
     ("near 20 banner", "near 20" in play),
+    ("Reckless tip", "Reckless characters cannot quest" in play),
 ]
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

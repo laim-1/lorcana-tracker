@@ -2227,15 +2227,51 @@ function feats(st,pi){const me=st.players[pi],op=st.players[opp(pi)];const F=[];
     let top=0,chal=0;const O=P===me?op:me;for(const x of P.play)if(isChar(x)){top=Math.max(top,loreOf(x));if(!x.exerted&&O.play.some(o=>isChar(o)&&o.exerted&&strOf(x)>=wilOf(o)-o.damage))chal++}
     F.push(cast/7,songs/4,hc/40,inkable/7,big/5,hl/15,top/5,chal/5,P.discard.length/30)}
   return F}
-let LW=null;function setLearned(w){LW=w}
-function learnedEval(st,pi){if(st.winner!=null)return st.winner===pi?1:0;const f=feats(st,pi);
+let LW=null;function setLearned(w){LW=w;if(w&&w.kind==="big"){w.ix=new Map((w.ids||[]).map((id,i)=>[id,i+1]));for(const k of ["emb","W1","b1","W2","b2","wo"])if(w[k])w[k]=Float32Array.from(w[k])}}
+function bigEval(st,pi,f){const W=LW,de=W.de,me=st.players[pi],op=st.players[opp(pi)],Z=[me.play,me.hand,op.play,me.ink,op.discard];const nf=W.nf,x=new Float32Array(nf+5*de);
+  for(let i=0;i<nf;i++)x[i]=f[i]||0;for(let z=0;z<5;z++)for(const c of Z[z]){const k=W.ix.get(c.card.id);if(!k)continue;const o=k*de;for(let d=0;d<de;d++)x[nf+z*de+d]+=W.emb[o+d]/8}
+  const n=x.length,h1=new Float32Array(W.h1);for(let j=0;j<W.h1;j++){let a=W.b1[j];const o=j*n;for(let i=0;i<n;i++)a+=W.W1[o+i]*x[i];h1[j]=a>0?a:0}
+  let h=h1;if(W.h2){const h2=new Float32Array(W.h2);for(let j=0;j<W.h2;j++){let a=W.b2[j];const o=j*W.h1;for(let i=0;i<W.h1;i++)a+=W.W2[o+i]*h1[i];h2[j]=a>0?a:0}h=h2}
+  let z=W.bo;for(let j=0;j<h.length;j++)z+=W.wo[j]*h[j];return 1/(1+Math.exp(-z))}
+function learnedEval(st,pi){if(st.winner!=null)return st.winner===pi?1:0;const f=feats(st,pi);if(LW.kind==="big")return bigEval(st,pi,f);
   if(LW.h){const H=LW.h;let o=LW.b2;for(let j=0;j<H.length;j++){let z=H[j].b;const w=H[j].w;for(let i=0;i<w.length;i++)z+=w[i]*f[i];o+=LW.w2[j]*(z>0?z:0)}return 1/(1+Math.exp(-o))}
   let z=0;for(let i=0;i<LW.w.length;i++)z+=LW.w[i]*f[i];return 1/(1+Math.exp(-z))}
+
+// ---- Expert turn planner: beam search over whole-turn action sequences on determinized copies (no peeking).
+// Each node expands its top-W actions by the move prior (heuristic or learned), plus End. A sequence ends when we pass
+// the turn; that end-of-turn state is scored by greedy rollouts of the opponent's turn, our next turn and theirs, then
+// the value net. First actions are ranked by their best sequence, averaged over determinizations.
+let TP={W:4,B:6,D:8,dets:6,ms:500,roll:1};let PW_=null;function setPrior(w){PW_=w}
+function aFeat(st,a){const pi=st.active,f=find(st,a.uid),x=f&&f.inst,c=x&&x.card,T=["ink","play","quest","challenge","move","act","boost","end"];const F=T.map(t=>a.t===t?1:0);
+  F.push(c?c.cost/10:0,x&&isChar(x)?loreOf(x)/4:0,x&&isChar(x)?strOf(x)/8:0,c&&c.type==="song"?1:0,c&&c.type==="location"?1:0,c&&c.type==="item"?1:0,a.shift!=null?1:0,a.singer!=null||a.singers?1:0);
+  let kills=0,dies=0,dl=0;if(a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&x&&isChar(d)){kills=d.damage+Math.max(0,strOf(x)+(K(x,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d)?1:0;dies=x.damage+Math.max(0,strOf(d)-(K(x,"resist")||0))>=wilOf(x)?1:0;dl=loreOf(d)/4}}
+  const p=st.players[pi];F.push(kills,dies,dl,inkAvail(p)/10,p.inked?1:0,(c&&c.cost<=inkAvail(p))?1:0,1);return F}
+function prior(st,a){LEVEL="hard";let s;try{s=scoreAction(st,a);if(a.t!=="end"&&!st._sim)s+=hardAdj(st,a,s)}catch(e){s=-1}if(PW_){const f=aFeat(st,a);let z=0;for(let i=0;i<PW_.w.length;i++)z+=PW_.w[i]*f[i];return z*PW_.k+s*(PW_.h||0)}return s}
+function finishPending(sim){let n=0;while(sim.pending&&sim.winner==null&&n++<30){const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const v=scoreAction(sim,x);if(v>bv){bv=v;b=x}}if(!b)break;act(sim,b)}}
+function turnChoose(st){const pi=st.active,t0=Date.now();const L0=LEVEL;const root=legalActions(st);if(root.length<=1)return root[0]||null;
+  const key=a=>JSON.stringify(a),score=new Map(),cnt=new Map();
+  const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const v=scoreAction(sim,x);if(v>bv){bv=v;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
+  const leaf=sim=>{if(sim.winner!=null)return sim.winner===pi?1:0;let tot=0;for(let r=0;r<TP.roll;r++){const s2=r?cloneState(sim):sim;LEVEL="hard";let ph=0,cur=s2.active,n=0;
+      while(s2.winner==null&&n++<300){if(s2.active!==cur){cur=s2.active;if(++ph>=3)break}const x=greedy(s2);if(!x)break;act(s2,x)}tot+=LW?learnedEval(s2,pi):(s2.winner===pi?1:0.5)}return tot/TP.roll};
+  const mid=sim=>sim.winner!=null?(sim.winner===pi?1:0):LW?learnedEval(sim,pi):0.5;
+  for(let d=0;d<TP.dets;d++){if(d&&Date.now()-t0>TP.ms)break;const base=cloneState(st);base.r=rng((st.seed*17+st.turnNo*7919+st.log.length*31+d*104729)>>>0);determinize(base,pi);
+    let beam=[{sim:base,first:null}];const done=[];
+    for(let depth=0;depth<TP.D&&beam.length;depth++){const next=[];
+      for(const nd of beam){LEVEL="hard";let A;try{A=legalActions(nd.sim)}catch(e){continue}if(!A.length)continue;
+        const sc=A.map(a=>[a,a.t==="end"?-1e9:prior(nd.sim,a)]).sort((x,y)=>y[1]-x[1]);const pick=sc.slice(0,TP.W).map(x=>x[0]);const e=A.find(a=>a.t==="end");if(e&&!pick.includes(e))pick.push(e);
+        for(const a of pick){const sim=cloneState(nd.sim);sim.r=rng((base.seed+depth*131+next.length*7+d)>>>0);try{act(sim,a);finishPending(sim)}catch(err){continue}
+          const ch={sim,first:nd.first||a};if(a.t==="end"||sim.active!==pi||sim.winner!=null)done.push(ch);else{ch.v=mid(sim);next.push(ch)}}}
+      next.sort((x,y)=>y.v-x.v);beam=next.slice(0,TP.B)}
+    for(const nd of beam){const sim=nd.sim;try{let n=0;while(sim.winner==null&&sim.active===pi&&n++<40){const x=greedy(sim);if(!x)break;act(sim,x)}}catch(e){}done.push(nd)}
+    const best=new Map();for(const nd of done){let v;try{v=leaf(nd.sim)}catch(e){v=0}const k=key(nd.first);if(!best.has(k)||best.get(k)<v)best.set(k,v)}
+    for(const [k,v] of best){score.set(k,(score.get(k)||0)+v);cnt.set(k,(cnt.get(k)||0)+1)}}
+  LEVEL=L0;CUR=st;let ba=null,bv=-1;for(const a of root){const k=key(a);if(!cnt.has(k))continue;const v=score.get(k)/cnt.get(k)+cnt.get(k)*1e-4;if(v>bv){bv=v;ba=a}}return ba}
 function aiChoose(st,level){
   level=level||"normal";const ci=level.indexOf(":");PERS=ci>0?level.slice(ci+1):null;if(ci>0)level=level.slice(0,ci);
   LEVEL=level;CTX=st.pending||LEVEL==="easy"?{}:aiCtx(st);LEVEL=level;const A=legalActions(st);if(!A.length)return null;let best=null,bs=-Infinity;
   // Hard: rollout every candidate through the opponent's reply and our next turn. Normal: same lookahead on the
   // 4 best heuristic candidates, one opponent turn deep. Easy: noisy heuristic only.
+  if(LEVEL==="expert2"&&!st.pending){LEVEL="hard";CTX=aiCtx(st);try{const b=turnChoose(st);if(b)return b}catch(e){}finally{LEVEL="hard"}LEVEL="expert"}
   if(LEVEL==="expert"||LEVEL==="expmc"){if(!st.pending){LEVEL="hard";CTX=aiCtx(st);HDEEP=true;HREP=level==="expmc"?0:XO.rep;try{const b=level==="expmc"?expertChoose(st):hardChoose(st,A,XO.k2||undefined);if(b)return b}finally{HDEEP=false;HREP=0;LEVEL="hard"}}LEVEL="hard";}
   if((LEVEL==="hard"||LEVEL==="hard2")&&!st.pending){HDEEP=true;try{const b=hardChoose(st,A);if(b)return b}finally{HDEEP=false;LEVEL="hard"}}
   if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,2);LEVEL="normal";if(b)return b}
@@ -2406,6 +2442,6 @@ function thawState(data,pool){if(!data||data.v!==1)throw new Error("bad save");i
   for(const P of data.players){st.players.push({name:P.name,lore:P.lore|0,inked:!!P.inked,inkN:P.inkN|0,deck:P.deck.map(o=>thawInst(o,byId,byFull)),hand:P.hand.map(o=>thawInst(o,byId,byFull)),ink:P.ink.map(o=>thawInst(o,byId,byFull)),play:P.play.map(o=>thawInst(o,byId,byFull)),discard:P.discard.map(o=>thawInst(o,byId,byFull)),disc:[],boosted:new Set()})}
   CUR=st;return st}
 
-const E={feats,setLearned,learnedEval,expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
+const E={turnChoose,setTP:o=>Object.assign(TP,o),setPrior,aFeat,feats,setLearned,learnedEval,expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
 if(typeof module!=="undefined"&&module.exports)module.exports=E;else root.LorcanaEngine=E;
 })(typeof window!=="undefined"?window:globalThis);

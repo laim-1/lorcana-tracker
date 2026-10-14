@@ -30,3 +30,12 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 - **Didn't help:** hill-climbing the hand weights, full-game playouts, a lore-clock term, modeling the opponent with Hard's own lookahead inside rollouts (slower and worse), and retraining on Expert self-play (AlphaZero-lite iterations 1-2 were flat).
 - **Rollouts saturate:** 40 rollouts with a 1s cap scored 75%, no better than 16. The remaining gap looks policy-limited (one action at a time, greedy continuations) plus draw/deck variance. Some matchups stay deck-limited; per-matchup rows come from `DECKS=1 sh tools/expert-par.sh ...`.
 - **Next to try:** search over whole-turn action sequences, then a policy prior from a trained move model for progressive widening.
+
+## Round 3: whole-turn planner + big nets (in progress)
+- `expert2` = beam search over whole-turn sequences (W=4 prior-ranked actions + End per node, beam 6, depth 8, 6 determinizations, end-of-turn states scored by greedy rollouts + the value net).
+- Big self-play run is in progress (`/workspace/big`, 42k games, card-id lists saved for embeddings).
+| 16 | expert2 turn planner (W4 B6 D8, 6 dets, 500ms) | 80 | 75.0% [64.5-83.2] | 75.0% | 75.0% | on par with v3 |
+| 17 | expert2 wider (W6 B8, 8 dets, 800ms) | 80 | 77.5% [67.2-85.3] | 80.0% | 75.0% | not better than v3 within CI |
+- Big value nets: `tools/train-big.py` (torch) trains per-card embeddings summed per zone plus state features into an MLP; `bigEval` in the engine runs inference. Policy data: `tools/policy-gen.js` (Expert's choices).
+| 18 | expert2 + learned move prior (softmax imitating Expert, 9.6k decisions, hybrid with heuristic) | 80 | 80.0% [70.0-87.3] | 85.0% | 75.0% | promising |
+| 19 | #18, 160 games | 160 | 79.4% [72.5-84.9] | 82.5% | 76.3% | |

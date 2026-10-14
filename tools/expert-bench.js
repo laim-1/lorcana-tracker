@@ -1,8 +1,8 @@
 // node tools/expert-bench.js N [lvA] [lvB] [ms] [max] [depth] -> A vs B over N games; mirror + mixed, seats/first swapped, 95% CI
-global.window = {}; require("../data/game-cards.js"); const E = require("../js/engine.js");
+global.window = {}; const fs = require("fs"); require("../data/game-cards.js"); const E = require("../js/engine.js");
 const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard);
 const D = E.STARTER_DECKS.map(d => E.deckFromList(pool, d.list)), names = E.STARTER_DECKS.map(d => d.name);
-const [N0, A = "expert", B = "hard", ms = 350, mx = 900, dp = 3, only] = process.argv.slice(2); const N = +N0 || 20; E.setExpert(+ms, +mx, +dp, process.env.XO ? JSON.parse(process.env.XO) : null, process.env.EW ? JSON.parse(process.env.EW) : null); const [SI, SK] = (process.env.SHARD || '0/1').split('/').map(Number);
+const [N0, A = "expert", B = "hard", ms = 350, mx = 900, dp = 3, only] = process.argv.slice(2); const N = +N0 || 20; E.setExpert(+ms, +mx, +dp, process.env.XO ? JSON.parse(process.env.XO) : null, process.env.EW ? JSON.parse(process.env.EW) : null); if (process.env.LW) E.setLearned(JSON.parse(fs.readFileSync(process.env.LW))); else { globalThis.LorcanaEngine = E; require("../data/expert-weights.js") } const [SI, SK] = (process.env.SHARD || '0/1').split('/').map(Number);
 const res = { mirror: [0, 0], mixed: [0, 0] }, perDeck = {}; let tms = 0, tn = 0, tmax = 0, stall = 0;
 for (let g = 0; g < N; g++) { if (g % SK !== SI) continue;
   const kind = only || (g % 4 < 2 ? "mirror" : "mixed"), k = g >> 2, sa = g % 2; // sa = A's seat; first player = seat 0 alternates via k

@@ -2161,9 +2161,9 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
   const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}
     if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}if(HREP&&XO.d2){n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
-  const ROLL=(a,rep)=>{const sim=cloneState(st);if(HREP){sim.r=rng((st.seed*31+st.turnNo*7919+st.log.length*13+rep*104729)>>>0);if(XO.det)determinize(sim,pi)}LEVEL=HREP&&XO.rl?XO.rl:"normal";try{act(sim,a);roll(sim)}finally{LEVEL=L0}let vs=evalBoard(sim,pi)+(HREP&&XO.clock?raceClock(sim,pi):0);if(sim.players[pi].lore>sim.players[opp(pi)].lore)vs+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)vs+=10;return vs};
-  const RS=A.map(()=>({s:0,n:0}));if(HREP){const t0=Date.now();for(let rep=0;rep<HREP;rep++){for(let i=0;i<A.length;i++){try{RS[i].s+=ROLL(A[i],rep);RS[i].n++}catch(e){}}if((Date.now()-t0)*(rep+2)/(rep+1)>EXPERT_MS)break}}
-  for(const a of A){let v;try{const ai=A.indexOf(a);if(HREP){if(!RS[ai].n)throw 0;v=RS[ai].s/RS[ai].n}else v=ROLL(a,0);if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
+  const ROLL=(a,rep)=>{const sim=cloneState(st);if(HREP){sim.r=rng((st.seed*31+st.turnNo*7919+st.log.length*13+rep*104729)>>>0);if(XO.det)determinize(sim,pi)}LEVEL=HREP&&XO.rl?XO.rl:"normal";try{act(sim,a);roll(sim)}finally{LEVEL=L0}let vs=HREP&&XO.leaf&&LW?XO.leaf*learnedEval(sim,pi):evalBoard(sim,pi)+(HREP&&XO.clock?raceClock(sim,pi):0);if(sim.players[pi].lore>sim.players[opp(pi)].lore)vs+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)vs+=10;return vs};
+  const RS=A.map(()=>({s:0,n:0}));if(HREP){const t0=Date.now();for(let rep=0;rep<HREP;rep++){let cut=false;for(let i=0;i<A.length;i++){if(rep&&Date.now()-t0>EXPERT_MS){cut=true;break}try{RS[i].s+=ROLL(A[i],rep);RS[i].n++}catch(e){}}if(cut)break;if((Date.now()-t0)*(rep+2)/(rep+1)>EXPERT_MS)break}}
+  for(const a of A){let v;try{const ai=A.indexOf(a);if(HREP){if(!RS[ai].n)throw 0;v=RS[ai].s/RS[ai].n}else v=ROLL(a,0);var V0=v;if(HDEEP&&CTX.lethal&&a.t==="quest")v+=100;if(HDEEP&&CTX.threat&&a.t==="challenge")v+=25;
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst,at=find(st,a.uid)?.inst;if(d&&at&&isChar(d)){const kills=d.damage+Math.max(0,strOf(at)+(K(at,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d);const live=at.damage+Math.max(0,strOf(d)-(K(at,"resist")||0))<wilOf(at);if(kills&&live)v+=18;else if(kills)v+=6}}
     if(HDEEP&&a.t==="play"&&(a.singer!=null||a.singers)){v+=14;if(a.singer!=null){const sg=find(st,a.singer)?.inst;if(sg&&loreOf(sg)<=1)v+=8}
       if(a.singers){const ids=String(a.singers).split(",").map(Number);const lb=ids.reduce((t,u)=>{const f=find(st,u);return t+(f?loreOf(f.inst):0)},0);v+=Math.max(0,6-lb)}}
@@ -2172,7 +2172,7 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
     if(HDEEP&&a.t==="boost"){const bx=find(st,a.uid)?.inst;if(bx&&(bx.card.statics.some(s=>s.cond==="under"||typeof s.cond==="function"||!!s.count)||(bx.card.onQuest&&bx.card.onQuest.length)))v+=16}
     if(HDEEP&&a.t==="ink"){const c=find(st,a.uid)?.inst?.card;if(c&&c.type==="character"&&c.lore>=2)v-=12;if(c&&c.kw&&c.kw.shift!=null)v-=8}
     if(HDEEP&&a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&K(d,"ward"))v+=10;if(d&&K(d,"bodyguard"))v+=6}}catch(e){v=-Infinity}LEVEL=L0;CUR=st;
-    try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(v>bs){bs=v;best=a}}
+    try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(HREP&&XO.bs!=null&&isFinite(v))v=V0+(v-V0)*XO.bs;if(v>bs){bs=v;best=a}}
   LEVEL=L0;CUR=st;return best}
 let PERS=null,CTX={},HDEEP=false,LITE_OFF=false,HREP=0;
 const EW0={lo:12,ob:1,h:2,ic:8,ink:3,oh:1.5,mv:1,ex:0.45,ml:3,at:3,ol:5,th:400};let EW={...EW0};
@@ -2194,7 +2194,7 @@ function plyChoose(st,A,lv){const pi=st.active;let best=null,bs=-Infinity;const 
 // playout so Expert never peeks. Candidates are pruned by the heuristic, then successive halving spends the time
 // budget on the most promising ones. Each playout finishes our turn, plays the opponent's turn and our next turn
 // with a fast greedy policy, then scores the position with evalBoard (wins/losses are clamped terminal values).
-let EXPERT_MS=350,EXPERT_MAX=900,EXPERT_DEPTH=3,XO={k:8,noise:4,det:1,clock:0,hadj:1,rep:6,d2:1,rl:"hard"};
+let EXPERT_MS=350,EXPERT_MAX=900,EXPERT_DEPTH=3,XO={k:8,noise:4,det:1,clock:0,hadj:1,rep:6,d2:1,rl:"hard",leaf:1000,bs:0.3};
 function determinize(sim,pi){const o=sim.players[opp(pi)],n=o.hand.length,pool=shuffle([...o.hand,...o.deck].sort((a,b)=>a.uid-b.uid),sim.r);o.hand=pool.slice(0,n);o.deck=pool.slice(n);shuffle(sim.players[pi].deck,sim.r)}
 function fastPick(sim){const B=legalActions(sim);if(!B.length)return null;let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x)+(XO.noise?sim.r()*XO.noise:0);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b}
 function expertEval(sim,pi){if(sim.winner!=null)return sim.winner===pi?3000:-3000;const me=sim.players[pi],op=sim.players[opp(pi)];
@@ -2213,6 +2213,23 @@ function expertChoose(st,budget){const pi=st.active,t0=Date.now(),ms=budget||EXP
   let live=stats;while(live.length>1){const per=Math.max(2,Math.ceil(8/live.length));for(let k=0;k<per;k++)for(const c of live)playout(c);
     if(Date.now()-t0>ms||total>=EXPERT_MAX){break}if(total>live.length*6){live.sort((x,y)=>y.s/y.n-x.s/x.n);if(live.length>2&&(Date.now()-t0)>ms*0.25*(9-live.length)/8)live=live.slice(0,Math.ceil(live.length/2))}}
   LEVEL=L0;stats.sort((x,y)=>(y.n?y.s/y.n:-1e9)-(x.n?x.s/x.n:-1e9));return stats[0].a}
+
+// State features for the learned evaluation (perspective of pi). Kept cheap: used at every MCTS leaf.
+function feats(st,pi){const me=st.players[pi],op=st.players[opp(pi)];const F=[];
+  const side=(P,mine)=>{let n=0,lo=0,rlo=0,str=0,wil=0,val=0,exp=0,ev=0,items=0,locs=0,locl=0;const O=mine?op:me;const oc=O.play.filter(isChar);
+    for(const x of P.play){if(isChar(x)){n++;const l=loreOf(x);lo+=l;if(!x.exerted)rlo+=l;str+=strOf(x);wil+=Math.max(0,wilOf(x)-x.damage);val+=instVal(x);if(K(x,"evasive"))ev+=l;
+      if(x.exerted&&oc.some(o=>strOf(o)+(K(o,"challenger")||0)>=wilOf(x)-x.damage&&(!K(x,"evasive")||K(o,"evasive")||K(o,"alert"))))exp+=l+1}else if(isLoc(x)){locs++;locl+=x.card.lore||0}else items++}
+    const need=Math.max(0,20-P.lore),clk=lo+locl?Math.min(9,Math.ceil(need/(lo+locl))):9;
+    return[P.lore/20,need<=0?1:0,lo/10,rlo/10,n/6,str/20,wil/30,val/60,exp/6,ev/6,items/4,locs/3,P.ink.length/10,P.hand.length/10,P.deck.length/60,clk/9,(lo+locl)>=need?1:0,inkAvail(P)/10]};
+  const a=side(me,true),b=side(op,false);F.push(...a,...b);for(let i=0;i<a.length;i++)F.push(a[i]-b[i]);F.push(st.active===pi?1:0,Math.min(st.turnNo,30)/30,1);
+  for(const P of [me,op]){const ik=P.ink.length;let cast=0,songs=0,hc=0,inkable=0,big=0,hl=0;for(const h of P.hand){const c=h.card;hc+=c.cost;if(c.cost<=ik+1)cast++;if(c.type==="song")songs++;if(c.inkable)inkable++;if(c.cost>=5)big++;if(c.type==="character")hl+=c.lore||0}
+    let top=0,chal=0;const O=P===me?op:me;for(const x of P.play)if(isChar(x)){top=Math.max(top,loreOf(x));if(!x.exerted&&O.play.some(o=>isChar(o)&&o.exerted&&strOf(x)>=wilOf(o)-o.damage))chal++}
+    F.push(cast/7,songs/4,hc/40,inkable/7,big/5,hl/15,top/5,chal/5,P.discard.length/30)}
+  return F}
+let LW=null;function setLearned(w){LW=w}
+function learnedEval(st,pi){if(st.winner!=null)return st.winner===pi?1:0;const f=feats(st,pi);
+  if(LW.h){const H=LW.h;let o=LW.b2;for(let j=0;j<H.length;j++){let z=H[j].b;const w=H[j].w;for(let i=0;i<w.length;i++)z+=w[i]*f[i];o+=LW.w2[j]*(z>0?z:0)}return 1/(1+Math.exp(-o))}
+  let z=0;for(let i=0;i<LW.w.length;i++)z+=LW.w[i]*f[i];return 1/(1+Math.exp(-z))}
 function aiChoose(st,level){
   level=level||"normal";const ci=level.indexOf(":");PERS=ci>0?level.slice(ci+1):null;if(ci>0)level=level.slice(0,ci);
   LEVEL=level;CTX=st.pending||LEVEL==="easy"?{}:aiCtx(st);LEVEL=level;const A=legalActions(st);if(!A.length)return null;let best=null,bs=-Infinity;
@@ -2388,6 +2405,6 @@ function thawState(data,pool){if(!data||data.v!==1)throw new Error("bad save");i
   for(const P of data.players){st.players.push({name:P.name,lore:P.lore|0,inked:!!P.inked,inkN:P.inkN|0,deck:P.deck.map(o=>thawInst(o,byId,byFull)),hand:P.hand.map(o=>thawInst(o,byId,byFull)),ink:P.ink.map(o=>thawInst(o,byId,byFull)),play:P.play.map(o=>thawInst(o,byId,byFull)),discard:P.discard.map(o=>thawInst(o,byId,byFull)),disc:[],boosted:new Set()})}
   CUR=st;return st}
 
-const E={expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
+const E={feats,setLearned,learnedEval,expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
 if(typeof module!=="undefined"&&module.exports)module.exports=E;else root.LorcanaEngine=E;
 })(typeof window!=="undefined"?window:globalThis);

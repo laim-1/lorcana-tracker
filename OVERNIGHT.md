@@ -619,3 +619,7 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
   - Expert vs Normal: 72.5% (n=80). Expert vs Easy: 95.0% (n=80).
   - The 95% target against Hard was NOT reached. Hill-climbing the eval weights (`tools/expert-tune.js`), more rollouts, a lore-clock term and full-game playouts all stayed within noise of 48-60%. Draw/deck variance between two competent players appears to be the ceiling for this engine's heuristic policy.
 - Phone check (`tests/ui-expert.py`, Chromium 390x844, 4x CPU throttle): 30 worker decisions, max 240ms (avg 65ms), max main-thread frame gap 75ms.
+
+## Expert v2 (Oct 13, evening)
+- Expert now scores its rollouts with a learned evaluation instead of the hand-written one: a small neural net (66 board/hand/clock features in, win probability out) trained on 460k positions from Hard/Normal/Easy self-play (`tools/selfplay.js`, `tools/train-eval.py`). Weights ship in `data/expert-weights.js` (15 KB) and are loaded by the AI worker.
+- Expert vs Hard is now **68.3% [62.2-73.9]** over 240 games (was 56.3%). Full table in `EXPERT.md`.

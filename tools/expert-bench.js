@@ -2,7 +2,7 @@
 global.window = {}; const fs = require("fs"); require("../data/game-cards.js"); const E = require("../js/engine.js");
 const pool = window.LORCANA_GAME_CARDS.cards.filter(c => /^\d+$/.test(String(c.set))).map(E.normCard);
 const D = E.STARTER_DECKS.map(d => E.deckFromList(pool, d.list)), names = E.STARTER_DECKS.map(d => d.name);
-const [N0, A = "expert", B = "hard", ms = 350, mx = 900, dp = 3, only] = process.argv.slice(2); const N = +N0 || 20; if (process.env.PW) E.setPrior(JSON.parse(fs.readFileSync(process.env.PW))); if (process.env.TP) E.setTP(JSON.parse(process.env.TP)); E.setExpert(+ms, +mx, +dp, process.env.XO ? JSON.parse(process.env.XO) : null, process.env.EW ? JSON.parse(process.env.EW) : null); if (process.env.LW) E.setLearned(JSON.parse(fs.readFileSync(process.env.LW))); else { globalThis.LorcanaEngine = E; require("../data/expert-weights.js") } const [SI, SK] = (process.env.SHARD || '0/1').split('/').map(Number);
+const [N0, A = "expert", B = "hard", ms = 350, mx = 900, dp = 3, only] = process.argv.slice(2); const N = +N0 || 20; if (process.env.PW) E.setPrior(JSON.parse(fs.readFileSync(process.env.PW))); if (process.env.TP) E.setTP(JSON.parse(process.env.TP)); if (process.env.IS) E.setIS(JSON.parse(process.env.IS)); E.setExpert(+ms, +mx, +dp, process.env.XO ? JSON.parse(process.env.XO) : null, process.env.EW ? JSON.parse(process.env.EW) : null); if (process.env.LW) E.setLearned(JSON.parse(fs.readFileSync(process.env.LW))); else { globalThis.LorcanaEngine = E; require("../data/expert-weights.js") } const [SI, SK] = (process.env.SHARD || '0/1').split('/').map(Number);
 const res = { mirror: [0, 0], mixed: [0, 0] }, perDeck = {}; let tms = 0, tn = 0, tmax = 0, stall = 0;
 for (let g = 0; g < N; g++) { if (g % SK !== SI) continue;
   const kind = only || (g % 4 < 2 ? "mirror" : "mixed"), k = g >> 2, sa = g % 2; // sa = A's seat; first player = seat 0 alternates via k
@@ -16,7 +16,7 @@ for (let g = 0; g < N; g++) { if (g % SK !== SI) continue;
   if (process.env.V) console.error(g, kind, w, (tms / tn).toFixed(0) + "ms");
 }
 const ci = (w, n) => { const p = w / n, z = 1.96, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return `${(100 * p).toFixed(1)}% [${(100 * (c - h)).toFixed(1)}-${(100 * (c + h)).toFixed(1)}] n=${n}` };
-if (process.env.RAW) { console.log(JSON.stringify({ res, tms, tn, tmax, stall, perDeck })); process.exit(0) }
+if (process.env.ISV) E.ISTAT.dbg=1; if (process.env.ISV) console.error("ISTAT", E.ISTAT.it / E.ISTAT.n, E.ISTAT.err, E.ISTAT.e); if (process.env.RAW) { console.log(JSON.stringify({ res, tms, tn, tmax, stall, perDeck })); process.exit(0) }
 const all = [res.mirror[0] + res.mixed[0], res.mirror[1] + res.mixed[1]];
 console.log(JSON.stringify({ A, B, all: ci(...all), mirror: res.mirror[1] ? ci(...res.mirror) : null, mixed: res.mixed[1] ? ci(...res.mixed) : null, avgMs: +(tms / tn).toFixed(1), maxMs: tmax, stall }));
 if (process.env.DECKS) for (const [k, v] of Object.entries(perDeck)) console.log(k, v[0] + "/" + v[1]);

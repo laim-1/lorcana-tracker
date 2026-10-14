@@ -23,3 +23,10 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 12 | v3 model, 16 reps, 500ms cap | 120 | 76.7% [68.3-83.3] | 81.7% | 71.7% | avg 146ms, max 777ms node |
 | 13 | v3 model, 40 reps, 1000ms cap | 120 | 75.0% [66.6-81.9] | 78.3% | 71.7% | saturates; 16 reps is enough |
 | 14 | **v3 model, 16 reps, 500ms cap: confirmation run** | 240 | **73.8% [67.8-78.9]** | 79.2% | 68.3% | shipped (worker cap 900ms) |
+| 15 | MLP v5 (32 hidden, +55k rows of Expert-v3-model self-play; AlphaZero-lite iter 2), 16 reps | 240 | 72.1% [66.1-77.4] | 76.7% | 67.5% | no gain over v3 model; not shipped |
+
+## Takeaways
+- **Worked:** the learned leaf evaluation (+12 points, 56 to 68%) and more determinized rollouts per candidate (+5 points, to 74%).
+- **Didn't help:** hill-climbing the hand weights, full-game playouts, a lore-clock term, modeling the opponent with Hard's own lookahead inside rollouts (slower and worse), and retraining on Expert self-play (AlphaZero-lite iterations 1-2 were flat).
+- **Rollouts saturate:** 40 rollouts with a 1s cap scored 75%, no better than 16. The remaining gap looks policy-limited (one action at a time, greedy continuations) plus draw/deck variance. Some matchups stay deck-limited; per-matchup rows come from `DECKS=1 sh tools/expert-par.sh ...`.
+- **Next to try:** search over whole-turn action sequences, then a policy prior from a trained move model for progressive widening.

@@ -53,3 +53,7 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 26 | ismcts first try (most-visited pick, no root widening) | 7 | 0/7 | | | prior too peaked; only 2 root children explored |
 | 27 | ismcts c=1, mix .5, sel .3, ph 3 | 28 | 60.7% [42.4-76.4] | 64.3% | 57.1% | |
 | 28 | ismcts ph 1 / sel 0,c 2 / W4 mix .25 / ph 2 | 28 each | 75.0% / 42.9% / 60.7% / 75.0% | | | most-visited pick is bad; short rollouts better |
+| 29 | ismcts ph1 sel .6 / ph2 sel .6 / ph1 W8 sel .3 (same 56 games) | 56 each | 78.6% / 76.8% / 78.6% | | | |
+| 30 | expert2 shipped config on the same 56 games | 56 | 76.8% [64.2-85.9] | 82.1% | 71.4% | ISMCTS on par so far |
+| 31 | ismcts ph1 sel 1 W8 / ph0 (value net right after our turn) / ph1 sel .6 W8 + expert mulligan | 56 each | 73.2% / 73.2% / 71.4% | | | all within noise of #29 |
+| 32 | expert2 + expert mulligan (Monte Carlo redraw scoring with own decklist, `expertMulligan`) | 56 | 71.4% [58.5-81.6] | 71.4% | 71.4% | vs 76.8% without on same games; no gain |

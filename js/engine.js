@@ -2271,14 +2271,14 @@ function turnChoose(st){const pi=st.active,t0=Date.now();const L0=LEVEL;const ro
 // action, then scores: finished turns by greedy rollouts + value net, unfinished ones by greedy turn completion first.
 let IS={sel:0.3,mix:0.5,fpu:0.05,rootAll:1,c:1,W:6,ms:500,hard:900,roll:1,ph:3,T:3,minN:0};
 function ismctsChoose(st){const pi=st.active,t0=Date.now();const root=legalActions(st);if(root.length<=1)return root[0]||null;
-  const key=a=>JSON.stringify(a);const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const v=scoreAction(sim,x);if(v>bv){bv=v;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
+  const key=a=>JSON.stringify(a);let ctT=-1;const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;if(IS.adj&&!sim.pending&&ctT!==sim.turnNo){ctT=sim.turnNo;CTX=aiCtx(sim)}for(const x of B){let v=scoreAction(sim,x);if(IS.adj&&!sim.pending&&x.t!=="end")v+=hardAdj(sim,x,v);if(v>bv){bv=v;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const leaf=sim=>{if(sim.winner!=null)return sim.winner===pi?1:0;LEVEL="hard";let n=0;while(sim.winner==null&&sim.active===pi&&n++<40){const x=greedy(sim);if(!x)break;act(sim,x)}
     let ph=0,cur=sim.active;n=0;while(sim.winner==null&&n++<300&&IS.ph>0){if(sim.active!==cur){cur=sim.active;if(++ph>=IS.ph)break}const x=greedy(sim);if(!x)break;act(sim,x)}
     return sim.winner!=null?(sim.winner===pi?1:0):LW?learnedEval(sim,pi):0.5};
-  const mk=()=>({n:0,ch:new Map()});const R=mk();let it=0;
+  const mk=()=>({n:0,ch:new Map()});const R=mk();const CTX0=CTX;let it=0;
   while(true){const el=Date.now()-t0;if(it>=2&&el>IS.ms)break;if(el>IS.hard)break;
     const sim=cloneState(st);sim.r=rng((st.seed*17+st.turnNo*7919+st.log.length*31+it*104729)>>>0);determinize(sim,pi);
-    let node=R;const path=[R];let v=null;
+    let node=R;const path=[R];let v=null;if(IS.adj){CTX=CTX0;ctT=-1}
     try{for(let d=0;d<12;d++){LEVEL="hard";const A=legalActions(sim);if(!A.length)break;
         const sc=A.map(a=>[a,a.t==="end"?null:prior(sim,a)]);const ne=sc.filter(x=>x[1]!=null).sort((x,y)=>y[1]-x[1]).slice(0,IS.W);const e=sc.find(x=>x[1]==null);
         const cand=ne.slice();if(e)cand.push([e[0],ne.length?ne[ne.length-1][1]:0]);
@@ -2380,6 +2380,19 @@ function hardAdj(st,a,s){ // lore race awareness: race when ahead, remove queste
     if(isChar(at)&&loreOf(at)>=2&&!CTX.threat&&me.lore>=op.lore)return -10;
     return 4}
   return 0}
+// Expert mulligan: Monte Carlo over candidate redraws using our own known decklist. Each candidate (keep set) is
+// scored by simulating draws for turns 1-4 (ink one card per turn, then cast the most expensive affordable cards),
+// rewarding ink spent, lore on board and having inked every turn.
+function expertMulligan(st,pi,K){K=K||150;const P=st.players[pi],h=P.hand,base=aiMulligan(st,pi);const r=rng((st.seed*7+pi*131)>>>0);
+  const C=[base,[],h.filter(c=>c.card.cost>=5).map(c=>c.uid),h.filter(c=>c.card.cost>=4).map(c=>c.uid),h.filter(c=>!c.card.inkable&&c.card.cost>=3).map(c=>c.uid),h.filter(c=>c.card.cost>=6).map(c=>c.uid)];
+  const seen=new Set(),U=[];for(const c of C){const k=[...c].sort().join();if(!seen.has(k)){seen.add(k);U.push(c)}}
+  const sim=hand=>{let ink=0,sc=0,board=0;const H=hand.slice();const D=shuffle(P.deck.slice(),r);let di=0;
+    for(let t=1;t<=4;t++){if(t>1||st.first!==pi)H.push(D[di++]);let ii=-1,bc=-1;for(let i=0;i<H.length;i++){const c=H[i].card;if(!c.inkable)continue;const v=c.cost>ink+2?c.cost+5:(c.type==="character"?-c.cost:c.cost);if(v>bc){bc=v;ii=i}}
+      if(ii>=0){H.splice(ii,1);ink++}else sc-=3;let av=ink;H.sort((a,b)=>b.card.cost-a.card.cost);for(let i=0;i<H.length;i++){const c=H[i].card;if(c.cost<=av&&c.type!=="action"&&c.type!=="song"||c.cost<=av&&t>=3){av-=c.cost;sc+=c.cost;if(c.type==="character")board+=(c.lore||1)*(5-t);H.splice(i,1);i--}}}
+    return sc+board*0.5};
+  let best=base,bv=-Infinity;for(const c of U){const keep=h.filter(x=>!c.includes(x.uid));let s=0;
+    for(let k=0;k<K;k++){const pool=P.deck.slice();const dr=shuffle(pool,r).slice(0,c.length);s+=sim(keep.concat(dr))}s/=K;if(c===base)s+=0.3;if(s>bv){bv=s;best=c}}
+  return best}
 function aiMulligan(st,pi){const h=st.players[pi].hand;const cheap=h.filter(c=>c.card.cost<=3).length;const inkN=h.filter(c=>c.card.inkable).length;
   const cheapInk=h.filter(c=>c.card.inkable&&c.card.cost<=3).length;
   // Keep enablers: Singer N that unlocks a song in hand; Shift card + matching cheap base
@@ -2469,6 +2482,6 @@ function thawState(data,pool){if(!data||data.v!==1)throw new Error("bad save");i
   for(const P of data.players){st.players.push({name:P.name,lore:P.lore|0,inked:!!P.inked,inkN:P.inkN|0,deck:P.deck.map(o=>thawInst(o,byId,byFull)),hand:P.hand.map(o=>thawInst(o,byId,byFull)),ink:P.ink.map(o=>thawInst(o,byId,byFull)),play:P.play.map(o=>thawInst(o,byId,byFull)),discard:P.discard.map(o=>thawInst(o,byId,byFull)),disc:[],boosted:new Set()})}
   CUR=st;return st}
 
-const E={turnChoose,setIS:o=>Object.assign(IS,o),ISTAT,setTP:o=>Object.assign(TP,o),setPrior,aFeat,feats,setLearned,learnedEval,expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
+const E={turnChoose,expertMulligan,setIS:o=>Object.assign(IS,o),ISTAT,setTP:o=>Object.assign(TP,o),setPrior,aFeat,feats,setLearned,learnedEval,expertChoose,setExpert:(ms,mx,d,o,w)=>{if(o)Object.assign(XO,o);if(w)Object.assign(EW,w);EXPERT_MS=ms;if(mx)EXPERT_MAX=mx;if(d)EXPERT_DEPTH=d},STARTER_DECKS,deckFromList,actsOf,ev,costOf,normCard,parseEffects,newGame,mulligan,legalActions,act,aiChoose,aiMulligan,buildDeck,bestOwnedPair,validateDeck,coverage,INKS,inkAvail,dry,strOf,targets,find,isLegal,challengeTargets,loreOf,K,wilOf,moveCost,checkWin,winAt,freezeState,thawState,singVal};
 if(typeof module!=="undefined"&&module.exports)module.exports=E;else root.LorcanaEngine=E;
 })(typeof window!=="undefined"?window:globalThis);

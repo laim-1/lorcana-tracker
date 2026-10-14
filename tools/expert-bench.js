@@ -9,7 +9,7 @@ for (let g = 0; g < N; g++) { if (g % SK !== SI) continue;
   const da = (k * 5) % D.length, db = kind === "mirror" ? da : (k * 5 + 7) % D.length;
   const decks = []; decks[sa] = D[da]; decks[1 - sa] = D[db];
   const st = E.newGame({ decks, seed: 5000 + g * 37, first: (k + g) % 2 }); st.human = [false, false];
-  const lv = []; lv[sa] = A; lv[1 - sa] = B; for (const i of [0, 1]) E.mulligan(st, i, E.aiMulligan(st, i));
+  const lv = []; lv[sa] = A; lv[1 - sa] = B; for (const i of [0, 1]) E.mulligan(st, i, process.env.XM && i === sa ? E.expertMulligan(st, i) : E.aiMulligan(st, i));
   let n = 0; while (st.winner == null && n++ < 3000) { const pi = st.pending ? st.pending.pi : st.active; const t = Date.now(); const x = E.aiChoose(st, lv[pi]); if (lv[pi] === A) { const d = Date.now() - t; tms += d; tn++; tmax = Math.max(tmax, d) } if (!x) break; E.act(st, x) }
   const w = st.winner === sa ? 1 : st.winner == null ? 0.5 : 0; if (st.winner == null) stall++;
   res[kind][0] += w; res[kind][1]++; const key = kind + ":" + names[da] + (kind === "mixed" ? " v " + names[db] : ""); (perDeck[key] = perDeck[key] || [0, 0])[0] += w; perDeck[key][1]++;

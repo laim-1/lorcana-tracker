@@ -60,3 +60,5 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 33 | expert2 + Hard-level rollouts (TP.adj=1, hardAdj in rollout greedy) | 56 | 69.6% [56.7-80.1] | 64.3% | 75.0% | avg 296ms (vs 165); overlapped with an external 7-shard ismcts 240 run (oversubscribed), so rerun clean |
 | 34 | ismcts ph1 sel .6 W8, 240-game confirmation | 240 | 69.2% [63.1-74.7] | 70.8% | 67.5% | clearly below expert2 (78.8%); the 56-game screens were optimistic; ISMCTS dropped as ship candidate |
 | 35 | expert2 TP.adj=1 (clean rerun) / adj .5 / **ph 2** (rollout 2 phases instead of 3) / roll 2 / ph 4 | 56 each | 66.1% / 75.0% / **85.7% [74.3-92.6]** / 76.8% / 73.2% | ph2: 85.7% | ph2: 85.7% | Hard-level rollouts hurt (hardAdj in rollouts is worse, matches #10); shorter rollouts look promising, confirm |
+| 36 | expert2 TP.ph=1 (screen) | 56 | 82.1% [70.2-90.0] | 82.1% | 82.1% | avg 114ms |
+| 37 | **expert2 TP.ph=2, 400-game confirmation** | 400 | **78.8% [74.5-82.5]** | 81.5% | 76.0% | identical to shipped (315/400); the 85.7% screen was noise. Not shipped |

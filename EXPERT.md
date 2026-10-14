@@ -62,3 +62,4 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 35 | expert2 TP.adj=1 (clean rerun) / adj .5 / **ph 2** (rollout 2 phases instead of 3) / roll 2 / ph 4 | 56 each | 66.1% / 75.0% / **85.7% [74.3-92.6]** / 76.8% / 73.2% | ph2: 85.7% | ph2: 85.7% | Hard-level rollouts hurt (hardAdj in rollouts is worse, matches #10); shorter rollouts look promising, confirm |
 | 36 | expert2 TP.ph=1 (screen) | 56 | 82.1% [70.2-90.0] | 82.1% | 82.1% | avg 114ms |
 | 37 | **expert2 TP.ph=2, 400-game confirmation** | 400 | **78.8% [74.5-82.5]** | 81.5% | 76.0% | identical to shipped (315/400); the 85.7% screen was noise. Not shipped |
+| 38 | expert2 TP ph1 dets10 / ph1 dets10 W6 B8 | 56 each | 83.9% / 87.5% [76.4-93.8] | 82.1% / 92.9% | 85.7% / 82.1% | avg 163 / 221ms; confirm W6B8 |

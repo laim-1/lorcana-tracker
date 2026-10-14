@@ -47,3 +47,9 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 25 | **shipped: expert2 + prior with hard per-decision cap (Web Worker: soft 540ms, hard 900ms; node: 500/900)** | 160 | **78.8% [71.8-84.4]** | 78.8% | 78.8% | avg 187ms, max 1131ms node (was 7400ms uncapped); pooled with #22: 315/400 = 78.8% [74.5-82.5] |
 - Phone check (tests/ui-expert.py, 390x844, 4x CPU throttle): 31 worker decisions, max 511ms, avg 157ms, max frame gap 75ms.
 - **Round 3 takeaways:** whole-turn planning plus a tiny learned move prior (23 weights) gave +5 points (73.8% to 78.8%). The 860 KB big value net and a retrained small net did not beat the 16 KB v3 MLP, so they were not shipped.
+
+## Round 4: ISMCTS, rollout policy, mulligan, deck knowledge (in progress)
+- `ismcts` level: information-set MCTS over our own turn. Each iteration samples a new determinization, descends a shared action-keyed tree with PUCT (move prior softmax mixed 50/50 with uniform, top-W=6 + End), expands one action, then greedy-finishes the turn, rolls `ph` phases with Hard-greedy play, and scores with the 16 KB value net. Final pick = max(Q - sel/sqrt(N)). ~450 iterations per 400ms decision.
+| 26 | ismcts first try (most-visited pick, no root widening) | 7 | 0/7 | | | prior too peaked; only 2 root children explored |
+| 27 | ismcts c=1, mix .5, sel .3, ph 3 | 28 | 60.7% [42.4-76.4] | 64.3% | 57.1% | |
+| 28 | ismcts ph 1 / sel 0,c 2 / W4 mix .25 / ph 2 | 28 each | 75.0% / 42.9% / 60.7% / 75.0% | | | most-visited pick is bad; short rollouts better |

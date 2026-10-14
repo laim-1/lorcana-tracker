@@ -63,4 +63,4 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 36 | expert2 TP.ph=1 (screen) | 56 | 82.1% [70.2-90.0] | 82.1% | 82.1% | avg 114ms |
 | 37 | **expert2 TP.ph=2, 400-game confirmation** | 400 | **78.8% [74.5-82.5]** | 81.5% | 76.0% | identical to shipped (315/400); the 85.7% screen was noise. Not shipped |
 | 38 | expert2 TP ph1 dets10 / ph1 dets10 W6 B8 | 56 each | 83.9% / 87.5% [76.4-93.8] | 82.1% / 92.9% | 85.7% / 82.1% | avg 163 / 221ms; confirm W6B8 |
-| 39 | **expert2 TP ph1 dets10 W6 B8, 400-game confirmation** | 400 | **79.3% [75.0-82.9]** | 84.5% | 74.0% | avg 235ms, max 999ms; within noise of shipped 78.8% (56-game 87.5% screen was noise again). Not shipped |
+| 39 | **expert2 TP ph1 dets10 W6 B8, 400-game confirmation** | 400 | **79.3% [75.0-82.9]** | 84.5% | 74.0% | avg 235ms, max 999ms; within noise of shipped 78.8% (56-game 87.5% screen was noise again). Not shipped. Caveat: this run came from an earlier worker and overlapped my own 400-game rerun (oversubscribed CPU); the clean rerun result goes to /workspace/big/overnight.log |

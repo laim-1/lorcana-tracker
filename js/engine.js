@@ -2250,9 +2250,9 @@ function prior(st,a){LEVEL="hard";let s;try{s=scoreAction(st,a);if(a.t!=="end"&&
 function finishPending(sim){let n=0;while(sim.pending&&sim.winner==null&&n++<30){const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const v=scoreAction(sim,x);if(v>bv){bv=v;b=x}}if(!b)break;act(sim,b)}}
 function turnChoose(st){const pi=st.active,t0=Date.now();const L0=LEVEL;const root=legalActions(st);if(root.length<=1)return root[0]||null;
   const key=a=>JSON.stringify(a),score=new Map(),cnt=new Map();
-  const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const v=scoreAction(sim,x);if(v>bv){bv=v;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
+  let ctT=-1;const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;if(TP.adj&&!sim.pending&&ctT!==sim.turnNo){ctT=sim.turnNo;CTX=aiCtx(sim)}for(const x of B){let v=scoreAction(sim,x);if(TP.adj&&!sim.pending&&x.t!=="end")v+=TP.adj*hardAdj(sim,x,v);if(v>bv){bv=v;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
   const leaf=sim=>{if(sim.winner!=null)return sim.winner===pi?1:0;let tot=0;for(let r=0;r<TP.roll;r++){const s2=r?cloneState(sim):sim;LEVEL="hard";let ph=0,cur=s2.active,n=0;
-      while(s2.winner==null&&n++<300){if(s2.active!==cur){cur=s2.active;if(++ph>=3)break}const x=greedy(s2);if(!x)break;act(s2,x)}tot+=LW?learnedEval(s2,pi):(s2.winner===pi?1:0.5)}return tot/TP.roll};
+      while(s2.winner==null&&n++<300){if(s2.active!==cur){cur=s2.active;if(++ph>=(TP.ph||3))break}const x=greedy(s2);if(!x)break;act(s2,x)}tot+=LW?learnedEval(s2,pi):(s2.winner===pi?1:0.5)}return tot/TP.roll};
   const mid=sim=>sim.winner!=null?(sim.winner===pi?1:0):LW?learnedEval(sim,pi):0.5;
   for(let d=0;d<TP.dets;d++){if(d&&Date.now()-t0>TP.ms)break;const base=cloneState(st);base.r=rng((st.seed*17+st.turnNo*7919+st.log.length*31+d*104729)>>>0);determinize(base,pi);
     let beam=[{sim:base,first:null}];const done=[];

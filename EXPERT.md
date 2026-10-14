@@ -57,3 +57,4 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 30 | expert2 shipped config on the same 56 games | 56 | 76.8% [64.2-85.9] | 82.1% | 71.4% | ISMCTS on par so far |
 | 31 | ismcts ph1 sel 1 W8 / ph0 (value net right after our turn) / ph1 sel .6 W8 + expert mulligan | 56 each | 73.2% / 73.2% / 71.4% | | | all within noise of #29 |
 | 32 | expert2 + expert mulligan (Monte Carlo redraw scoring with own decklist, `expertMulligan`) | 56 | 71.4% [58.5-81.6] | 71.4% | 71.4% | vs 76.8% without on same games; no gain |
+| 33 | expert2 + Hard-level rollouts (TP.adj=1, hardAdj in rollout greedy) | 56 | 69.6% [56.7-80.1] | 64.3% | 75.0% | avg 296ms (vs 165); overlapped with an external 7-shard ismcts 240 run (oversubscribed), so rerun clean |

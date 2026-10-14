@@ -39,3 +39,11 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 - Big value nets: `tools/train-big.py` (torch) trains per-card embeddings summed per zone plus state features into an MLP; `bigEval` in the engine runs inference. Policy data: `tools/policy-gen.js` (Expert's choices).
 | 18 | expert2 + learned move prior (softmax imitating Expert, 9.6k decisions, hybrid with heuristic) | 80 | 80.0% [70.0-87.3] | 85.0% | 75.0% | promising |
 | 19 | #18, 160 games | 160 | 79.4% [72.5-84.9] | 82.5% | 76.3% | |
+| 20 | v3 per-action + big net (805 KB: 16-dim card embeddings x 5 zones + 75 features, 256-128 MLP, 1.42M rows) | 160 | 68.1% [60.6-74.8] | 65.0% | 71.3% | heavily oversubscribed run (time cap cut rollouts); rerun clean |
+| 21 | v3 per-action + big net (bigI, 862 KB), clean run, 7 shards on 8 cores | 240 | 67.9% [61.8-73.5] | 65.8% | 70.0% | big net is worse than the 16 KB MLP; dropped |
+| 22 | **expert2 + move prior (pw2h), clean confirmation** | 240 | **78.3% [72.7-83.1]** | 84.2% | 72.5% | avg 165ms; best config |
+| 23 | expert2 + move prior + big net | 240 | 77.9% [72.3-82.7] | 80.0% | 75.8% | no gain over #22 and 50x the weights |
+| 24 | v3 per-action + small retrained net (small.json) | 240 | 67.9% [61.8-73.5] | 67.5% | 68.3% | dropped |
+| 25 | **shipped: expert2 + prior with hard per-decision cap (Web Worker: soft 540ms, hard 900ms; node: 500/900)** | 160 | **78.8% [71.8-84.4]** | 78.8% | 78.8% | avg 187ms, max 1131ms node (was 7400ms uncapped); pooled with #22: 315/400 = 78.8% [74.5-82.5] |
+- Phone check (tests/ui-expert.py, 390x844, 4x CPU throttle): 31 worker decisions, max 511ms, avg 157ms, max frame gap 75ms.
+- **Round 3 takeaways:** whole-turn planning plus a tiny learned move prior (23 weights) gave +5 points (73.8% to 78.8%). The 860 KB big value net and a retrained small net did not beat the 16 KB v3 MLP, so they were not shipped.

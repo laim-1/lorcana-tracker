@@ -2241,7 +2241,7 @@ function learnedEval(st,pi){if(st.winner!=null)return st.winner===pi?1:0;const f
 // Each node expands its top-W actions by the move prior (heuristic or learned), plus End. A sequence ends when we pass
 // the turn; that end-of-turn state is scored by greedy rollouts of the opponent's turn, our next turn and theirs, then
 // the value net. First actions are ranked by their best sequence, averaged over determinizations.
-let TP={W:4,B:6,D:8,dets:6,ms:500,roll:1};let PW_=null;function setPrior(w){PW_=w}
+let TP={W:4,B:6,D:8,dets:6,ms:500,hard:900,roll:1};let PW_=null;function setPrior(w){PW_=w}
 function aFeat(st,a){const pi=st.active,f=find(st,a.uid),x=f&&f.inst,c=x&&x.card,T=["ink","play","quest","challenge","move","act","boost","end"];const F=T.map(t=>a.t===t?1:0);
   F.push(c?c.cost/10:0,x&&isChar(x)?loreOf(x)/4:0,x&&isChar(x)?strOf(x)/8:0,c&&c.type==="song"?1:0,c&&c.type==="location"?1:0,c&&c.type==="item"?1:0,a.shift!=null?1:0,a.singer!=null||a.singers?1:0);
   let kills=0,dies=0,dl=0;if(a.t==="challenge"){const d=find(st,a.target)?.inst;if(d&&x&&isChar(d)){kills=d.damage+Math.max(0,strOf(x)+(K(x,"challenger")||0)-(K(d,"resist")||0))>=wilOf(d)?1:0;dies=x.damage+Math.max(0,strOf(d)-(K(x,"resist")||0))>=wilOf(x)?1:0;dl=loreOf(d)/4}}
@@ -2256,14 +2256,14 @@ function turnChoose(st){const pi=st.active,t0=Date.now();const L0=LEVEL;const ro
   const mid=sim=>sim.winner!=null?(sim.winner===pi?1:0):LW?learnedEval(sim,pi):0.5;
   for(let d=0;d<TP.dets;d++){if(d&&Date.now()-t0>TP.ms)break;const base=cloneState(st);base.r=rng((st.seed*17+st.turnNo*7919+st.log.length*31+d*104729)>>>0);determinize(base,pi);
     let beam=[{sim:base,first:null}];const done=[];
-    for(let depth=0;depth<TP.D&&beam.length;depth++){const next=[];
+    for(let depth=0;depth<TP.D&&beam.length;depth++){if(Date.now()-t0>TP.hard)break;const next=[];
       for(const nd of beam){LEVEL="hard";let A;try{A=legalActions(nd.sim)}catch(e){continue}if(!A.length)continue;
         const sc=A.map(a=>[a,a.t==="end"?-1e9:prior(nd.sim,a)]).sort((x,y)=>y[1]-x[1]);const pick=sc.slice(0,TP.W).map(x=>x[0]);const e=A.find(a=>a.t==="end");if(e&&!pick.includes(e))pick.push(e);
         for(const a of pick){const sim=cloneState(nd.sim);sim.r=rng((base.seed+depth*131+next.length*7+d)>>>0);try{act(sim,a);finishPending(sim)}catch(err){continue}
           const ch={sim,first:nd.first||a};if(a.t==="end"||sim.active!==pi||sim.winner!=null)done.push(ch);else{ch.v=mid(sim);next.push(ch)}}}
       next.sort((x,y)=>y.v-x.v);beam=next.slice(0,TP.B)}
     for(const nd of beam){const sim=nd.sim;try{let n=0;while(sim.winner==null&&sim.active===pi&&n++<40){const x=greedy(sim);if(!x)break;act(sim,x)}}catch(e){}done.push(nd)}
-    const best=new Map();for(const nd of done){let v;try{v=leaf(nd.sim)}catch(e){v=0}const k=key(nd.first);if(!best.has(k)||best.get(k)<v)best.set(k,v)}
+    const best=new Map();for(const nd of done){let v;try{v=Date.now()-t0>TP.hard?mid(nd.sim):leaf(nd.sim)}catch(e){v=0}const k=key(nd.first);if(!best.has(k)||best.get(k)<v)best.set(k,v)}
     for(const [k,v] of best){score.set(k,(score.get(k)||0)+v);cnt.set(k,(cnt.get(k)||0)+1)}}
   LEVEL=L0;CUR=st;let ba=null,bv=-1;for(const a of root){const k=key(a);if(!cnt.has(k))continue;const v=score.get(k)/cnt.get(k)+cnt.get(k)*1e-4;if(v>bv){bv=v;ba=a}}return ba}
 function aiChoose(st,level){

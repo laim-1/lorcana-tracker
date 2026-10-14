@@ -3,7 +3,7 @@ import sys, json, numpy as np
 out = sys.argv[1]; files = sys.argv[2:]; X = []; Y = []; G = []
 for gi, f in enumerate(files):
     for l in open(f):
-        y, x = json.loads(l); X.append(x); Y.append(y); G.append(gi)
+        r = json.loads(l); y, x = r[0], r[1]; X.append(x); Y.append(y); G.append(gi)
 X = np.array(X, dtype=np.float64); Y = np.array(Y, dtype=np.float64); G = np.array(G)
 va = G == G.max(); tr = ~va; print("rows", len(Y), "val", va.sum())
 def ll(p, y): p = np.clip(p, 1e-6, 1 - 1e-6); return float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean())

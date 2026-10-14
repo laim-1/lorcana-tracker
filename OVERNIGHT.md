@@ -623,3 +623,6 @@ Hard vs Normal 40g earlier in batch 40: **65%**. Targets held (Hard ~60%+ vs Nor
 ## Expert v2 (Oct 13, evening)
 - Expert now scores its rollouts with a learned evaluation instead of the hand-written one: a small neural net (66 board/hand/clock features in, win probability out) trained on 460k positions from Hard/Normal/Easy self-play (`tools/selfplay.js`, `tools/train-eval.py`). Weights ship in `data/expert-weights.js` (15 KB) and are loaded by the AI worker.
 - Expert vs Hard is now **68.3% [62.2-73.9]** over 240 games (was 56.3%). Full table in `EXPERT.md`.
+
+## Expert v3 (Oct 13, night)
+- 16 determinized rollouts per candidate (was 6), still capped by time. Expert vs Hard: **73.8% [67.8-78.9]** over 240 games. Phone check, 4x CPU throttle: max 338ms per decision.

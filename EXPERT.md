@@ -17,3 +17,9 @@ All runs are Expert vs Hard, using `sh tools/expert-par.sh N 7 expert hard 350`:
 | 6 | #3, heuristic root bonuses x0 / x0.3 | 120 | 66.7% / 72.5% | | | x0.3 kept |
 | 7 | MLP v3 (66 features incl. hand/curve/challenge, 256k rows) + bonuses x0.3 | 160 | 71.3% [63.8-77.7] | 70.0% | 72.5% | |
 | 8 | **#7 confirmation run** | 240 | **68.3% [62.2-73.9]** | 68.3% | 68.3% | shipped |
+| 9 | MLP v4 trained on +40k Expert-vs-Hard self-play rows (AlphaZero-lite iter 1); rep-limited (no time cap) | 160 | 71.3% [63.8-77.7] | 72.5% | 70.0% | same as v3 under identical settings (71.3%); model is no longer the bottleneck |
+| 10 | Opponent modeled with Hard's real policy in rollouts (top-4 Hard lookahead), top-6 root candidates, 2 reps | 80 | 60.0% [49.0-70.0] | 52.5% | 67.5% | worse and 3x slower; dropped |
+| 11 | v3 model, 16 reps, no time cap | 120 | 77.5% [69.2-84.1] | 81.7% | 73.3% | more rollouts help (avg 184ms node) |
+| 12 | v3 model, 16 reps, 500ms cap | 120 | 76.7% [68.3-83.3] | 81.7% | 71.7% | avg 146ms, max 777ms node |
+| 13 | v3 model, 40 reps, 1000ms cap | 120 | 75.0% [66.6-81.9] | 78.3% | 71.7% | saturates; 16 reps is enough |
+| 14 | **v3 model, 16 reps, 500ms cap: confirmation run** | 240 | **73.8% [67.8-78.9]** | 79.2% | 68.3% | shipped (worker cap 900ms) |

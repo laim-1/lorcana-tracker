@@ -2159,7 +2159,7 @@ function evalBoard(st,pi){
 function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A.map(a=>[a,scoreAction(st,a)]).sort((x,y)=>y[1]-x[1])/*nc:ai-order*/;A=sc.slice(0,topK).map(x=>x[0]);if(!A.some(a=>a.t==="end")){const e=sc.find(x=>x[0].t==="end");if(e)A.push(e[0])}}const pi=st.active,op=st.players[opp(pi)],base=evalBoard(st,pi);let best=null,bs=-Infinity;
   // Rollout: take the candidate, finish our turn greedily, let the opponent play one greedy turn, then evaluate.
   const greedy=sim=>{const B=legalActions(sim);let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b};
-  const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}
+  const roll=sim=>{let n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=HREP&&XO.om&&!sim.pending?oppHard(sim):greedy(sim);if(!x)break;act(sim,x)}
     if(HDEEP){n=0;while(sim.winner==null&&sim.active===pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}if(HREP&&XO.d2){n=0;while(sim.winner==null&&sim.active!==pi&&n++<60){const x=greedy(sim);if(!x)break;act(sim,x)}}};
   const ROLL=(a,rep)=>{const sim=cloneState(st);if(HREP){sim.r=rng((st.seed*31+st.turnNo*7919+st.log.length*13+rep*104729)>>>0);if(XO.det)determinize(sim,pi)}LEVEL=HREP&&XO.rl?XO.rl:"normal";try{act(sim,a);roll(sim)}finally{LEVEL=L0}let vs=HREP&&XO.leaf&&LW?XO.leaf*learnedEval(sim,pi):evalBoard(sim,pi)+(HREP&&XO.clock?raceClock(sim,pi):0);if(sim.players[pi].lore>sim.players[opp(pi)].lore)vs+=6;if(CTX.threat&&sim.players[opp(pi)].lore<op.lore)vs+=10;return vs};
   const RS=A.map(()=>({s:0,n:0}));if(HREP){const t0=Date.now();for(let rep=0;rep<HREP;rep++){let cut=false;for(let i=0;i<A.length;i++){if(rep&&Date.now()-t0>EXPERT_MS){cut=true;break}try{RS[i].s+=ROLL(A[i],rep);RS[i].n++}catch(e){}}if(cut)break;if((Date.now()-t0)*(rep+2)/(rep+1)>EXPERT_MS)break}}
@@ -2175,6 +2175,7 @@ function hardChoose(st,A,topK){const L0=LEVEL;if(topK&&A.length>topK){const sc=A
     try{v+=Math.max(0,scoreAction(st,a)+(HDEEP?hardAdj(st,a,0):0))/35}catch(e){};if(HREP&&XO.bs!=null&&isFinite(v))v=V0+(v-V0)*XO.bs;if(v>bs){bs=v;best=a}}
   LEVEL=L0;CUR=st;return best}
 let PERS=null,CTX={},HDEEP=false,LITE_OFF=false,HREP=0;
+function oppHard(sim){const g={L:LEVEL,H:HDEEP,C:CTX,R:HREP,U:CUR};try{HREP=0;HDEEP=true;LEVEL="hard";CTX=aiCtx(sim);return hardChoose(sim,legalActions(sim),XO.om>1?XO.om:undefined)}finally{LEVEL=g.L;HDEEP=g.H;CTX=g.C;HREP=g.R;CUR=g.U}}
 const EW0={lo:12,ob:1,h:2,ic:8,ink:3,oh:1.5,mv:1,ex:0.45,ml:3,at:3,ol:5,th:400};let EW={...EW0};
 function raceClock(sim,pi){if(sim.winner!=null)return 0;const me=sim.players[pi],op=sim.players[opp(pi)];const myL=me.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0),opL=op.play.filter(isChar).reduce((a,x)=>a+loreOf(x),0);const myT=myL?Math.ceil(Math.max(0,20-me.lore)/myL):9,opT=opL?Math.ceil(Math.max(0,20-op.lore)/opL):9;return (opT-myT)*XO.clock}
 // Turn context for the heuristics: can we win by questing now (lethal), can the opponent reach 20 on their next turn (threat)?
@@ -2194,7 +2195,7 @@ function plyChoose(st,A,lv){const pi=st.active;let best=null,bs=-Infinity;const 
 // playout so Expert never peeks. Candidates are pruned by the heuristic, then successive halving spends the time
 // budget on the most promising ones. Each playout finishes our turn, plays the opponent's turn and our next turn
 // with a fast greedy policy, then scores the position with evalBoard (wins/losses are clamped terminal values).
-let EXPERT_MS=350,EXPERT_MAX=900,EXPERT_DEPTH=3,XO={k:8,noise:4,det:1,clock:0,hadj:1,rep:6,d2:1,rl:"hard",leaf:1000,bs:0.3};
+let EXPERT_MS=350,EXPERT_MAX=900,EXPERT_DEPTH=3,XO={k:8,noise:4,det:1,clock:0,hadj:1,rep:16,d2:1,rl:"hard",leaf:1000,bs:0.3};
 function determinize(sim,pi){const o=sim.players[opp(pi)],n=o.hand.length,pool=shuffle([...o.hand,...o.deck].sort((a,b)=>a.uid-b.uid),sim.r);o.hand=pool.slice(0,n);o.deck=pool.slice(n);shuffle(sim.players[pi].deck,sim.r)}
 function fastPick(sim){const B=legalActions(sim);if(!B.length)return null;let b=null,bv=-Infinity;for(const x of B){const sc=scoreAction(sim,x)+(XO.noise?sim.r()*XO.noise:0);if(sc>bv){bv=sc;b=x}}if(bv<0&&B.some(x=>x.t==="end"))return{t:"end"};return b}
 function expertEval(sim,pi){if(sim.winner!=null)return sim.winner===pi?3000:-3000;const me=sim.players[pi],op=sim.players[opp(pi)];
@@ -2235,7 +2236,7 @@ function aiChoose(st,level){
   LEVEL=level;CTX=st.pending||LEVEL==="easy"?{}:aiCtx(st);LEVEL=level;const A=legalActions(st);if(!A.length)return null;let best=null,bs=-Infinity;
   // Hard: rollout every candidate through the opponent's reply and our next turn. Normal: same lookahead on the
   // 4 best heuristic candidates, one opponent turn deep. Easy: noisy heuristic only.
-  if(LEVEL==="expert"||LEVEL==="expmc"){if(!st.pending){LEVEL="hard";CTX=aiCtx(st);HDEEP=true;HREP=level==="expmc"?0:XO.rep;try{const b=level==="expmc"?expertChoose(st):hardChoose(st,A);if(b)return b}finally{HDEEP=false;HREP=0;LEVEL="hard"}}LEVEL="hard";}
+  if(LEVEL==="expert"||LEVEL==="expmc"){if(!st.pending){LEVEL="hard";CTX=aiCtx(st);HDEEP=true;HREP=level==="expmc"?0:XO.rep;try{const b=level==="expmc"?expertChoose(st):hardChoose(st,A,XO.k2||undefined);if(b)return b}finally{HDEEP=false;HREP=0;LEVEL="hard"}}LEVEL="hard";}
   if((LEVEL==="hard"||LEVEL==="hard2")&&!st.pending){HDEEP=true;try{const b=hardChoose(st,A);if(b)return b}finally{HDEEP=false;LEVEL="hard"}}
   if((LEVEL==="normal"||LEVEL==="lite")&&!st.pending&&!LITE_OFF){const b=hardChoose(st,A,2);LEVEL="normal";if(b)return b}
   if(LEVEL==="ply"&&!st.pending){const b=plyChoose(st,A);if(b)return b;LEVEL="normal"}

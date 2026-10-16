@@ -249,7 +249,7 @@ svg{width:20px;height:20px;flex:none}
 .bar>div{background:linear-gradient(90deg,#b8862a,#f5c955,#fff1b8);box-shadow:0 0 10px rgba(245,201,85,.6);transform-origin:left;animation:fill 1s cubic-bezier(.2,.8,.2,1) both .15s}
 @keyframes fill{from{transform:scaleX(0)}}
 /* cards: press tilt + shine */
-.card{transition:transform .15s ease;transform-style:preserve-3d}
+.card{transition:transform .15s ease;content-visibility:auto;contain-intrinsic-block-size:auto 510px;min-width:0}
 .card:active{transform:perspective(600px) rotateX(4deg) rotateY(-4deg) scale(.98)}
 .art{position:relative;overflow:hidden;border-radius:10px}
 .art.shiny::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.55) 45%,rgba(160,200,255,.35) 52%,transparent 65%);mix-blend-mode:screen;transform:translateX(-120%);animation:foil 4.5s ease-in-out infinite;pointer-events:none}
@@ -640,3 +640,9 @@ button.histrow:active{opacity:.9}
 .handempty{display:flex;align-items:center;justify-content:center;min-height:44px;width:100%;padding:10px 14px;font-size:13px;font-weight:800;color:#7a6bb8;letter-spacing:.3px;text-transform:uppercase;text-align:center}
 
 .pausemeta{font-weight:700;color:#c9b8ff;line-height:1.4}
+
+/* Memory/GPU: no blur behind scrolling content, pause foil animations while scrolling */
+header,.set{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.scrolling .art.shiny::after,.scrolling .art.ench::before,.scrolling .wide.primary::after,.scrolling .icon-btn.play::after,.scrolling .big.plus::after{animation-play-state:paused}
+.art.ench::before{animation:none}
+.grid .big.plus::after{display:none}

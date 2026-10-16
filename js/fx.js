@@ -47,10 +47,10 @@ function flyTo(x,y,tx,ty,o={}){if(reduced())return;const n=Math.min(o.n||14,low(
 function rect(el){const r=(typeof el==="string"?document.querySelector(el):el)?.getBoundingClientRect();return r?{x:r.left+r.width/2,y:r.top+r.height/2,r}:null}
 function at(el,o){const p=rect(el);if(p)burst(p.x,p.y,o)}
 function celebrate(){if(reduced())return;let k=0;const go=()=>{for(let i=0;i<3;i++)burst(W*(.15+Math.random()*.7),H*(.15+Math.random()*.4),{n:30,colors:[COL.gold,COL.blue,COL.ink,COL.white],speed:3.2,gravity:.06});if(++k<(low()?2:6))setTimeout(go,350)};go()}
-let run=true,lastT=0,ambT=0;
+let run=true,lastT=0,ambT=0,paused=false;
 function loop(t){if(!run)return;requestAnimationFrame(loop);const dt=Math.min(3,(t-lastT)/16.7||1);lastT=t;
   drawBg(t);fx.clearRect(0,0,W,H);
-  if(!reduced()&&t-ambT>(low()?900:260)){ambT=t;if(P.filter(p=>p.amb).length<(low()?8:26))P.push(amb())}
+  if(!reduced()&&mode==="board"&&t-ambT>(low()?900:260)){ambT=t;if(P.filter(p=>p.amb).length<(low()?8:26))P.push(amb())}
   fx.globalCompositeOperation="lighter";
   for(let i=P.length-1;i>=0;i--){const p=P[i];
     if(p.to){p.to.k=Math.min(1,p.to.k+.012*dt);if(p.to.d>0){p.to.d--;}else{p.vx+=(p.to.x-p.x)*.012*p.to.k*dt;p.vy+=(p.to.y-p.y)*.012*p.to.k*dt}if(Math.abs(p.to.x-p.x)+Math.abs(p.to.y-p.y)<14&&p.to.k>.3)p.life=0}
@@ -60,11 +60,13 @@ function loop(t){if(!run)return;requestAnimationFrame(loop);const dt=Math.min(3,
     fx.fillStyle=`rgba(${p.c},${(a*(p.smoke?.35:1)).toFixed(3)})`;fx.beginPath();fx.arc(p.x,p.y,s,0,6.283);fx.fill();
     if(!low()&&s>1.6){fx.fillStyle=`rgba(${p.c},${(a*.18).toFixed(3)})`;fx.beginPath();fx.arc(p.x,p.y,s*3,0,6.283);fx.fill()}}
   fx.globalCompositeOperation="source-over"}
-document.addEventListener("visibilitychange",()=>{if(document.hidden)run=false;else if(!run){run=true;lastT=performance.now();requestAnimationFrame(loop)}});
+function resume(){if(!run&&!document.hidden&&!paused){run=true;lastT=performance.now();requestAnimationFrame(loop)}}
+document.addEventListener("visibilitychange",()=>{if(document.hidden)run=false;else resume()});
 addEventListener("resize",size);size();requestAnimationFrame(loop);
 window.FX={burst,flyTo,at,rect,celebrate,COL,
   mode(m){if(m!==mode&&THEMES[m]){mode=m;document.body.dataset.fx=m;drawBg(performance.now(),true)}},
   get low(){return cfg.low},setLow(v){cfg.low=!!v;localStorage.setItem(KEY,JSON.stringify(cfg));document.body.classList.toggle("lowfx",low());drawBg(performance.now(),true)},
+  pause(v){paused=!!v;if(paused)run=false;else resume()},
   count:()=>P.length};
 document.body.classList.toggle("lowfx",low());document.body.dataset.fx=mode;
 })();

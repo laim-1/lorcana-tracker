@@ -180,14 +180,14 @@ function renderCards(){if(!cur)return;const {cards}=cur,q=$("#q").value.toLowerC
  const qa=quickAdd?`<div class="qabar"><b>Quick add</b><span>Tap + for normal · long tools for foil</span><button class="opt sm" id="qaoff">Done</button></div>`:"";
  const tools=`<div class="settools"><button class="opt sm" id="qatoon">${quickAdd?"Quick on":"Quick add"}</button><button class="opt sm" id="bulk">Mark set owned</button><button class="opt sm" id="missing">Missing list</button></div>`;
  app.innerHTML=`<div class="sumline" id="sumline"></div>${tools}${qa}<div class="sortnote">${list.length} cards · ${CARD_SORTS[sort.cards].toLowerCase()}${source=="live"?"":" · "+srcLabel()}</div>`+(list.length?`<div class="grid">${list.map(c=>{const v=col[c.id]||{n:0,f:0};const w=wish.includes(c.id);
-  return `<div class="card ${own(c.id)?"owned":""} ${quickAdd?"qa":""}"><div class="art ${/Enchanted|Iconic|Epic|Legendary/.test(c.rarity||"")||(col[c.id]&&col[c.id].f)?"shiny":""} ${/Enchanted|Iconic/.test(c.rarity||"")?"ench":""}"><img loading="lazy" src="${esc(c.img)}" alt="${esc(c.name)} ${esc(c.version)}"></div>
+  return `<div class="card ${own(c.id)?"owned":""} ${quickAdd?"qa":""}"><div class="art ${/Enchanted|Iconic|Epic|Legendary/.test(c.rarity||"")||(col[c.id]&&col[c.id].f)?"shiny":""} ${/Enchanted|Iconic/.test(c.rarity||"")?"ench":""}"><img decoding="async" data-src="${esc(thumb(c.img))}" alt="${esc(c.name)} ${esc(c.version)}"></div>
   <div class="cn">#${esc(c.collector_number)} ${esc(c.name)}</div><div class="cv">${esc(c.version)}</div>
   <div class="tags"><span class="tag r-${slug(c.rarity)}">${esc(pretty(c.rarity))}</span>${c.ink?`<span class="tag">${esc(c.ink)}</span>`:""}${w?`<span class="tag wish">Wish</span>`:""}</div>
   ${["n","f"].map(k=>`<div class="qty"><div class="ql"><span>${k=="n"?"Normal":"Foil"}</span><span class="pr">${money(k=="n"?c.usd:c.usd_foil)}</span></div><div class="stepper">
    <button class="big" data-id="${c.id}" data-k="${k}" data-d="-1" aria-label="Remove ${k=="n"?"normal":"foil"}">&minus;</button><b>${v[k]}</b>
    <button class="big plus" data-id="${c.id}" data-k="${k}" data-d="1" aria-label="Add ${k=="n"?"normal":"foil"}">+</button></div></div>`).join("")}
   ${c.tcg?`<a class="tcg" href="https://www.tcgplayer.com/product/${encodeURIComponent(c.tcg)}" target="_blank" rel="noopener">View on TCGplayer</a>`:""}</div>`}).join("")}</div>`:`<p class="empty">No cards match.</p>`);
- summary();watchImages(app);
+ summary();lazyGrid(app);
  const qaoff=$("#qaoff"),qatoon=$("#qatoon"),bulk=$("#bulk"),missing=$("#missing");
  if(qaoff)qaoff.onclick=()=>{quickAdd=false;renderCards()};
  if(qatoon)qatoon.onclick=()=>{quickAdd=!quickAdd;renderCards()};
@@ -208,7 +208,7 @@ function zoomTracker(art,again){if(!again&&!window.LORCANA_GAME_CARDS){const s=d
  const g=(window.LORCANA_GAME_CARDS&&window.LORCANA_GAME_CARDS.cards.find(x=>x.id===id))||{};const T=c.type||g.type,ty=T&&T[0]?String(T[0]).toLowerCase():"";
  const zc={name:c.name,version:c.version,full:c.name+(c.version?" - "+c.version:""),cost:c.cost??g.cost,ink:c.ink,type:ty,cls:c.cls||g.classifications,str:c.str??g.strength,wil:c.wil??g.willpower,lore:c.lore??g.lore,move:c.move??g.move_cost,text:c.text??g.text,inkable:c.inkwell??g.inkwell,rarity:pretty(c.rarity)};
  const v=col[id]||{n:0,f:0};const onWish=wish.includes(id);
- Zoom.open({card:zc,img:c.img,large:c.img,from:art,state:[
+ Zoom.open({card:zc,img:thumb(c.img),large:c.img,from:art,state:[
    {t:"Owned: "+v.n+" normal, "+v.f+" foil",cls:v.n+v.f?"":"info"},{t:"#"+c.collector_number},
    ...(c.usd?[{t:"Normal "+money(c.usd)}]:[]),...(c.usd_foil?[{t:"Foil "+money(c.usd_foil)}]:[]),
    ...(c.tcg?[{t:"TCGplayer #"+c.tcg,cls:"info"}]:[])
@@ -251,10 +251,44 @@ window.onhashchange=route;loadSets().then(async()=>{route();
 if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
 const IMG_CACHE="lorcana-imgs-v1";
 if(window.caches)caches.keys().then(ks=>ks.forEach(k=>{if(k!==IMG_CACHE&&!k.startsWith("lorcana-game-cards"))caches.delete(k)})).catch(()=>{});
-async function cacheImg(url){if(!url||!window.caches)return;try{const c=await caches.open(IMG_CACHE);if(await c.match(url))return;const r=await fetch(url,{mode:"cors",credentials:"omit",cache:"force-cache"});if(r&&r.ok)await c.put(url,r.clone())}catch(e){}}
+var imgQ=[],imgQRun=0;
+async function cacheImg(url){if(!url||!window.caches)return;imgQ.push(url);pumpCache()}
+async function pumpCache(){if(imgQRun>=2||!imgQ.length||scrolling)return;imgQRun++;const url=imgQ.shift();
+ try{const c=await caches.open(IMG_CACHE);if(!(await c.match(url))){const r=await fetch(url,{mode:"cors",credentials:"omit",cache:"force-cache"});if(r&&r.ok)await c.put(url,r)}}catch(e){}
+ imgQRun--;setTimeout(pumpCache,50)}
 function watchImages(root){if(!root)return;root.querySelectorAll("img[src]").forEach(img=>{const u=img.currentSrc||img.src;if(u&&!u.startsWith("data:")){if(img.complete)cacheImg(u);else img.addEventListener("load",()=>cacheImg(u),{once:true})}})}
-async function checkVersion(){if(V=="dev")return;try{
+/* Smallest Lorcast size for grids; normal/large only in zoom. */
+const thumb=u=>u?String(u).replace(/\/(normal|large)\//,"/small/"):u;
+/* Windowed card images: only cards near the viewport get a src (max MAXIMG concurrent fetches); far-offscreen
+   images have their src removed so iOS can free the decoded bitmaps. Card shells stay (cheap, content-visibility). */
+var nearIO=null,farIO=null,MAXIMG=6,imgLoading=0,imgWait=[];
+function imgSet(img){if(img.getAttribute("src")||!img.isConnected||!img.dataset.near)return;if(imgLoading>=MAXIMG){if(!imgWait.includes(img))imgWait.push(img);return}
+ imgLoading++;const done=()=>{if(!img._done)return;img._done=null;imgLoading--;img.removeEventListener("load",done);img.removeEventListener("error",done);if(img.complete&&img.naturalWidth)cacheImg(img.src);while(imgWait.length&&imgLoading<MAXIMG)imgSet(imgWait.shift())};
+ img._done=done;img.addEventListener("load",done);img.addEventListener("error",done);img.src=img.dataset.src}
+function lazyGrid(root){if(nearIO)nearIO.disconnect();if(farIO)farIO.disconnect();imgWait.length=0;imgLoading=0;const imgs=root.querySelectorAll("img[data-src]");
+ if(!("IntersectionObserver" in window)){imgs.forEach(i=>i.src=i.dataset.src);return}
+ const im=e=>e.target.querySelector("img[data-src]");
+ nearIO=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){const i=im(e);if(!i)continue;i.dataset.near="1";imgSet(i)}},{rootMargin:"700px 0px"});
+ farIO=new IntersectionObserver(es=>{for(const e of es)if(!e.isIntersecting){const i=im(e);if(!i)continue;delete i.dataset.near;const w=imgWait.indexOf(i);if(w>=0)imgWait.splice(w,1);if(i._done)i._done();if(i.getAttribute("src"))i.removeAttribute("src")}},{rootMargin:"1800px 0px"});
+ imgs.forEach(i=>{const c=i.closest(".card")||i;nearIO.observe(c);farIO.observe(c)})}
+/* Scroll state: pause decorative animations/particles while scrolling. */
+var scrolling=false,scrollT=0;addEventListener("scroll",()=>{if(!scrolling){scrolling=true;document.body.classList.add("scrolling");window.FX&&FX.pause&&FX.pause(true)}
+ clearTimeout(scrollT);scrollT=setTimeout(()=>{scrolling=false;document.body.classList.remove("scrolling");window.FX&&FX.pause&&FX.pause(false);pumpCache();if(pendingVersion)tryApplyVersion()},400)},{passive:true});
+/* Version auto-reload: never mid-use. A new version is only applied (a) right after launch before the user interacts,
+   or (b) on resume / after a navigation, when on a safe screen (home or a set list, no game, sheet, zoom, or scroll in progress).
+   One attempt per version per session prevents reload loops (e.g. stale CDN copy). */
+var pendingVersion=null,interacted=false;["pointerdown","keydown","touchstart"].forEach(t=>addEventListener(t,()=>{interacted=true},{once:true,passive:true,capture:true}));
+function safeScreen(){if(scrolling)return false;if(location.hash==="#play"||document.getElementById("play"))return false;
+ if($("#sheet")&&$("#sheet").classList.contains("open"))return false;if(window.Zoom&&Zoom.isOpen&&Zoom.isOpen())return false;
+ if(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return false;return true}
+function tryApplyVersion(resume){const v=pendingVersion;if(!v)return;const g="lorcanaReloadedFor";
+ if(sessionStorage.getItem(g)==v){pendingVersion=null;return}
+ if(!(resume||!interacted))return;if(!safeScreen())return;
+ sessionStorage.setItem(g,v);pendingVersion=null;const u=new URL(location.href);u.searchParams.set("v",v);location.replace(u.toString())}
+let lastCheck=0;
+async function checkVersion(resume){if(V=="dev")return;if(Date.now()-lastCheck<30000&&!pendingVersion)return;lastCheck=Date.now();try{
  const r=await fetch("./version.json?t="+Date.now(),{cache:"no-store"});if(!r.ok)return;const {version}=await r.json();
- if(!version||version==V)return;const g="lorcanaReloadedFor";if(sessionStorage.getItem(g)==version)return;
- sessionStorage.setItem(g,version);const u=new URL(location.href);u.searchParams.set("v",version);location.replace(u.toString())}catch(e){}}
-checkVersion();document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="visible")checkVersion()});
+ if(!version||version==V)return;pendingVersion=version;tryApplyVersion(resume)}catch(e){}}
+let hiddenAt=0;
+checkVersion(false);document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="hidden"){hiddenAt=Date.now();return}
+ if(hiddenAt&&Date.now()-hiddenAt>60000)checkVersion(true)});addEventListener("hashchange",()=>{if(pendingVersion)setTimeout(()=>tryApplyVersion(true),300)});

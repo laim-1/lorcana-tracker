@@ -27,8 +27,16 @@ with sync_playwright() as p:
             wrong_board_done=False; wrong_practice_done=False
             for step in range(8):
                 if pg.locator("text=Lesson complete").count(): break
+                # Visual guards: >=1 small lazy card image per screen, real board spots, no emoji in DOM.
+                vis=pg.evaluate("()=>{const r=document.querySelector('#learn');const imgs=[...r.querySelectorAll('img')];const emoji=/[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{2300}-\\u{23FF}]/u.test(r.innerText||'');return{n:imgs.length,small:imgs.every(i=>(i.getAttribute('src')||'').includes('/small/')),lazy:imgs.every(i=>i.loading==='lazy'),emoji,board:!!r.querySelector('.lgb .zone'),hand:!!r.querySelector('.hand2'),chips:r.querySelectorAll('.lgb .chip').length,spots:r.querySelectorAll('.lspot,.zempty').length}}")
+                assert vis["n"]>=1, f"no card image on lesson screen {vis}"
+                assert vis["n"]<=8, f"too many card images on one screen {vis}"
+                assert vis["small"] and vis["lazy"], f"non-small/non-lazy learn image {vis}"
+                assert not vis["emoji"], "emoji glyph in Learn DOM"
                 info=pg.evaluate("""()=>{const st=LorcanaLearn.state();const s=LorcanaLearn._test.getSteps()[st.si];if(!s)return null;const pr=LorcanaLearn._test.getPractice();return{k:s.k,answerId:s.answerId||null,answer:s.answer||null,role:pr?pr.practiceRole:null}}""")
                 assert info, "no step info"
+                if info["k"] in ("board","practice"):
+                    assert vis["board"] and vis["hand"] and vis["chips"]>=6 and vis["spots"]>=1, f"not a real game board {vis}"
                 if info["k"]=="board":
                     if not wrong_board_done:
                         wrong=pg.evaluate("""(aid)=>{const b=[...document.querySelectorAll('.lbcard')].find(x=>x.dataset.v!==aid);if(!b)return false;b.click();return true}""",info["answerId"])

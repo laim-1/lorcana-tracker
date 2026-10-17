@@ -34,7 +34,7 @@ async function loadCards(id){if(cache[id])return cache[id];
 const srcLabel=()=>source=="live"?"Live TCGplayer prices via Lorcast":"Snapshot prices from "+S.fetched.slice(0,10);
 const saveSort=()=>localStorage.setItem(SKEY,JSON.stringify(sort));
 function chrome(set){const hid=(q,v)=>{const e=$(q);if(e)e.hidden=v};hid("#back",!set);hid("#tools",!set);hid("#menu-btn",!!set);
- hid("#play-btn",!!set);const ti=$("#title");if(ti){ti.textContent=set?set.name:"LIAM'S LORCANA";ti.classList.toggle("small",!!set)}}
+ hid("#play-btn",!!set);hid("#learn-btn",!!set);const ti=$("#title");if(ti){ti.textContent=set?set.name:"LIAM'S LORCANA";ti.classList.toggle("small",!!set)}}
 function setStats(s){const cs=cardsFor(s.id),got=cs.filter(c=>own(c.id)).length,t=s.card_count||cs.length,foils=cs.filter(c=>col[c.id]&&col[c.id].f>0).length;return{got,t,p:t?got/t*100:0,v:value(cs),foils}}
 function badgeFor(p){if(p>=100)return`<span class="setbadge done">Complete</span>`;if(p>=75)return`<span class="setbadge hot">Almost</span>`;if(p>=50)return`<span class="setbadge mid">Halfway</span>`;return""}
 function loadHist(){try{const a=JSON.parse(localStorage.getItem(HVAL)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
@@ -241,8 +241,8 @@ $("#menu-btn").onclick=()=>openSheet(`<h4>Effects</h4><div class="opts"><button 
 $("#import").onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());col=d.collection||d;if(Array.isArray(d.wishlist)){wish=d.wishlist.filter(x=>typeof x==="string");saveWish()}save();closeSheet();route();alert("Collection imported")}catch(x){alert("Invalid JSON file")}e.target.value=""};
 $("#q").oninput=renderCards;
 $("#back").onclick=()=>{if(cur)setScrollMap[cur.id]=scrollY;location.hash=""};
-function route(){if(window.FX&&location.hash!=="#play")FX.mode("tracker");document.body.classList.remove("enter-anim");void document.body.offsetWidth;document.body.classList.add("enter-anim");if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
-$("#play-btn").onclick=()=>location.hash="play";
+function route(){if(window.FX&&location.hash!=="#play")FX.mode("tracker");document.body.classList.remove("enter-anim");void document.body.offsetWidth;document.body.classList.add("enter-anim");if(location.hash==="#learn"){window.LorcanaPlay&&window.LorcanaPlay.close();window.LorcanaLearn&&window.LorcanaLearn.open();return}window.LorcanaLearn&&window.LorcanaLearn.close();if(location.hash==="#play"){window.LorcanaPlay.open();return}window.LorcanaPlay&&window.LorcanaPlay.close();const m=location.hash.match(/set\/(.+)/);m?setView(m[1]):home()}
+$("#play-btn").onclick=()=>location.hash="play";const lb=$("#learn-btn");if(lb)lb.onclick=()=>location.hash="learn";
 window.onhashchange=route;loadSets().then(async()=>{route();
   // Idle-prefetch set cards so global search / wishlist totals / movers are ready
   const pref=async()=>{for(const s of sets){try{await loadCards(s.id)}catch(e){}await new Promise(r=>setTimeout(r,30))}};
@@ -278,7 +278,7 @@ var scrolling=false,scrollT=0;addEventListener("scroll",()=>{if(!scrolling){scro
    or (b) on resume / after a navigation, when on a safe screen (home or a set list, no game, sheet, zoom, or scroll in progress).
    One attempt per version per session prevents reload loops (e.g. stale CDN copy). */
 var pendingVersion=null,interacted=false;["pointerdown","keydown","touchstart"].forEach(t=>addEventListener(t,()=>{interacted=true},{once:true,passive:true,capture:true}));
-function safeScreen(){if(scrolling)return false;if(location.hash==="#play"||document.getElementById("play"))return false;
+function safeScreen(){if(scrolling)return false;if(location.hash==="#play"||location.hash==="#learn"||document.body.classList.contains("learning")||document.getElementById("play"))return false;
  if($("#sheet")&&$("#sheet").classList.contains("open"))return false;if(window.Zoom&&Zoom.isOpen&&Zoom.isOpen())return false;
  if(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return false;return true}
 function tryApplyVersion(resume){const v=pendingVersion;if(!v)return;const g="lorcanaReloadedFor";

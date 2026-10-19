@@ -1,8 +1,8 @@
 /* Learn: winding path + lessons built from the real game board (same .gb/.zone/.ct/.hand2 classes as js/play.js). Icons are inline SVG only. */
-#learn{position:fixed;inset:0;z-index:18;overflow-y:auto;background:#17123a;color:#fff;font-family:Lexend,system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+#learn{position:fixed;inset:0;z-index:18;overflow-y:auto;background:#17123a;color:#fff;font-family:Lexend,system-ui,sans-serif;padding:0 var(--sar,env(safe-area-inset-right)) var(--sab,env(safe-area-inset-bottom)) var(--sal,env(safe-area-inset-left))}
 #learn *{-webkit-tap-highlight-color:transparent}
 #learn svg{flex:none}
-.lbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#241d4a;border-bottom:3px solid #5a4ea0}
+.lbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + var(--sat,env(safe-area-inset-top))) 12px 10px;background:#241d4a;border-bottom:3px solid #5a4ea0}
 .ltitle{font-weight:900;font-size:19px;letter-spacing:.5px;flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lbtn,.lgo{min-height:48px;padding:0 16px;border-radius:14px;border:2px solid #5a4ea0;background:#2e2660;color:#fff;font-weight:900;font-size:16px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .lbtn svg{width:18px;height:18px}
@@ -54,10 +54,10 @@
 .lt.ring .lart,.lt.sel .lart{box-shadow:0 0 0 3px #f5c955,0 0 16px rgba(245,201,85,.9)}
 .lt.ring .lart{animation:lpulse 1.2s ease-in-out infinite}
 .lt.flash .lart{animation:lflash .6s ease-out}
-@keyframes lflash{0%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes lflash{0%{filter:brightness(1.7);box-shadow:0 0 0 4px #fff,0 0 22px #f5c955}100%{filter:none}}
 @keyframes lpulse{50%{box-shadow:0 0 0 4px #f5c955,0 0 26px rgba(245,201,85,.8)}}
-.lverbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.lverb{flex:1 1 40%;min-height:48px;border-radius:14px;border:2px solid #f5c955;background:#f5c955;color:#14112a;font-weight:900;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px}
+.lverbs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px}
+.lverb{min-width:0;min-height:48px;border-radius:14px;border:2px solid #f5c955;background:#f5c955;color:#14112a;font-weight:900;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px}
 .lverb svg{width:18px;height:18px}.lverb.ghost{background:#2e2660;color:#fff;border-color:#5a4ea0}
 .ltools{display:flex;gap:8px;margin-top:8px}.ltools .lgo{margin-top:0}
 .lopts{display:grid;gap:10px;margin-top:10px}
@@ -72,3 +72,6 @@
 .lbig svg{width:84px;height:84px;color:#f5c955}
 @media (prefers-reduced-motion: reduce){.ln.cur{transform:none}.lt.ring .lart,.lt.flash .lart{animation:none}}
 .ln.chest .ln-ic svg{width:34px;height:34px}
+
+.lcancel{grid-column:1/-1;justify-self:center;min-height:44px;min-width:120px;border-radius:12px;border:2px solid #5a4ea0;background:#2e2660;color:#fff;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 14px}.lcancel svg{width:16px;height:16px}
+body.learning .sheet:not(.open){visibility:hidden}

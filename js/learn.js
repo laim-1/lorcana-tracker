@@ -100,11 +100,11 @@ function boardHTML(opts){const me=st.players[0],op=st.players[1];
  return`<div class="lboard">${sideHUD(op,"Rival",false)}${zone(op,false,opts)}${zone(me,true,opts)}${sideHUD(me,"You",true)}${me.hand.length?`<div class="lhand">${me.hand.map(x=>tile(x,"hand",opts)).join("")}</div>`:""}</div>`}
 /* ---------- lesson flow ---------- */
 const step=()=>cur.l.steps[si];
-async function startLesson(id){const f=flat();cur=f.find(x=>x.l.id===id);if(!cur)return;si=0;mistakes=0;
+async function startLesson(id){const f=flat();cur=f.find(x=>x.l.id===id);if(!cur)return;si=0;mistakes=0;sel=null;picks=[];answered=false;hist=[];busy=false;root.scrollTop=0;
  root.innerHTML=`<div class="lbar"><button class="lbtn" data-act="back">${ICO.back}<span>Path</span></button><div class="ltitle">${esc(cur.l.title)}</div></div><div class="lspin" role="status" aria-label="Loading"><i></i></div>`;
  await preloadLesson(cur.l);
  st=Core.build(ctx,cur.l.setup);hist=[];enterStep();
- const nx=f[f.indexOf(cur)+1];if(nx)setTimeout(()=>preloadLesson(nx.l),50)}
+ const nx=f[f.findIndex(x=>x.l.id===cur.l.id)+1];if(nx)setTimeout(()=>preloadLesson(nx.l),50)}
 function enterStep(){const s=step();sel=null;answered=false;picks=[];busy=false;if(s.setup){st=Core.build(ctx,s.setup);hist=[]}render();if(s.k==="demo")setTimeout(runDemo,650)}
 function stepNeedsBoard(s){if(s.k!=="pick")return true;const S=s.setup||cur.l.setup;return keysOfSetup(S).length>0&&!s.opts.some(o=>o&&o.c&&!(S.me&&((S.me.play||[]).some(e=>(e.c||e)===o.c))))}
 function render(fb){const s=step(),l=cur.l;const opts={cand:new Set(),ring:null};
@@ -120,7 +120,7 @@ function render(fb){const s=step(),l=cur.l;const opts={cand:new Set(),ring:null}
   const cardOpts=s.opts.some(o=>o&&o.c);
   body=board+`<div class="lopts ${cardOpts?"cards":""}">${s.opts.map((o,i)=>o&&o.c?`<button class="lopt lcard ${picks.includes(i)?"on":""}" data-act="pick" data-i="${i}">${cardImg(ctx.card(o.c))}<span>${esc(ctx.card(o.c).name)}</span></button>`:`<button class="lopt ${picks.includes(i)?"on":""}" data-act="pick" data-i="${i}">${esc(o)}</button>`).join("")}</div>${s.multi&&!answered?`<button class="lgo" data-act="check">Check</button>`:""}`}
  else body=boardHTML(opts);
- const verbs=sel&&sel.verbs?`<div class="lverbs">${sel.verbs.map((v,i)=>`<button class="lverb" data-act="verb" data-i="${i}" data-sig="${esc((v.acts||[]).map(sig).join(";"))}">${ICO[v.icon]||""}<span>${esc(v.label)}</span></button>`).join("")}<button class="lverb ghost" data-act="cancel">${ICO.x}<span>Cancel</span></button></div>`:sel&&sel.cands?`<div class="lverbs"><button class="lverb ghost" data-act="cancel">${ICO.x}<span>Cancel</span></button></div>`:"";
+ const verbs=sel&&sel.verbs?`<div class="lverbs">${sel.verbs.map((v,i)=>`<button class="lverb" data-act="verb" data-i="${i}" data-sig="${esc((v.acts||[]).map(sig).join(";"))}">${ICO[v.icon]||""}<span>${esc(v.label)}</span></button>`).join("")}<button class="lcancel" data-act="cancel" aria-label="Cancel">${ICO.x}<span>Cancel</span></button></div>`:sel&&sel.cands?`<div class="lverbs"><button class="lcancel" data-act="cancel" aria-label="Cancel">${ICO.x}<span>Cancel</span></button></div>`:"";
  const tools=(s.k==="goal"&&!answered)?`<div class="ltools"><button class="lbtn" data-act="reset">Reset</button></div>`:(s.k==="turn"&&!answered)?`<div class="ltools"><button class="lgo" data-act="endturn">End turn</button></div>`:"";
  const feed=fb&&fb.msg?`<div class="lfeed ${fb.ok?"ok":"bad"}" role="status"><b class="lfeed-h">${fb.ok?ICO.check:ICO.x}<span>${esc(fb.msg)}</span></b>${fb.ok?`<button class="lgo" data-act="next">Continue</button>`:""}</div>`:"";
  root.innerHTML=head+`<main class="llesson">${prompt}${body}${verbs}${tools}${feed}</main>`;
@@ -172,15 +172,22 @@ function endTurn(){if(busy)return;busy=true;const me=st.players[0],l0=me.lore;
  E.act(st,{t:"end"});const ban=root.querySelector(".lsay");if(ban)ban.textContent="Rival's turn: they pass.";
  setTimeout(()=>{E.act(st,{t:"end"});busy=false;answered=true;const g=me.lore-l0;render({ok:true,msg:"Ready step: all ready. Draw step: +1 card."+(g?" Places gave +"+g+" lore.":"")})},500)}
 function fx(){if(window.FX&&FX.at)try{FX.at(root.querySelector(".lt.flash,.lt"),{n:12})}catch(e){}}
+function nextBtn(c,nx,f){const end=!nx||nx.ci!==c.ci,cid=c.ch.id;
+ if(c.li===3&&c.ch.lessons.slice(0,4).every(x=>isDone(x.id))&&!P.chests[cid])return `<button class="lgo" data-act="chestnext" data-id="${esc(cid)}" data-next="${nx?esc(nx.l.id):""}">Open chapter chest</button>`;
+ if(nx&&unlocked(f.findIndex(x=>x.l.id===nx.l.id)))return `<button class="lgo" data-act="lesson" data-id="${esc(nx.l.id)}">${end?"Next chapter":"Next lesson"}</button>`;return ""}
+function chestScreen(cid,nid){cur=null;sel=null;
+ root.innerHTML=`<div class="lbar"><button class="lbtn" data-act="back">${ICO.back}<span>Path</span></button><div class="ltitle">Chapter chest</div></div><main class="llesson center"><div class="lbig">${ICO.chest}</div><h2>+20 XP</h2><p class="ltext">${P.xp} XP · ${P.streak} day streak</p>${nid?`<button class="lgo" data-act="lesson" data-id="${esc(nid)}">Next lesson</button>`:""}<button class="lbtn wide" data-act="back">Back to path</button></main>`;
+ if(window.FX&&FX.celebrate)FX.celebrate()}
 function finish(){const l=cur.l,first=!isDone(l.id);if(first){P.done[l.id]=Date.now();P.xp+=l.xp;touchStreak();save()}
- const f=flat(),doneN=f.filter(x=>isDone(x.l.id)).length,nx=f[f.indexOf(cur)+1];
- root.innerHTML=`<div class="lbar"><button class="lbtn" data-act="back">${ICO.back}<span>Path</span></button><div class="ltitle">Lesson complete</div></div><main class="llesson center"><div class="lbig">${ICO.trophy}</div><h2>${esc(l.title)}</h2><p class="ltext">${first?"+"+l.xp+" XP":"Replay done"}${mistakes?"":" · Perfect"}</p><p class="ltext">${doneN}/${f.length} lessons · ${P.xp} XP · ${P.streak} day streak</p>${nx&&unlocked(f.indexOf(nx))?`<button class="lgo" data-act="lesson" data-id="${esc(nx.l.id)}">Next lesson</button>`:""}<button class="lbtn wide" data-act="back">Back to path</button></main>`;
+ const f=flat(),doneN=f.filter(x=>isDone(x.l.id)).length,nx=f[f.findIndex(x=>x.l.id===cur.l.id)+1];
+ root.innerHTML=`<div class="lbar"><button class="lbtn" data-act="back">${ICO.back}<span>Path</span></button><div class="ltitle">Lesson complete</div></div><main class="llesson center"><div class="lbig">${ICO.trophy}</div><h2>${esc(l.title)}</h2><p class="ltext">${first?"+"+l.xp+" XP":"Replay done"}${mistakes?"":" · Perfect"}</p><p class="ltext">${doneN}/${f.length} lessons · ${P.xp} XP · ${P.streak} day streak</p>${nextBtn(cur,nx,f)}<button class="lbtn wide" data-act="back">Back to path</button></main>`;
  if(window.FX&&FX.celebrate)FX.celebrate()}
 function onClick(e){const b=e.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
  if(a==="close"){close();location.hash="";return}
  if(a==="back"){cur=null;renderPath();return}
  if(a==="locked"||a==="chestdone")return;
  if(a==="lesson"){startLesson(b.dataset.id);return}
+ if(a==="chestnext"){const cid=b.dataset.id;if(!P.chests[cid]){P.chests[cid]=1;P.xp+=20;save()}chestScreen(cid,b.dataset.next);return}
  if(a==="chest"){const cid=b.dataset.id;if(!P.chests[cid]){P.chests[cid]=1;P.xp+=20;save();if(window.FX&&FX.celebrate)FX.celebrate()}renderPath();return}
  if(a==="next"){si++;if(si>=cur.l.steps.length)finish();else enterStep();return}
  if(a==="card"){onCard(+b.dataset.uid);return}

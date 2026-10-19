@@ -9,9 +9,9 @@ const gj=JSON.parse(fs.readFileSync('data/game-cards.js','utf8').replace(/^windo
 const raw=gj.cards.filter(c=>/^(9|10|11|12|13)$/.test(String(c.set)));const cards=raw.map(E.normCard);
 const ctx=Core.mkCtx(E,cards,D.cards);const fails=[];const out={chapters:D.chapters.length,authored:0,locked:0,lessons:0,puzzles:[]};
 for(const k in D.cards){try{const c=ctx.card(k);if(c.unsupported&&c.unsupported.length)fails.push('unsupported text '+k)}catch(e){fails.push(e.message)}}
-const prompts=new Map();let prev=null;const snap=st=>JSON.stringify(st.players.map(p=>[p.lore,p.hand.length,p.ink.map(x=>x.exerted),p.play.map(x=>[x.card.id,x.exerted,x.damage,x.at,x.under.length]),p.discard.length]));
+const prompts=new Map(),lids=new Set();let prev=null;const snap=st=>JSON.stringify(st.players.map(p=>[p.lore,p.hand.length,p.ink.map(x=>x.exerted),p.play.map(x=>[x.card.id,x.exerted,x.damage,x.at,x.under.length]),p.discard.length]));
 for(const ch of D.chapters){if(ch.soon){out.locked++;continue}out.authored++;
- for(const l of ch.lessons){out.lessons++;const fp=JSON.stringify(l.setup),seq=l.steps.map(s=>s.k).join(">");
+ for(const l of ch.lessons){out.lessons++;if(lids.has(l.id))fails.push('duplicate lesson id '+l.id);lids.add(l.id);const fp=JSON.stringify(l.setup),seq=l.steps.map(s=>s.k).join(">");
   if(prev&&prev.fp===fp)fails.push(l.id+' same board as '+prev.id);if(prev&&prev.seq===seq&&l.steps.length>1)fails.push(l.id+' same step sequence as '+prev.id+' ('+seq+')');
   prev={fp,seq,id:l.id};
   let st=Core.build(ctx,l.setup);let hist=[];
@@ -31,7 +31,7 @@ for(const ch of D.chapters){if(ch.soon){out.locked++;continue}out.authored++;
      if(s.puzzle&&!keys.length)fails.push(tag+' puzzle has no key');
      if(bad.length)fails.push(tag+' alternative solution without key: '+bad[0].map(a=>a._n).join(' ; '));
      out.puzzles.push({id:tag,goal:s.goal,winningLines:r.wins.length,searched:r.tried,sample:r.wins[0].map(a=>a._n).join(' ; ')});
-     const st2=Core.build(ctx,l.setup);}
+     for(const a of r.wins[0]){const b={...a};delete b._n;E.act(st,b);while(st.pending)E.act(st,E.legalActions(st)[0]);hist.push(b)}}
    else fails.push(tag+' unknown step '+s.k)});
  }}
 const emo=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2300}-\u{23FF}]/u;

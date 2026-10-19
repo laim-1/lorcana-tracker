@@ -13,7 +13,7 @@ with sync_playwright() as p:
     if not(st["xp"]==70 and st["streak"]==3 and st["ch1"] and st["ch2"] and not st["ch3"]): fails.append("migration "+str(st))
     cur=pg.locator(".ln.cur").get_attribute("data-id")
     if cur!="s1": fails.append("current lesson after migration "+str(cur))
-    if pg.locator(".ln.soon").count()<1: fails.append("locked coming-soon chapters missing")
+    if pg.locator(".ln.lock").count()<1: fails.append("locked later lessons missing")
     pg.locator(".ln.cur").click(); pg.wait_for_selector(".lboard",timeout=20000)
     if errs: fails.append("JS errors "+str(errs[:2]))
     b.close()

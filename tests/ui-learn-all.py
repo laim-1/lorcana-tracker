@@ -26,7 +26,7 @@ TAP=r"""async (ref)=>{const T=LorcanaLearn._test;const a=ref.uid!=null?ref:T.res
  for(let k=0;k<6;k++){if(q('.lfeed'))return true;
   const vs=[...document.querySelectorAll('.lverb:not(.ghost)')];
   if(vs.length){const v=vs.find(b=>(b.dataset.sig||'').split(';').includes(want));if(!v)throw new Error('no verb for '+want+' in '+vs.map(b=>b.dataset.sig).join(' / '));v.click();await wait();continue}
-  const c=[...document.querySelectorAll('.lt.cand')];if(c.length){const u=[a.singer,a.shift,a.loc,a.target].find(x=>x!=null&&q('.lt.cand[data-uid="'+x+'"]'));if(u==null)throw new Error('no candidate');q('.lt.cand[data-uid="'+u+'"]').click();await wait();continue}
+  const c=[...document.querySelectorAll('.lt.cand')];if(c.length){if(!a._q)a._q=(a.target!=null?[a.target]:[a.singer,a.shift,a.loc]).filter(x=>x!=null);const i=a._q.findIndex(x=>q('.lt.cand[data-uid="'+x+'"]'));if(i<0)throw new Error('no candidate');const u=a._q.splice(i,1)[0];q('.lt.cand[data-uid="'+u+'"]').click();await wait();continue}
   return true}return true}"""
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={"width":390,"height":844},is_mobile=True,has_touch=True,device_scale_factor=2)

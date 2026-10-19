@@ -43,8 +43,17 @@ const same=(a,b)=>a&&b&&a.t===b.t&&(a.uid??null)===(b.uid??null)&&(a.target??nul
 function oppMax(st){const o=st.players[1],E=root.LorcanaEngine||NODE_E;let n=o.lore;for(const x of o.play){if(x.card.type==="location")n+=E.loreOf(x)||0;else if(x.card.type==="character"&&!x.card.kw.reckless)n+=E.loreOf(x)||0}return n}
 let NODE_E=null;
 /* goal: "&"-joined tokens */
+function cloneSt(ctx,st){const E=ctx.E,ZK=new Set(["deck","hand","ink","play","discard"]);const s=E.thawState(E.freezeState(st),ctx.cards);s.human=[false,false];
+ st.players.forEach((P,i)=>{for(const k in P)if(!ZK.has(k)&&!(k in s.players[i]&&k!=="disc"&&k!=="boosted"))s.players[i][k]=Array.isArray(P[k])?P[k].slice():P[k] instanceof Set?new Set(P[k]):P[k]});for(const k in st)if(!(k in s))s[k]=st[k];return s}
+/* after this turn ends and the rival passes, can the goal be reached next turn? */
+function nextTurn(ctx,st){if(st.winner!=null||st.pending)return null;const s=cloneSt(ctx,st);const E=ctx.E;if(!E.isLegal(s,{t:"end"}))return null;E.act(s,{t:"end"});if(s.winner!=null)return null;E.act(s,{t:"end"});return s.winner==null||s.winner===0?s:null}
 function goalMet(ctx,st,goal,hist){NODE_E=ctx.E;const me=st.players[0];
- return String(goal).split("&").every(tok=>{let m;tok=tok.trim();
+ const toks=String(goal).split("&").map(t=>t.trim());const nx=toks.filter(t=>t.startsWith("next:")),now=toks.filter(t=>!t.startsWith("next:"));
+ if(!now.every(tok=>tokMet(ctx,st,tok,hist)))return false;
+ for(const t of nx){const s=nextTurn(ctx,st);if(!s)return false;const sub=t.slice(5).replace(/\|/g,"&");if(goalMet(ctx,s,sub,[]))continue;if(!solve(ctx,s,sub,4,4000).wins.length)return false}
+ return true}
+function tokMet(ctx,st,tok,hist){const me=st.players[0];
+ return [tok].every(tok=>{let m;
   if(tok==="win")return st.winner===0;
   if((m=tok.match(/^lore>=(\d+)$/)))return me.lore>=+m[1];
   if((m=tok.match(/^opplore<=(\d+)$/)))return st.players[1].lore<=+m[1];
@@ -56,11 +65,14 @@ function goalMet(ctx,st,goal,hist){NODE_E=ctx.E;const me=st.players[0];
   if(tok==="inked")return hist.some(a=>a.t==="ink");
   if((m=tok.match(/^hand>=(\d+)$/)))return me.hand.length>=+m[1];
   if(tok==="inkUsed")return me.ink.every(x=>x.exerted);
+  if((m=tok.match(/^exerted:(\w+)$/))){const x=findKey(ctx,st,0,m[1],["play"]);return !!x&&x.exerted}
+  if((m=tok.match(/^oppChars<=(\d+)$/)))return st.players[1].play.filter(x=>x.card.type==="character").length<=+m[1];
+  if((m=tok.match(/^inkN>=(\d+)$/)))return me.ink.length>=+m[1];
   throw new Error("bad goal token "+tok)})}
 /* Node-only brute force over every legal line (no 'end'): returns {wins, lines[], tried} */
 function solve(ctx,st0,goal,maxDepth,limit){const E=ctx.E,pool=ctx.cards;let tried=0;const wins=[];const seen=new Set();
  const key=st=>JSON.stringify(st.players.map(p=>[p.lore,p.hand.map(x=>x.card.id).sort(),p.ink.map(x=>x.exerted).sort(),p.play.map(x=>[x.card.id,x.exerted,x.damage,x.at,x.tStr,x.under.length]),p.discard.length,p.inked]));
- const ZK=new Set(["deck","hand","ink","play","discard"]);const clone=st=>{const s=E.thawState(E.freezeState(st),pool);s.human=[false,false];st.players.forEach((P,i)=>{for(const k in P)if(!ZK.has(k)&&!(k in s.players[i]&&k!=="disc"&&k!=="boosted"))s.players[i][k]=Array.isArray(P[k])?P[k].slice():P[k] instanceof Set?new Set(P[k]):P[k]});for(const k in st)if(!(k in s))s[k]=st[k];return s};
+ const clone=st=>cloneSt(ctx,st);
  function rec(st,hist){if(tried++>(limit||200000))return;
   if(goalMet(ctx,st,goal,hist)){wins.push(hist.slice());return}
   if(hist.length>=maxDepth||st.winner!=null)return;const k=key(st)+"|"+hist.filter(a=>a.t==="play").length+hist.some(a=>a.t==="ink");if(seen.has(k))return;seen.add(k);
@@ -74,6 +86,6 @@ function describe(st,a){const nm=u=>{for(const p of st.players)for(const z of["h
 function matchRef(ctx,st,a,ref){if(a.t!==ref.t)return false;const u=(k,pi)=>{const x=findKey(ctx,st,pi,k,["hand","play","discard"]);return x&&x.uid};
  if(ref.c&&a.uid!==u(ref.c,0))return false;if(ref.target&&a.target!==u(ref.target,ref.tside==="me"?0:1))return false;if(ref.singer&&a.singer!==u(ref.singer,0))return false;
  if(ref.shift&&a.shift!==u(ref.shift,0))return false;if(ref.loc&&a.loc!==u(ref.loc,0))return false;if(ref.singers&&a.singers!==ref.singers.map(k=>u(k,0)).join(","))return false;if(ref.exerted&&!a.exerted)return false;return true}
-const API={matchRef,mkCtx,build,resolve,same,goalMet,solve,findKey,oppMax,describe};
+const API={cloneSt,nextTurn,matchRef,mkCtx,build,resolve,same,goalMet,solve,findKey,oppMax,describe};
 if(typeof module!=="undefined"&&module.exports)module.exports=API;else root.LearnCore=API;
 })(typeof window!=="undefined"?window:globalThis);
